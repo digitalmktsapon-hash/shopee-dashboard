@@ -6,7 +6,9 @@ const SANDBOX_PARTNER_KEY = 'shpk5a70594a584e4d6a425057654b586a6d624b504977416b6
 const SANDBOX_REDIRECT_URL = 'https://shopee-dashboard-rho.vercel.app/api/auth/shopee/callback';
 
 const PARTNER_ID = Number(process.env.SHOPEE_PARTNER_ID) || SANDBOX_PARTNER_ID;
-const PARTNER_KEY = process.env.SHOPEE_PARTNER_KEY || SANDBOX_PARTNER_KEY;
+const RAW_KEY = process.env.SHOPEE_PARTNER_KEY || SANDBOX_PARTNER_KEY;
+// Strip 'shpk' prefix if present — it's a display identifier, not part of HMAC key
+const PARTNER_KEY = RAW_KEY.startsWith('shpk') ? RAW_KEY.slice(4) : RAW_KEY;
 const BASE_URL = process.env.SHOPEE_BASE_URL || 'https://partner.test-stable.shopeemobile.com';
 const REDIRECT_URL = process.env.SHOPEE_REDIRECT_URL || SANDBOX_REDIRECT_URL;
 
