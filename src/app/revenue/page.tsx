@@ -226,64 +226,84 @@ export default function RevenuePage() {
 
             {/* Section II: KPIs Comparison */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
-                    <div className="flex justify-between items-start mb-2">
+                <div className="bg-card/50 backdrop-blur-md border border-white/5 bg-gradient-to-br from-card to-card/30 rounded-2xl p-6 shadow-lg relative overflow-hidden group">
+                    <div className="absolute inset-0 bg-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                    <div className="flex justify-between items-start mb-4 relative z-10">
                         <div>
-                            <p className="text-sm font-medium text-muted-foreground">Doanh Thu Net</p>
+                            <p className="text-sm font-medium text-muted-foreground/80 uppercase tracking-wider">Doanh Thu Net</p>
                         </div>
-                        <DollarSign className="w-4 h-4 text-blue-500" />
+                        <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center">
+                            <DollarSign className="w-5 h-5 text-blue-400" />
+                        </div>
                     </div>
-                    <div className="flex flex-wrap items-baseline gap-2">
-                        <h3 className="text-2xl font-bold text-blue-500">{formatVND(metrics.currentNetRevenue)}</h3>
+                    <div className="flex flex-col gap-1 relative z-10">
+                        <h3 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-indigo-400">
+                            {formatVND(metrics.currentNetRevenue)}
+                        </h3>
                         {prevMetrics && <PoPIndicator current={metrics.currentNetRevenue} prev={prevMetrics.currentNetRevenue} />}
                     </div>
                 </div>
 
-                <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
-                    <div className="flex justify-between items-start mb-2">
+                <div className="bg-card/50 backdrop-blur-md border border-white/5 bg-gradient-to-br from-card to-card/30 rounded-2xl p-6 shadow-lg relative overflow-hidden group">
+                    <div className="absolute inset-0 bg-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                    <div className="flex justify-between items-start mb-4 relative z-10">
                         <div>
-                            <p className="text-sm font-medium text-muted-foreground">Lợi Nhuận</p>
+                            <p className="text-sm font-medium text-muted-foreground/80 uppercase tracking-wider">Lợi Nhuận</p>
                         </div>
-                        <Wallet className="w-4 h-4 text-emerald-500" />
+                        <div className="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center">
+                            <Wallet className="w-5 h-5 text-emerald-400" />
+                        </div>
                     </div>
-                    <div className="flex flex-wrap items-baseline gap-2">
-                        <h3 className="text-2xl font-bold text-emerald-500">{formatVND(metrics.currentProfit)}</h3>
+                    <div className="flex flex-col gap-1 relative z-10">
+                        <h3 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 to-teal-400">
+                            {formatVND(metrics.currentProfit)}
+                        </h3>
                         {prevMetrics && <PoPIndicator current={metrics.currentProfit} prev={prevMetrics.currentProfit} />}
                     </div>
                 </div>
 
-                <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
-                    <div className="flex justify-between items-start mb-2">
+                <div className="bg-card/50 backdrop-blur-md border border-white/5 bg-gradient-to-br from-card to-card/30 rounded-2xl p-6 shadow-lg relative overflow-hidden group">
+                    <div className="absolute inset-0 bg-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                    <div className="flex justify-between items-start mb-4 relative z-10">
                         <div>
-                            <p className="text-sm font-medium text-muted-foreground">Biên Lợi Nhuận %</p>
+                            <p className="text-sm font-medium text-muted-foreground/80 uppercase tracking-wider">Biên Lợi Nhuận %</p>
                         </div>
-                        <TrendingUp className="w-4 h-4 text-purple-500" />
+                        <div className="w-10 h-10 rounded-full bg-purple-500/10 flex items-center justify-center">
+                            <TrendingUp className="w-5 h-5 text-purple-400" />
+                        </div>
                     </div>
-                    <div className="flex flex-wrap items-baseline gap-2">
-                        <h3 className="text-2xl font-bold text-purple-500">{formatNumber(metrics.currentMargin, 2)}%</h3>
+                    <div className="flex flex-col gap-1 relative z-10">
+                        <h3 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-fuchsia-400">
+                            {formatNumber(metrics.currentMargin, 2)}%
+                        </h3>
                         {prevMetrics && <PoPIndicator current={metrics.currentMargin} prev={prevMetrics.currentMargin} />}
                     </div>
                 </div>
 
-                <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
-                    <div className="flex justify-between items-start mb-2">
+                <div className="bg-card/50 backdrop-blur-md border border-white/5 bg-gradient-to-br from-card to-card/30 rounded-2xl p-6 shadow-lg relative overflow-hidden group">
+                    <div className="absolute inset-0 bg-amber-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                    <div className="flex justify-between items-start mb-4 relative z-10">
                         <div>
-                            <p className="text-sm font-medium text-muted-foreground">AOV (Giá trị ĐH Trung bình)</p>
+                            <p className="text-sm font-medium text-muted-foreground/80 uppercase tracking-wider">AOV (Giá trị ĐH M.Bình)</p>
                         </div>
-                        <ShoppingCart className="w-4 h-4 text-amber-500" />
+                        <div className="w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center">
+                            <ShoppingCart className="w-5 h-5 text-amber-400" />
+                        </div>
                     </div>
-                    <div className="flex flex-wrap items-baseline gap-2">
-                        <h3 className="text-2xl font-bold text-amber-500">{formatVND(metrics.currentAOV)}</h3>
+                    <div className="flex flex-col gap-1 relative z-10">
+                        <h3 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-amber-400 to-orange-400">
+                            {formatVND(metrics.currentAOV)}
+                        </h3>
                         {prevMetrics && <PoPIndicator current={metrics.currentAOV} prev={prevMetrics.currentAOV} />}
                     </div>
                 </div>
             </div>
 
             {/* Section I: Revenue & Profit Composed Chart */}
-            <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
-                <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-lg font-semibold flex items-center gap-2">
-                        <TrendingUp className="w-5 h-5 text-blue-500" />
+            <div className="bg-card/50 backdrop-blur-md border border-white/5 bg-gradient-to-b from-card/80 to-card/20 rounded-2xl p-6 shadow-lg relative overflow-hidden">
+                <div className="flex items-center justify-between mb-8">
+                    <h3 className="text-lg font-semibold flex items-center gap-2 text-foreground/90 uppercase tracking-wider">
+                        <TrendingUp className="w-5 h-5 text-blue-400" />
                         BIỂU ĐỒ DOANH THU & LỢI NHUẬN THEO THỜI GIAN
                     </h3>
                 </div>
@@ -346,18 +366,20 @@ export default function RevenuePage() {
                                 type="monotone"
                                 dataKey="netRevenue"
                                 name="Doanh Thu Net"
-                                stroke="#3b82f6"
+                                stroke="#38bdf8"
                                 strokeWidth={3}
-                                dot={false}
+                                dot={{ stroke: '#38bdf8', strokeWidth: 2, r: 4, fill: '#0f172a' }}
+                                activeDot={{ r: 6, strokeWidth: 0, fill: '#38bdf8' }}
                             />
                             <Line
                                 yAxisId="left"
                                 type="monotone"
                                 dataKey="profit"
                                 name="Lợi Nhuận"
-                                stroke="#10b981"
+                                stroke="#34d399"
                                 strokeWidth={3}
-                                dot={false}
+                                dot={{ stroke: '#34d399', strokeWidth: 2, r: 4, fill: '#0f172a' }}
+                                activeDot={{ r: 6, strokeWidth: 0, fill: '#34d399' }}
                             />
                         </ComposedChart>
                     </ResponsiveContainer>
@@ -366,9 +388,9 @@ export default function RevenuePage() {
 
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                 {/* Section III: SKU Analysis */}
-                <div className="bg-card border border-border rounded-xl p-6 shadow-sm flex flex-col">
-                    <h3 className="text-lg font-semibold mb-6 flex items-center gap-2">
-                        <Package className="w-5 h-5 text-amber-500" />
+                <div className="bg-card/50 backdrop-blur-md border border-white/5 bg-gradient-to-b from-card/80 to-card/40 rounded-2xl p-6 shadow-lg flex flex-col xl:col-span-1">
+                    <h3 className="text-lg font-semibold mb-6 flex items-center gap-2 text-foreground/90 uppercase tracking-wider">
+                        <Package className="w-5 h-5 text-amber-400" />
                         DOANH THU THEO SKU (Top 10)
                     </h3>
                     {/* Top SKU Chart */}
@@ -382,14 +404,20 @@ export default function RevenuePage() {
                                     formatter={(value: any) => formatVND(Number(value))}
                                     contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                                 />
-                                <Bar dataKey="revenue" name="Doanh Thu Net" fill="#3b82f6" radius={[0, 4, 4, 0]} barSize={12} />
+                                <Bar dataKey="revenue" name="Doanh Thu Net" fill="url(#colorRevenueBar)" radius={[0, 6, 6, 0]} barSize={14} />
+                                <defs>
+                                    <linearGradient id="colorRevenueBar" x1="0" y1="0" x2="1" y2="0">
+                                        <stop offset="0%" stopColor="#38bdf8" />
+                                        <stop offset="100%" stopColor="#818cf8" />
+                                    </linearGradient>
+                                </defs>
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
                     {/* Top SKU Table */}
-                    <div className="flex-1 overflow-auto max-h-[400px]">
+                    <div className="flex-1 overflow-auto max-h-[420px] pr-2 custom-scrollbar">
                         <table className="w-full text-sm text-left whitespace-nowrap">
-                            <thead className="text-muted-foreground font-medium border-b border-border sticky top-0 bg-card z-10">
+                            <thead className="text-muted-foreground/80 font-medium border-b border-white/10 sticky top-0 bg-card/95 backdrop-blur-md z-10">
                                 <tr>
                                     <th className="pb-3 pl-2">SKU / Sản phẩm</th>
                                     <th className="pb-3 text-right">Đã bán</th>
@@ -399,18 +427,18 @@ export default function RevenuePage() {
                                     <th className="pb-3 text-right pr-2">% Đóng góp</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-border/50">
+                            <tbody className="divide-y divide-white/5">
                                 {metrics.topSKUs.map((p, idx) => (
-                                    <tr key={idx} className="group hover:bg-muted/50 transition-colors">
-                                        <td className="py-3 pl-2 max-w-[200px]" title={p.name}>
-                                            <div className="font-medium text-foreground truncate">{p.sku}</div>
-                                            <div className="text-xs text-muted-foreground truncate">{p.name}</div>
+                                    <tr key={idx} className="group hover:bg-white/5 transition-colors duration-200">
+                                        <td className="py-3.5 pl-3 max-w-[200px]" title={p.name}>
+                                            <div className="font-semibold text-foreground/90 truncate">{p.sku}</div>
+                                            <div className="text-xs text-muted-foreground truncate opacity-80">{p.name}</div>
                                         </td>
-                                        <td className="py-3 text-right">{p.quantity}</td>
-                                        <td className="py-3 text-right font-medium text-blue-500">{formatVND(p.revenue)}</td>
-                                        <td className="py-3 text-right font-medium text-emerald-500">{formatVND(p.profit)}</td>
-                                        <td className="py-3 text-right">{formatNumber(p.margin, 2)}%</td>
-                                        <td className="py-3 text-right pr-2">{formatNumber(p.contribution, 2)}%</td>
+                                        <td className="py-3.5 text-right font-medium">{p.quantity}</td>
+                                        <td className="py-3.5 text-right font-bold text-sky-400">{formatVND(p.revenue)}</td>
+                                        <td className="py-3.5 text-right font-bold text-emerald-400">{formatVND(p.profit)}</td>
+                                        <td className="py-3.5 text-right font-medium">{formatNumber(p.margin, 2)}%</td>
+                                        <td className="py-3.5 text-right pr-3 font-medium text-indigo-300">{formatNumber(p.contribution, 2)}%</td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -420,14 +448,14 @@ export default function RevenuePage() {
 
                 <div className="flex flex-col gap-6">
                     {/* Section IV: Province Analysis */}
-                    <div className="bg-card border border-border rounded-xl p-6 shadow-sm flex-1 flex flex-col">
-                        <h3 className="text-lg font-semibold mb-6 flex items-center gap-2">
-                            <MapPin className="w-5 h-5 text-indigo-500" />
+                    <div className="bg-card/50 backdrop-blur-md border border-white/5 bg-gradient-to-b from-card/80 to-card/40 rounded-2xl p-6 shadow-lg flex-1 flex flex-col">
+                        <h3 className="text-lg font-semibold mb-6 flex items-center gap-2 text-foreground/90 uppercase tracking-wider">
+                            <MapPin className="w-5 h-5 text-indigo-400" />
                             DOANH THU THEO KHU VỰC
                         </h3>
-                        <div className="flex-1 overflow-auto max-h-[300px]">
+                        <div className="flex-1 overflow-auto max-h-[300px] pr-2 custom-scrollbar">
                             <table className="w-full text-sm text-left">
-                                <thead className="text-muted-foreground font-medium border-b border-border sticky top-0 bg-card z-10">
+                                <thead className="text-muted-foreground/80 font-medium border-b border-white/10 sticky top-0 bg-card/95 backdrop-blur-md z-10">
                                     <tr>
                                         <th className="pb-3 pl-2">Tỉnh / Thành phố</th>
                                         <th className="pb-3 text-right">Doanh thu</th>
@@ -435,18 +463,18 @@ export default function RevenuePage() {
                                         <th className="pb-3 text-right pr-2">% Đóng góp</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-border/50">
+                                <tbody className="divide-y divide-white/5">
                                     {metrics.topProvinces.map((loc, idx) => (
-                                        <tr key={idx} className="group hover:bg-muted/50 transition-colors">
-                                            <td className="py-3 pl-2 truncate font-medium">{loc.province}</td>
-                                            <td className="py-3 text-right text-blue-500">{formatVND(loc.revenue)}</td>
-                                            <td className="py-3 text-right text-emerald-500">{formatVND(loc.profit)}</td>
-                                            <td className="py-3 text-right pr-2">
-                                                <div className="flex items-center justify-end gap-2">
-                                                    <span>{formatNumber(loc.contribution, 2)}%</span>
-                                                    <div className="w-12 h-1.5 bg-secondary rounded-full overflow-hidden">
+                                        <tr key={idx} className="group hover:bg-white/5 transition-colors duration-200">
+                                            <td className="py-3.5 pl-3 truncate font-semibold text-foreground/90">{loc.province}</td>
+                                            <td className="py-3.5 text-right font-bold text-sky-400">{formatVND(loc.revenue)}</td>
+                                            <td className="py-3.5 text-right font-bold text-emerald-400">{formatVND(loc.profit)}</td>
+                                            <td className="py-3.5 text-right pr-3">
+                                                <div className="flex items-center justify-end gap-3">
+                                                    <span className="font-medium min-w-[45px]">{formatNumber(loc.contribution, 1)}%</span>
+                                                    <div className="w-16 h-2 bg-slate-800 rounded-full overflow-hidden shadow-inner">
                                                         <div
-                                                            className="h-full bg-indigo-500"
+                                                            className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full"
                                                             style={{ width: `${loc.contribution}%` }}
                                                         />
                                                     </div>
@@ -460,10 +488,10 @@ export default function RevenuePage() {
                     </div>
 
                     {/* Section V: Status Analysis */}
-                    <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
-                        <h3 className="text-lg font-semibold mb-6 flex items-center gap-2">
-                            <CreditCard className="w-5 h-5 text-purple-500" />
-                            DOANH THU THEO TRẠNG THÁI (Mọi Đơn Hàng)
+                    <div className="bg-card/50 backdrop-blur-md border border-white/5 bg-gradient-to-b from-card/80 to-card/40 rounded-2xl p-6 shadow-lg">
+                        <h3 className="text-lg font-semibold mb-6 flex items-center gap-2 text-foreground/90 uppercase tracking-wider">
+                            <CreditCard className="w-5 h-5 text-purple-400" />
+                            DOANH THU THEO TRẠNG THÁI
                         </h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
                             <div className="h-[250px]">
