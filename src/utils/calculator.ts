@@ -1,4 +1,4 @@
-import { ShopeeOrder, MetricResult, ProductPerformance, CancelAnalysis, ReturnAnalysis, FeeAnalysis, SubsidyAnalysis, CustomerAnalysis, OperationAnalysis, RevenueTrend, DailyFinancialMetric, RiskAlert, ProductRiskProfile } from './types';
+import { ShopeeOrder, MetricResult, ProductPerformance, CancelAnalysis, ReturnAnalysis, FeeAnalysis, SubsidyAnalysis, CustomerAnalysis, OperationAnalysis, RevenueTrend, DailyFinancialMetric, RiskAlert, ProductRiskProfile, SkuEconomics, SkuType, SkuBadge, OrderEconomics, PortfolioSummary, ParetoItem } from './types';
 import { formatVND, formatNumber } from './format';
 
 export const parseShopeeDate = (dateStr: string): Date | null => {
@@ -97,9 +97,22 @@ export const calculateMetrics = (orders: ShopeeOrder[]): MetricResult => {
     const trends: Record<string, any> = {};
     const dailyMap: Record<string, DailyFinancialMetric> = {};
 
-    // Group orders by ID
-    const orderGroups: Record<string, ShopeeOrder[]> = {};
+    // 0. Global Deduplication of lines (to handle overlapping reports)
+    const uniqueLines: ShopeeOrder[] = [];
+    const lineSeenSet = new Set<string>();
+
     orders.forEach(line => {
+        // Create a unique key for this specific product line in this specific order
+        const lineKey = `${line.orderId}_${line.skuReferenceNo || ''}_${line.variationName || ''}_${line.quantity}_${line.dealPrice || line.originalPrice}`;
+        if (!lineSeenSet.has(lineKey)) {
+            lineSeenSet.add(lineKey);
+            uniqueLines.push(line);
+        }
+    });
+
+    // Group unique lines by Order ID
+    const orderGroups: Record<string, ShopeeOrder[]> = {};
+    uniqueLines.forEach(line => {
         if (!orderGroups[line.orderId]) orderGroups[line.orderId] = [];
         orderGroups[line.orderId].push(line);
     });
@@ -274,15 +287,65 @@ export const calculateMetrics = (orders: ShopeeOrder[]): MetricResult => {
         }
 
         // Customer & Ops (Simplified)
-        const customerId = (firstLine as any).buyerUsername || (firstLine as any).receiverName;
+        // Use Buyer Username as primary ID, fallback to Receiver Name + Phone for robustness
+        const buyerId = (firstLine as any).buyerUsername;
+        const receiverName = (firstLine as any).receiverName || 'Unknown';
+        const phone = (firstLine as any).phoneNumber || '';
+
+        // Final Customer ID: Prefer Shopee ID, otherwise Name+Phone to avoid collisions
+        const customerId = buyerId || `${receiverName}_${phone}`;
+
         if (customerId && !isCancelled) {
-            if (!customerMap[customerId]) customerMap[customerId] = {
-                id: customerId, name: (firstLine as any).receiverName, phoneNumber: (firstLine as any).phoneNumber, address: firstLine.province || '',
-                orderCount: 0, totalSpent: 0, lastOrderDate: dateKey, history: []
-            };
+            if (!customerMap[customerId]) {
+                customerMap[customerId] = {
+                    id: customerId,
+                    buyerUsername: buyerId || '', // Keep it empty if truly missing, UI will handle fallback
+                    name: receiverName,
+                    phoneNumber: phone,
+                    address: firstLine.province || '',
+                    orderCount: 0,
+                    totalSpent: 0,
+                    lastOrderDate: dateKey,
+                    history: []
+                };
+            } else {
+                // Update with latest info if available (to fix "Khách vãng lai" issues)
+                if (receiverName && receiverName !== 'K*****y' && !receiverName.includes('*')) {
+                    customerMap[customerId].name = receiverName;
+                }
+                if (phone && !phone.includes('*')) {
+                    customerMap[customerId].phoneNumber = phone;
+                }
+                if (firstLine.province) {
+                    customerMap[customerId].address = firstLine.province;
+                }
+            }
+
+            const customer = customerMap[customerId];
+
+            // Keep the latest date for all non-cancelled orders
+            if (dateKey > customer.lastOrderDate) {
+                customer.lastOrderDate = dateKey;
+            }
+
             if (isRealized) {
-                customerMap[customerId].totalSpent += orderNetRevenue;
-                customerMap[customerId].orderCount += 1;
+                // Only count and track realized (completed) orders - must match history
+                customer.orderCount++;
+                customer.totalSpent += orderLines.reduce((sum, o) => sum + (o.orderTotalAmount || 0), 0);
+
+                // Track History
+                customerMap[customerId].history.push({
+                    date: dateKey,
+                    orderId: orderId,
+                    value: orderNetRevenue,
+                    products: orderLines.map(l => ({
+                        name: l.productName,
+                        variation: l.variationName,
+                        quantity: l.quantity,
+                        price: l.dealPrice || l.originalPrice,
+                        originalPrice: l.originalPrice
+                    }))
+                });
             }
         }
     });
@@ -833,3 +896,216 @@ const generateRiskProfile = (
 
     }).sort((a: any, b: any) => b.priorityScore - a.priorityScore);
 };
+
+// ─────────────────────────────────────────────────────────────────
+// NEW: Product Economics (3-page redesign)
+// ─────────────────────────────────────────────────────────────────
+export interface ProductEconomicsResult {
+    skuEconomics: SkuEconomics[];
+    orderEconomics: OrderEconomics[];
+    portfolio: PortfolioSummary;
+}
+
+export function calculateProductEconomics(orders: ShopeeOrder[]): ProductEconomicsResult {
+    const COGS_RATE = 0.40;
+    const GUARDRAIL_DISCOUNT = 40; // % max discount from list price
+
+    // ── Group order lines by orderId ──────────────────────────────
+    const orderGroupMap: Record<string, ShopeeOrder[]> = {};
+    const seenLines = new Set<string>();
+
+    for (const o of orders) {
+        const status = (o.orderStatus || '').toLowerCase();
+        if (status.includes('hủy') || status.includes('cancel')) continue; // skip cancelled
+        const lineKey = `${o.orderId}_${o.skuReferenceNo}_${o.quantity}`;
+        if (seenLines.has(lineKey)) continue;
+        seenLines.add(lineKey);
+        if (!orderGroupMap[o.orderId]) orderGroupMap[o.orderId] = [];
+        orderGroupMap[o.orderId].push(o);
+    }
+
+    // ── Per-SKU accumulators ──────────────────────────────────────
+    const skuAccMap: Record<string, {
+        name: string;
+        qty: number;
+        listPriceSum: number;      // sum of originalPrice × qty
+        allocatedRev: number;
+        fees: number;
+        subsidy: number;
+        returnQty: number;
+        totalSoldQty: number;
+    }> = {};
+
+    // ── Order Economics list ──────────────────────────────────────
+    const orderEconomics: OrderEconomics[] = [];
+
+    for (const [orderId, lines] of Object.entries(orderGroupMap)) {
+        // Order totals
+        const totalListPrice = lines.reduce((s, l) => s + (l.originalPrice || 0) * (l.quantity || 1), 0);
+        const totalActualPrice = lines.reduce((s, l) => s + (l.dealPrice || l.originalPrice || 0) * (l.quantity || 1), 0);
+        const totalListPriceForAlloc = totalListPrice || 1;
+        const totalFees = lines.reduce((s, l) => s + ((l.fixedFee || 0) + (l.serviceFee || 0) + (l.paymentFee || 0) + (l.affiliateCommission || 0)), 0);
+        const totalSubsidy = lines.reduce((s, l) => s + ((l.sellerRebate || 0) + (l.shopeeRebate || 0) + (l.sellerSubsidy || 0)), 0);
+        const totalCogs = totalListPrice * COGS_RATE;
+        const orderProfit = totalActualPrice - totalCogs - totalFees + totalSubsidy;
+        const orderMargin = totalActualPrice > 0 ? (orderProfit / totalActualPrice) * 100 : 0;
+        const discountPct = totalListPrice > 0 ? ((totalListPrice - totalActualPrice) / totalListPrice) * 100 : 0;
+        const guardrailBreached = discountPct > GUARDRAIL_DISCOUNT;
+
+        const firstLine = lines[0];
+        orderEconomics.push({
+            orderId,
+            orderDate: firstLine.orderDate || '',
+            lineCount: lines.length,
+            totalListPrice,
+            totalActualPrice,
+            discountPct,
+            guardrailBreached,
+            totalCogs,
+            totalFees,
+            totalSubsidy,
+            orderProfit,
+            orderMargin,
+        });
+
+        // ── Smart group allocation: discounted vs. non-discounted ──
+        // Non-discounted lines keep their exact dealPrice (no sharing needed).
+        // Discounted lines share the "discount pool" proportionally by list price.
+        const discountedLines = lines.filter(l => (l.dealPrice || 0) < (l.originalPrice || 0));
+        const nonDiscountedLines = lines.filter(l => (l.dealPrice || l.originalPrice || 0) >= (l.originalPrice || 0));
+
+        // Revenue for non-discounted: exact deal price
+        const nonDiscountedActual = nonDiscountedLines.reduce((s, l) => s + (l.dealPrice || l.originalPrice || 0) * (l.quantity || 1), 0);
+        // Remaining revenue to allocate among discounted group
+        const discountedActual = totalActualPrice - nonDiscountedActual;
+        const discountedListTotal = discountedLines.reduce((s, l) => s + (l.originalPrice || 0) * (l.quantity || 1), 0);
+
+        const processLine = (l: ShopeeOrder, allocatedRev: number, feeBase: number) => {
+            const sku = l.skuReferenceNo || l.productName;
+            const listPriceSku = (l.originalPrice || 0) * (l.quantity || 1);
+            const lineShare = totalListPrice > 0 ? listPriceSku / totalListPrice : 1 / lines.length;
+            const feeShare = feeBase * lineShare;
+            const subsidyShare = totalSubsidy * lineShare;
+
+            if (!skuAccMap[sku]) {
+                skuAccMap[sku] = { name: l.productName, qty: 0, listPriceSum: 0, allocatedRev: 0, fees: 0, subsidy: 0, returnQty: 0, totalSoldQty: 0 };
+            }
+            const acc = skuAccMap[sku];
+            acc.qty += (l.quantity || 1);
+            acc.totalSoldQty += (l.quantity || 1);
+            acc.listPriceSum += listPriceSku;
+            acc.allocatedRev += allocatedRev;
+            acc.fees += feeShare;
+            acc.subsidy += subsidyShare;
+            acc.returnQty += (l.returnQuantity || 0);
+        };
+
+        // Non-discounted: each SKU earns its own deal price
+        for (const l of nonDiscountedLines) {
+            const rev = (l.dealPrice || l.originalPrice || 0) * (l.quantity || 1);
+            processLine(l, rev, totalFees);
+        }
+
+        // Discounted group: allocate discountedActual by list price ratio
+        for (const l of discountedLines) {
+            const listPriceSku = (l.originalPrice || 0) * (l.quantity || 1);
+            const share = discountedListTotal > 0 ? listPriceSku / discountedListTotal : 1 / discountedLines.length;
+            const rev = discountedActual * share;
+            processLine(l, rev, totalFees);
+        }
+    }
+
+    // ── Build SKU Economics with badges ──────────────────────────
+    const allProfits = Object.entries(skuAccMap).map(([sku, a]) => {
+        const cogs = a.listPriceSum * COGS_RATE;
+        return { sku, profit: a.allocatedRev - cogs - a.fees + a.subsidy };
+    });
+    const allProfitsSorted = [...allProfits].sort((a, b) => b.profit - a.profit);
+    const bottom20Threshold = allProfitsSorted[Math.floor(allProfitsSorted.length * 0.8)]?.profit ?? 0;
+    const top30RevenueThreshold = (() => {
+        const revs = Object.values(skuAccMap).map(a => a.allocatedRev).sort((a, b) => b - a);
+        return revs[Math.floor(revs.length * 0.3)] ?? 0;
+    })();
+
+    const skuEconomics: SkuEconomics[] = Object.entries(skuAccMap).map(([sku, acc]) => {
+        const cogs = acc.listPriceSum * COGS_RATE;
+        const profit = acc.allocatedRev - cogs - acc.fees + acc.subsidy;
+        // contributionMargin = profit (no ads data yet — field is ready for ads integration)
+        const contributionMargin = profit;
+        const margin = acc.allocatedRev > 0 ? (profit / acc.allocatedRev) * 100 : 0;
+        const returnRate = acc.totalSoldQty > 0 ? (acc.returnQty / acc.totalSoldQty) * 100 : 0;
+        const listPrice = acc.qty > 0 ? acc.listPriceSum / acc.qty : 0;
+
+        // Badge logic (priority: Kill List > Risk > Hero > Traffic Driver > OK)
+        let badge: SkuBadge = 'OK';
+        const isBottom20Rev = acc.allocatedRev <= bottom20Threshold;
+
+        if (profit < 0 || (margin < 10 && isBottom20Rev)) {
+            badge = '🔴 Kill List';
+        } else if (returnRate >= 10 || margin < 15) {
+            badge = '🟠 Risk';
+        } else if (margin >= 25 && returnRate <= 5 && acc.allocatedRev >= top30RevenueThreshold) {
+            badge = '🟢 Hero';
+        } else if (acc.allocatedRev >= top30RevenueThreshold && margin < 25) {
+            badge = '🔵 Traffic Driver';
+        }
+
+        // SKU type: heuristics
+        let skuType: SkuType = 'Core';
+        if (acc.allocatedRev === 0) skuType = 'Gift';
+        else if (badge === '🔵 Traffic Driver') skuType = 'Traffic';
+
+        return { sku, name: acc.name, skuType, quantity: acc.qty, listPrice, allocatedRevenue: acc.allocatedRev, cogs, fees: acc.fees, subsidy: acc.subsidy, profit, contributionMargin, margin, returnRate, badge };
+    }).sort((a, b) => b.allocatedRevenue - a.allocatedRevenue);
+
+    // ── Portfolio Summary ─────────────────────────────────────────
+    const totalProfit = skuEconomics.reduce((s, p) => s + p.profit, 0);
+    const totalRevenue = skuEconomics.reduce((s, p) => s + p.allocatedRevenue, 0);
+    const totalMargin = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0;
+    const breachedOrders = orderEconomics.filter(o => o.guardrailBreached);
+    const guardrailBreachRate = orderEconomics.length > 0 ? (breachedOrders.length / orderEconomics.length) * 100 : 0;
+    const guardrailBreachImpact = breachedOrders.reduce((s, o) => s + o.orderProfit, 0);
+
+    // Simulate: what if breached orders were repriced to exactly 60% of list price?
+    const potentialProfitGain = breachedOrders.reduce((gain, o) => {
+        const flooredRevenue = o.totalListPrice * 0.60; // 60% of niêm yết
+        const simulatedProfit = flooredRevenue - o.totalCogs - o.totalFees - o.totalSubsidy; // Subsidy is a cost here
+        return gain + (simulatedProfit - o.orderProfit);
+    }, 0);
+
+    const lossSKUs = skuEconomics.filter(p => p.profit < 0);
+    const lossSKURatio = skuEconomics.length > 0 ? (lossSKUs.length / skuEconomics.length) * 100 : 0;
+
+    // Pareto analysis
+    const top20Count = Math.max(1, Math.ceil(skuEconomics.length * 0.2));
+    const skuByProfit = [...skuEconomics].sort((a, b) => b.profit - a.profit);
+    let cumProfit = 0;
+    const pareto: ParetoItem[] = skuByProfit.map((p, i) => {
+        cumProfit += p.profit;
+        return {
+            sku: p.sku,
+            name: p.name,
+            profit: p.profit,
+            cumProfitPct: totalProfit > 0 ? (cumProfit / totalProfit) * 100 : 0,
+            isTop20: i < top20Count,
+        };
+    });
+    const top20ProfitShare = pareto.filter(p => p.isTop20).reduce((s, p) => s + p.profit, 0);
+    const top20ProfitSharePct = totalProfit > 0 ? (top20ProfitShare / totalProfit) * 100 : 0;
+
+    return {
+        skuEconomics,
+        orderEconomics,
+        portfolio: {
+            totalRevenue,
+            totalProfit,
+            totalMargin,
+            guardrailBreachRate,
+            guardrailBreachImpact,
+            potentialProfitGain,
+            top20ProfitShare: top20ProfitSharePct,
+            lossSKURatio,
+            pareto,
+        },
+    };
+}

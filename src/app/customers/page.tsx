@@ -86,6 +86,7 @@ export default function CustomersPage() {
     let filteredCustomers = metrics?.customerAnalysis?.filter(c => {
         const matchesSearch =
             c.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            c.buyerUsername.toLowerCase().includes(searchTerm.toLowerCase()) ||
             c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             c.phoneNumber.includes(searchTerm);
 
@@ -237,11 +238,15 @@ export default function CustomersPage() {
                                     <td className="px-6 py-4">
                                         <div className="flex items-center gap-3">
                                             <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs uppercase">
-                                                {customer.id.substring(0, 2)}
+                                                {(customer.buyerUsername || customer.id).substring(0, 2)}
                                             </div>
                                             <div>
-                                                <p className="font-bold text-foreground">{customer.id}</p>
-                                                <p className="text-xs text-muted-foreground">{customer.name}</p>
+                                                <p className="font-bold text-foreground">
+                                                    {customer.buyerUsername || customer.name || 'Khách vãng lai'}
+                                                </p>
+                                                {customer.name && customer.name !== (customer.buyerUsername || customer.name) && (
+                                                    <p className="text-xs text-muted-foreground">Nhận: {customer.name}</p>
+                                                )}
                                             </div>
                                         </div>
                                     </td>

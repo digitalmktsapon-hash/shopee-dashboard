@@ -13,7 +13,8 @@ import {
     ShoppingCart,
     Receipt,
     Truck,
-    Users
+    Users,
+    AlertTriangle
 } from 'lucide-react';
 
 const NAV_ITEMS = [
@@ -24,6 +25,7 @@ const NAV_ITEMS = [
     { name: 'Phí & Trợ giá', href: '/fees', icon: Receipt },
     { name: 'Vận hành', href: '/operations', icon: Truck },
     { name: 'Khách hàng', href: '/customers', icon: Users },
+    { name: 'Rủi ro', href: '/risk', icon: AlertTriangle },
     { name: 'Nguồn dữ liệu', href: '/data-sources', icon: Database },
     //    { name: 'Cài đặt (Settings)', href: '/settings', icon: Settings }, // Creating space?
 ];

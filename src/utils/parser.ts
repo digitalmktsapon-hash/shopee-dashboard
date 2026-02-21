@@ -52,6 +52,7 @@ const COLUMN_MAPPING: Record<string, keyof ShopeeOrder> = {
 
     // Customer
     "Người Mua": "buyerUsername", "Username (Buyer)": "buyerUsername", "Nguoi Mua": "buyerUsername",
+    "Tên người mua": "buyerUsername", "Tài khoản người mua": "buyerUsername", "Buyer Name": "buyerUsername", "Username": "buyerUsername",
     "Tên Người nhận": "receiverName", "Receiver Name": "receiverName", "Ten Nguoi nhan": "receiverName",
     "Số điện thoại": "phoneNumber", "Phone Number": "phoneNumber", "So dien thoai": "phoneNumber",
     "Địa chỉ nhận hàng": "remarks", "Delivery Address": "remarks", // Mapping address to remarks/address fields
@@ -88,23 +89,98 @@ export const parseShopeeReport = async (file: File): Promise<{ data: ShopeeOrder
 
                 const orders: ShopeeOrder[] = rawData.map((row: any) => {
                     const order: any = {};
+                    const rowKeys = Object.keys(row);
+
+                    // Normalize row keys for comparison
+                    const normalizedRowKeys = rowKeys.map(k => ({
+                        original: k,
+                        normalized: k.trim().toLowerCase().normalize("NFC")
+                    }));
+
+                    // We use a set of target keys we've already filled to avoid overwriting good data with empty data
+                    const filledKeys = new Set<string>();
 
                     Object.keys(COLUMN_MAPPING).forEach(colName => {
-                        // Find key in row that roughly matches colName
-                        const rowKey = Object.keys(row).find(k => {
-                            const fileHeader = k.trim().toLowerCase();
-                            const mapHeader = colName.trim().toLowerCase();
-                            return fileHeader === mapHeader || fileHeader.startsWith(mapHeader) || fileHeader.includes(mapHeader);
-                        });
-                        if (rowKey) {
-                            const targetKey = COLUMN_MAPPING[colName];
-                            let value = row[rowKey];
+                        const targetKey = COLUMN_MAPPING[colName];
+                        const normalizedColName = colName.trim().toLowerCase().normalize("NFC");
 
-                            // Simple cleaning
-                            if (typeof value === 'string') {
-                                value = value.trim();
-                                // Clean currency/number fields
-                                if (['originalPrice', 'dealPrice', 'quantity', 'buyerPaid', 'orderTotalAmount',
+                        // Priority 1: Exact Match (Case-insensitive & Normalized)
+                        let match = normalizedRowKeys.find(rk => rk.normalized === normalizedColName);
+
+                        // Priority 2: Special cases & startsWith (only if not found or if the current value is empty)
+                        if (!match) {
+                            match = normalizedRowKeys.find(rk => {
+                                const fileHeader = rk.normalized;
+                                const mapHeader = normalizedColName;
+
+                                // Strict protection for "Người Mua" to avoid "Nhận xét từ Người mua"
+                                if (mapHeader === "người mua" || mapHeader === "nguoi mua") {
+                                    return (fileHeader === "người mua" ||
+                                        fileHeader === "nguoi mua" ||
+                                        fileHeader === "tên người mua" ||
+                                        fileHeader === "username (buyer)" ||
+                                        fileHeader === "tài khoản người mua" ||
+                                        fileHeader === "username" ||
+                                        fileHeader === "tài khoản");
+                                }
+
+                                // General exclusion for "Nhận xét" when matching other headers unless explicitly expected
+                                if (fileHeader.includes("nhận xét") && !mapHeader.includes("nhận xét")) {
+                                    return false;
+                                }
+
+                                return fileHeader === mapHeader || fileHeader.startsWith(mapHeader);
+                            });
+                        }
+
+                        if (match) {
+                            let value = row[match.original];
+
+                            // If value is a string, trim it
+                            if (typeof value === 'string') value = value.trim();
+
+                            // Don't overwrite an existing non-empty value with an empty one
+                            // This fixes the bug where "Username (Buyer)" (empty) overwrites "Người mua" (filled)
+                            const isExistingEmpty = !order[targetKey] || order[targetKey] === "" || order[targetKey] === 0;
+                            const isNewEmpty = !value || value === "" || value === 0;
+
+                            if (isExistingEmpty || !isNewEmpty) {
+                                // Cleaning and type conversion
+                                if (typeof value === 'string') {
+                                    // Numeric fields conversion
+                                    if ([
+                                        'originalPrice', 'dealPrice', 'quantity', 'buyerPaid', 'orderTotalAmount',
+                                        'fixedFee', 'serviceFee', 'paymentFee', 'shippingFee', 'buyerShippingFee',
+                                        'shopeeShippingRebate', 'returnShippingFee', 'sellerRebate', 'shopeeRebate',
+                                        'productWeight', 'totalWeight', 'returnQuantity', 'sellerSubsidy', 'dealPriceTotal',
+                                        'shopVoucher', 'coinCashback', 'shopeeVoucher', 'shopeeComboDiscount',
+                                        'shopComboDiscount', 'shopeeCoinsRedeemed', 'cardPromotionDiscount',
+                                        'tradeInDiscount', 'tradeInBonus', 'tradeInBonusBySeller', 'codAmount',
+                                        'affiliateCommission'
+                                    ].includes(targetKey)) {
+                                        let cleanValue = value.trim();
+                                        if (cleanValue.includes('.') && cleanValue.includes(',')) {
+                                            if (cleanValue.indexOf('.') < cleanValue.indexOf(',')) {
+                                                cleanValue = cleanValue.replace(/\./g, "").replace(",", ".");
+                                            } else {
+                                                cleanValue = cleanValue.replace(/,/g, "");
+                                            }
+                                        } else if (cleanValue.includes(',')) {
+                                            if (cleanValue.split(',')[1]?.length === 2) {
+                                                cleanValue = cleanValue.replace(/\./g, "").replace(",", ".");
+                                            } else {
+                                                cleanValue = cleanValue.replace(/,/g, "");
+                                            }
+                                        } else if (cleanValue.includes('.')) {
+                                            const parts = cleanValue.split('.');
+                                            if (parts.length > 2 || parts[parts.length - 1].length !== 2) {
+                                                cleanValue = cleanValue.replace(/\./g, "");
+                                            }
+                                        }
+                                        value = parseFloat(cleanValue) || 0;
+                                    }
+                                } else if ([
+                                    'originalPrice', 'dealPrice', 'quantity', 'buyerPaid', 'orderTotalAmount',
                                     'fixedFee', 'serviceFee', 'paymentFee', 'shippingFee', 'buyerShippingFee',
                                     'shopeeShippingRebate', 'returnShippingFee', 'sellerRebate', 'shopeeRebate',
                                     'productWeight', 'totalWeight', 'returnQuantity', 'sellerSubsidy', 'dealPriceTotal',
@@ -113,81 +189,16 @@ export const parseShopeeReport = async (file: File): Promise<{ data: ShopeeOrder
                                     'tradeInDiscount', 'tradeInBonus', 'tradeInBonusBySeller', 'codAmount',
                                     'affiliateCommission'
                                 ].includes(targetKey)) {
-                                    // Remove non-numeric chars except dot/minus, but be careful with thousand separators
-                                    // Shopee reports usually use dots or commas depending on locale. 
-                                    // Assuming simplified numeric string or raw number from Excel parser.
-                                    // If Excel parser returns number, good. If string "100.000", might be issue if JS expects "100000".
-                                    // For now, let's assume standard parsing or basic string cleanup.
-                                    if (typeof value === 'string') {
-                                        // Remove commas if they are thousand separators? 
-                                        // Or just standard parse. 
-                                        // Let's safe parse.
-                                        // If "1.000.000" -> 1000000. If "1,000.00" -> 1000.00
-                                        // Context: Vietnam usually uses "." for thousands.
-                                        // Let's try to keeping digits and minus.
-                                        // If simple replace:
-                                        // value = parseFloat(value.replace(/[^0-9.-]/g, '')) || 0;
-                                        // BUT "1.200" in VN is 1200. In US is 1.2
-                                        // Just keeping it as is if it parses, else 0.
-                                        // Actually best to trust XLSX parser first, then clean if string.
-                                    }
-                                }
-                            }
-
-                            // Force number type for numeric fields
-                            if (['originalPrice', 'dealPrice', 'quantity', 'buyerPaid', 'orderTotalAmount',
-                                'fixedFee', 'serviceFee', 'paymentFee', 'shippingFee', 'buyerShippingFee',
-                                'shopeeShippingRebate', 'returnShippingFee', 'sellerRebate', 'shopeeRebate',
-                                'productWeight', 'totalWeight', 'returnQuantity', 'sellerSubsidy', 'dealPriceTotal',
-                                'shopVoucher', 'coinCashback', 'shopeeVoucher', 'shopeeComboDiscount',
-                                'shopComboDiscount', 'shopeeCoinsRedeemed', 'cardPromotionDiscount',
-                                'tradeInDiscount', 'tradeInBonus', 'tradeInBonusBySeller', 'codAmount',
-                                'affiliateCommission'
-                            ].includes(targetKey)) {
-                                if (typeof value === 'string') {
-                                    // Remove whitespace
-                                    value = value.trim();
-                                    // Detect if it's "1.234,56" (VN) or "1,234.56" (US)
-                                    // If there's a comma after a dot, "." is likely thousands.
-                                    // Shopee exports are often inconsistent.
-                                    // Simple logic: if there is both dot and comma:
-                                    if (value.includes('.') && value.includes(',')) {
-                                        if (value.indexOf('.') < value.indexOf(',')) {
-                                            // 1.234,56
-                                            value = value.replace(/\./g, "").replace(",", ".");
-                                        } else {
-                                            // 1,234.56
-                                            value = value.replace(/,/g, "");
-                                        }
-                                    } else if (value.includes(',')) {
-                                        // "22000,00" or "1.234,00" -> detect if it's decimal
-                                        if (value.split(',')[1]?.length === 2) {
-                                            value = value.replace(/\./g, "").replace(",", ".");
-                                        } else {
-                                            value = value.replace(/,/g, "");
-                                        }
-                                    } else if (value.includes('.')) {
-                                        // "22000.00" -> keep dot for parseFloat
-                                        // "1.234.567" -> remove all dots
-                                        const parts = value.split('.');
-                                        if (parts.length > 2 || parts[parts.length - 1].length !== 2) {
-                                            value = value.replace(/\./g, "");
-                                        }
-                                    }
-                                    value = parseFloat(value) || 0;
-                                } else {
                                     value = Number(value) || 0;
                                 }
-                            }
 
-                            order[targetKey] = value;
+                                order[targetKey] = value;
+                            }
                         }
                     });
 
                     return order as ShopeeOrder;
                 });
-
-                resolve({ data: orders, headers });
 
                 resolve({ data: orders, headers });
             } catch (error) {

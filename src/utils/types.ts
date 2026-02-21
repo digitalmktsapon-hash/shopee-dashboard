@@ -115,6 +115,62 @@ export interface ProductPerformance {
   }[];
 }
 
+export type SkuType = 'Core' | 'Combo Component' | 'Gift' | 'Traffic';
+export type SkuBadge = '🔴 Kill List' | '🟠 Risk' | '🟢 Hero' | '🔵 Traffic Driver' | 'OK';
+
+export interface SkuEconomics {
+  sku: string;
+  name: string;
+  skuType: SkuType;
+  quantity: number;
+  listPrice: number;        // originalPrice (giá niêm yết)
+  allocatedRevenue: number; // Revenue after combo attribution
+  cogs: number;             // 40% × listPrice × quantity
+  fees: number;
+  subsidy: number;
+  profit: number;           // allocatedRevenue - cogs - fees + subsidy
+  contributionMargin: number; // profit (extensible for ads cost deduction)
+  margin: number;           // profit / allocatedRevenue (%)
+  returnRate: number;       // %
+  badge: SkuBadge;
+}
+
+export interface OrderEconomics {
+  orderId: string;
+  orderDate: string;
+  lineCount: number;
+  totalListPrice: number;    // Sum of originalPrice × qty
+  totalActualPrice: number;  // Sum of dealPrice × qty (or buyerPaid)
+  discountPct: number;       // (listPrice - actualPrice) / listPrice × 100
+  guardrailBreached: boolean;// discountPct > 40%
+  totalCogs: number;         // 40% × totalListPrice
+  totalFees: number;
+  totalSubsidy: number;
+  orderProfit: number;       // actualPrice - cogs - fees + subsidy
+  orderMargin: number;       // orderProfit / actualPrice (%)
+}
+
+export interface ParetoItem {
+  sku: string;
+  name: string;
+  profit: number;
+  cumProfitPct: number; // cumulative % of total profit
+  isTop20: boolean;
+}
+
+export interface PortfolioSummary {
+  totalRevenue: number;
+  totalProfit: number;
+  totalMargin: number;
+  guardrailBreachRate: number;      // % of orders breaching 60% rule
+  guardrailBreachImpact: number;    // Actual profit of breached orders
+  potentialProfitGain: number;      // Additional profit if guardrail enforced (60% floor)
+  top20ProfitShare: number;         // % of profit from top 20% SKUs
+  lossSKURatio: number;             // % of SKUs with negative profit
+  pareto: ParetoItem[];
+}
+
+
 export interface CancelAnalysis {
   reason: string;
   count: number;
@@ -137,8 +193,9 @@ export interface SubsidyAnalysis {
 }
 
 export interface CustomerAnalysis {
-  id: string; // buyerUsername
-  name: string; // receiverName
+  id: string; // Unique identifier for mapping
+  buyerUsername: string; // Tên tài khoản người đặt
+  name: string; // receiverName - Tên người nhận
   phoneNumber: string;
   address: string; // Combined address
   orderCount: number;

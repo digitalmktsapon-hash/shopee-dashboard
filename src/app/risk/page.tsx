@@ -1,0 +1,453 @@
+"use client";
+
+import React, { useEffect, useState } from 'react';
+import { calculateMetrics, filterOrders } from '../../utils/calculator';
+import { MetricResult, ShopeeOrder, OrderRiskAnalysis } from '../../utils/types';
+import {
+    AlertTriangle,
+    Search,
+    TrendingDown,
+    ShieldAlert,
+    DollarSign,
+    Info,
+    ChevronRight,
+    ArrowRight,
+    Filter,
+    ShoppingBag,
+    Skull
+} from 'lucide-react';
+import { useFilter } from '../../contexts/FilterContext';
+import { PageSkeleton } from '../../components/Skeleton';
+import { formatVND, formatNumber } from '../../utils/format';
+import clsx from 'clsx';
+
+export default function RiskControlPage() {
+    const [metrics, setMetrics] = useState<MetricResult | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [searchTerm, setSearchTerm] = useState('');
+    const { startDate, endDate, warehouse } = useFilter();
+
+    const [selectedOrder, setSelectedOrder] = useState<OrderRiskAnalysis | null>(null);
+    const [sortConfig, setSortConfig] = useState<{ key: keyof OrderRiskAnalysis, direction: 'asc' | 'desc' } | null>({ key: 'riskImpactScore', direction: 'desc' });
+
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                setLoading(true);
+                const res = await fetch('/api/orders');
+                const orders: ShopeeOrder[] = await res.json();
+
+                const filtered = filterOrders(orders, startDate, endDate, warehouse);
+                if (filtered.length > 0) {
+                    setMetrics(calculateMetrics(filtered));
+                } else {
+                    setMetrics(null);
+                }
+            } catch (err) {
+                console.error("Failed to fetch orders", err);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchData();
+    }, [startDate, endDate, warehouse]);
+
+    if (loading) return <PageSkeleton />;
+
+    if (!metrics || !metrics.riskAnalysis || metrics.riskAnalysis.length === 0) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[400px] text-muted-foreground">
+                <div className="p-4 bg-muted/50 rounded-full mb-4">
+                    <ShieldAlert className="w-8 h-8 text-black" />
+                </div>
+                <p className="font-medium">Chưa có dữ liệu rủi ro (đã lọc)</p>
+                <p className="text-xs mt-1">Hệ thống đang hoạt động an toàn hoặc không có dữ liệu đơn hàng.</p>
+            </div>
+        );
+    }
+
+    // Filter
+    let filteredRisks = metrics.riskAnalysis.filter(r => {
+        const matchesSearch =
+            r.orderId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (r.trackingNumber && r.trackingNumber.toLowerCase().includes(searchTerm.toLowerCase()));
+
+        return matchesSearch;
+    });
+
+    // Sort
+    if (sortConfig !== null) {
+        filteredRisks.sort((a, b) => {
+            // @ts-ignore
+            if (a[sortConfig.key] < b[sortConfig.key]) {
+                return sortConfig.direction === 'asc' ? -1 : 1;
+            }
+            // @ts-ignore
+            if (a[sortConfig.key] > b[sortConfig.key]) {
+                return sortConfig.direction === 'asc' ? 1 : -1;
+            }
+            return 0;
+        });
+    }
+
+    const requestSort = (key: keyof OrderRiskAnalysis) => {
+        let direction: 'asc' | 'desc' = 'asc';
+        if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
+            direction = 'desc';
+        }
+        setSortConfig({ key, direction });
+    };
+
+    const stats = metrics.riskStats;
+
+    const getRootCauseLabel = (code: string) => {
+        switch (code) {
+            case 'A': return 'Voucher Shop';
+            case 'B': return 'Phí sàn';
+            case 'C': return 'Phí cố định';
+            case 'D': return 'Giá vốn';
+            case 'E': return 'Tổ hợp';
+            default: return 'Khác';
+        }
+    };
+
+    const getWarningLevelUI = (level: string) => {
+        switch (level) {
+            case 'DANGER': return { color: 'text-rose-500 bg-rose-500/10 border-rose-500/20', label: 'Nguy hiểm', icon: Skull };
+            case 'WARNING': return { color: 'text-orange-500 bg-orange-500/10 border-orange-500/20', label: 'Cảnh báo', icon: AlertTriangle };
+            case 'MONITOR': return { color: 'text-amber-500 bg-amber-500/10 border-amber-500/20', label: 'Theo dõi', icon: Info };
+            default: return { color: 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20', label: 'An toàn', icon: ShieldAlert };
+        }
+    };
+
+    return (
+        <div className="space-y-6 max-w-[1600px] mx-auto pb-20 relative">
+            <div className="flex flex-col gap-6">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
+                            <ShieldAlert className="w-6 h-6 text-rose-500" />
+                            Kiểm Soát Rủi Ro Đơn Hàng
+                        </h1>
+                        <p className="text-muted-foreground mt-1 text-sm">Phân tích sâu biên lợi nhuận, chi phí quảng cáo và vận hành trên từng đơn hàng.</p>
+                    </div>
+
+                    <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                        <input
+                            type="text"
+                            placeholder="Tìm theo Mã đơn hàng, Vận đơn..."
+                            className="pl-9 pr-4 py-2 bg-background border border-border rounded-lg text-sm focus:ring-2 focus:ring-primary outline-none w-[350px]"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+                </div>
+            </div>
+
+            {/* Risk Dashboard Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="p-5 rounded-2xl bg-card border border-border flex flex-col justify-between shadow-sm relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:scale-110 transition-transform">
+                        <AlertTriangle className="w-12 h-12 text-black" />
+                    </div>
+                    <div>
+                        <p className="text-muted-foreground text-sm font-medium">Đơn hàng Rủi ro (&gt;50%)</p>
+                        <h3 className="text-2xl font-bold mt-1 text-orange-500">{formatNumber(stats.highRiskCount)}</h3>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground mt-2">Tổng số đơn có Phí + KM chiếm trên 50% doanh thu.</p>
+                </div>
+
+                <div className="p-5 rounded-2xl bg-card border border-border flex flex-col justify-between shadow-sm relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:scale-110 transition-transform">
+                        <TrendingDown className="w-12 h-12 text-black" />
+                    </div>
+                    <div>
+                        <p className="text-muted-foreground text-sm font-medium">Đơn hàng Bán Lỗ</p>
+                        <h3 className="text-2xl font-bold mt-1 text-rose-500">{formatNumber(stats.lossCount)}</h3>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground mt-2">Đơn hàng có Lợi nhuận ròng âm (Net Profit &lt; 0).</p>
+                </div>
+
+                <div className="p-5 rounded-2xl bg-card border border-border flex flex-col justify-between shadow-sm relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:scale-110 transition-transform">
+                        <DollarSign className="w-12 h-12 text-black" />
+                    </div>
+                    <div>
+                        <p className="text-muted-foreground text-sm font-medium">Tổng Thất Thoát Ước Tính</p>
+                        <h3 className="text-2xl font-bold mt-1 text-rose-600">{formatVND(stats.totalLossAmount)}</h3>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground mt-2">Tổng số tiền lỗ thực tế từ các đơn hàng âm.</p>
+                </div>
+
+                <div className="p-5 rounded-2xl bg-card border border-border flex flex-col justify-between shadow-sm relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:scale-110 transition-transform">
+                        <Filter className="w-12 h-12 text-black" />
+                    </div>
+                    <div>
+                        <p className="text-muted-foreground text-sm font-medium">Tỷ lệ Kiểm soát TB (Control Ratio)</p>
+                        <h3 className="text-2xl font-bold mt-1 text-primary">{formatNumber(stats.avgControlRatio)}%</h3>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground mt-2">(Phí sàn + Voucher Shop) / Doanh thu thực nhận.</p>
+                </div>
+            </div>
+
+            {/* Risk Analysis Table */}
+            <div className="bg-card/50 backdrop-blur-sm border border-border rounded-xl overflow-hidden shadow-sm">
+                <div className="p-4 border-b border-border bg-muted/20 flex items-center justify-between">
+                    <h2 className="font-bold text-sm uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                        <AlertTriangle className="w-4 h-4" />
+                        Danh sách đơn hàng cần chú ý
+                    </h2>
+                    <span className="text-xs text-muted-foreground">Phân tích rủi ro dựa trên cấu trúc chi phí thực tế</span>
+                </div>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left">
+                        <thead className="bg-muted/50 text-muted-foreground font-medium uppercase text-[10px]">
+                            <tr>
+                                <th className="px-6 py-4">Mã Đơn / Ngày</th>
+                                <th className="px-6 py-4 text-center">Trạng Thái</th>
+                                <th className="px-6 py-4 text-right cursor-pointer hover:bg-muted/50" onClick={() => requestSort('revenue')}>
+                                    Doanh Thu
+                                    {sortConfig?.key === 'revenue' && (
+                                        <span className="ml-1">{sortConfig.direction === 'asc' ? '↑' : '↓'}</span>
+                                    )}
+                                </th>
+                                <th className="px-6 py-4 text-right cursor-pointer hover:bg-muted/50" onClick={() => requestSort('controlRatio')}>
+                                    Phí + KM (%)
+                                    {sortConfig?.key === 'controlRatio' && (
+                                        <span className="ml-1">{sortConfig.direction === 'asc' ? '↑' : '↓'}</span>
+                                    )}
+                                </th>
+                                <th className="px-6 py-4 text-right cursor-pointer hover:bg-muted/50" onClick={() => requestSort('netProfit')}>
+                                    Lời / Lỗ
+                                    {sortConfig?.key === 'netProfit' && (
+                                        <span className="ml-1">{sortConfig.direction === 'asc' ? '↑' : '↓'}</span>
+                                    )}
+                                </th>
+                                <th className="px-6 py-4">Nguyên Nhân</th>
+                                <th className="px-6 py-4 text-right">Hành Động</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border/50">
+                            {filteredRisks.slice(0, 100).map((risk, idx) => {
+                                const ui = getWarningLevelUI(risk.warningLevel);
+                                const Icon = ui.icon;
+
+                                return (
+                                    <tr key={risk.orderId} className="hover:bg-muted/30 transition-colors group">
+                                        <td className="px-6 py-4">
+                                            <div className="flex flex-col">
+                                                <span className="font-mono font-bold text-xs group-hover:text-primary transition-colors text-slate-800 dark:text-slate-200">
+                                                    {risk.orderId}
+                                                </span>
+                                                <span className="text-[10px] text-muted-foreground mt-0.5">{risk.orderDate}</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 text-center">
+                                            <div className={clsx(
+                                                "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border",
+                                                ui.color
+                                            )}>
+                                                <Icon className="w-3 h-3" />
+                                                {ui.label}
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 text-right font-medium">
+                                            {formatVND(risk.revenue)}
+                                        </td>
+                                        <td className="px-6 py-4 text-right">
+                                            <div className="flex flex-col items-end">
+                                                <span className={clsx(
+                                                    "font-bold",
+                                                    risk.controlRatio > 50 ? "text-rose-500" : (risk.controlRatio > 40 ? "text-orange-500" : "text-emerald-500")
+                                                )}>
+                                                    {formatNumber(risk.controlRatio)}%
+                                                </span>
+                                                <div className="w-16 h-1 bg-muted rounded-full overflow-hidden mt-1">
+                                                    <div
+                                                        className={clsx(
+                                                            "h-full rounded-full",
+                                                            risk.controlRatio > 50 ? "bg-rose-500" : (risk.controlRatio > 40 ? "bg-orange-500" : "bg-emerald-500")
+                                                        )}
+                                                        style={{ width: `${Math.min(risk.controlRatio, 100)}%` }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 text-right">
+                                            <span className={clsx(
+                                                "font-bold",
+                                                risk.netProfit < 0 ? "text-rose-600" : "text-emerald-600"
+                                            )}>
+                                                {risk.netProfit < 0 ? '-' : '+'}{formatVND(Math.abs(risk.netProfit))}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="inline-flex items-center px-2 py-0.5 rounded bg-muted/50 text-[10px] text-muted-foreground border border-border">
+                                                {getRootCauseLabel(risk.rootCause)}: {formatNumber(risk.rootCauseValue)}%
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 text-right">
+                                            <button
+                                                onClick={() => setSelectedOrder(risk)}
+                                                className="p-2 hover:bg-primary/10 rounded-lg transition-colors text-primary"
+                                                title="Xem chi tiết"
+                                            >
+                                                <ChevronRight className="w-4 h-4" />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
+                {filteredRisks.length > 100 && (
+                    <div className="p-4 text-center text-xs text-muted-foreground border-t border-border">
+                        Hiển thị 100 đơn hàng rủi ro nhất.
+                    </div>
+                )}
+            </div>
+
+            {/* Modal Detail */}
+            {selectedOrder && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-all duration-300">
+                    <div className="bg-background border border-border rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col animate-in fade-in zoom-in-95 duration-200 overflow-hidden">
+                        <div className="p-6 border-b border-border bg-card flex justify-between items-center">
+                            <div className="flex items-center gap-3">
+                                <div className={clsx(
+                                    "p-2 rounded-xl border",
+                                    getWarningLevelUI(selectedOrder.warningLevel).color
+                                )}>
+                                    <ShieldAlert className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-bold">Phân Tích Đơn Hàng</h3>
+                                    <p className="text-xs text-muted-foreground font-mono">{selectedOrder.orderId}</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setSelectedOrder(null)}
+                                className="w-8 h-8 rounded-full hover:bg-muted flex items-center justify-center transition-colors"
+                            >
+                                <span className="font-bold">×</span>
+                            </button>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-6 space-y-8">
+                            {/* Summary Metrics */}
+                            <div className="grid grid-cols-3 gap-3">
+                                <div className="p-3 rounded-xl bg-muted/30 border border-border">
+                                    <p className="text-[10px] text-muted-foreground uppercase font-semibold">Doanh Thu Thực Nhận</p>
+                                    <p className="text-lg font-bold text-foreground mt-1">{formatVND(selectedOrder.revenue)}</p>
+                                </div>
+                                <div className="p-3 rounded-xl bg-muted/30 border border-border">
+                                    <p className="text-[10px] text-muted-foreground uppercase font-semibold">Tỷ lệ Chi Phí (CR)</p>
+                                    <p className={clsx(
+                                        "text-lg font-bold mt-1",
+                                        selectedOrder.controlRatio > 50 ? "text-rose-500" : "text-emerald-500"
+                                    )}>{formatNumber(selectedOrder.controlRatio)}%</p>
+                                </div>
+                                <div className="p-3 rounded-xl bg-muted/30 border border-border">
+                                    <p className="text-[10px] text-muted-foreground uppercase font-semibold">Lợi Nhuận Ròng</p>
+                                    <p className={clsx(
+                                        "text-lg font-bold mt-1",
+                                        selectedOrder.netProfit < 0 ? "text-rose-600" : "text-emerald-600"
+                                    )}>{formatVND(selectedOrder.netProfit)}</p>
+                                </div>
+                            </div>
+
+                            {/* Cost Structure Visualizer */}
+                            <div className="space-y-4">
+                                <h4 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Cấu trúc chi phí đơn hàng</h4>
+
+                                <div className="space-y-3">
+                                    {/* COGS */}
+                                    <div className="space-y-1.5">
+                                        <div className="flex justify-between text-xs">
+                                            <span className="font-medium">Giá vốn hàng bán (est. 40%)</span>
+                                            <span className="font-bold">{formatVND(selectedOrder.cogs)} ({formatNumber(selectedOrder.revenue > 0 ? (selectedOrder.cogs / selectedOrder.revenue) * 100 : 0)}%)</span>
+                                        </div>
+                                        <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+                                            <div className="h-full bg-slate-400" style={{ width: `${Math.min((selectedOrder.cogs / selectedOrder.revenue) * 100, 100)}%` }} />
+                                        </div>
+                                    </div>
+
+                                    {/* Fees */}
+                                    <div className="space-y-1.5">
+                                        <div className="flex justify-between text-xs">
+                                            <span className="font-medium">Tổng phí sàn (Cố định, Dịch vụ, ...)</span>
+                                            <span className="font-bold">{formatVND(selectedOrder.platformFee)} ({formatNumber(selectedOrder.revenue > 0 ? (selectedOrder.platformFee / selectedOrder.revenue) * 100 : 0)}%)</span>
+                                        </div>
+                                        <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+                                            <div className="h-full bg-blue-500" style={{ width: `${Math.min((selectedOrder.platformFee / selectedOrder.revenue) * 100, 100)}%` }} />
+                                        </div>
+                                    </div>
+
+                                    {/* Voucher */}
+                                    <div className="space-y-1.5">
+                                        <div className="flex justify-between text-xs">
+                                            <span className="font-medium">Trợ giá người bán (Voucher Shop)</span>
+                                            <span className="font-bold">{formatVND(selectedOrder.shopPromotion)} ({formatNumber(selectedOrder.revenue > 0 ? (selectedOrder.shopPromotion / selectedOrder.revenue) * 100 : 0)}%)</span>
+                                        </div>
+                                        <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+                                            <div className="h-full bg-orange-400" style={{ width: `${Math.min((selectedOrder.shopPromotion / selectedOrder.revenue) * 100, 100)}%` }} />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="p-4 bg-rose-50 dark:bg-rose-950/20 rounded-xl border border-rose-100 dark:border-rose-900/30">
+                                    <div className="flex gap-3">
+                                        <Info className="w-5 h-5 text-rose-500 flex-shrink-0" />
+                                        <div>
+                                            <p className="text-xs font-bold text-rose-700 dark:text-rose-300 uppercase">Chẩn đoán rủi ro</p>
+                                            <p className="text-sm text-rose-800/80 dark:text-rose-200/80 mt-1 leading-relaxed">
+                                                {selectedOrder.rootCause === 'D' && `Giá vốn đang chiếm tỷ trọng quá cao (${formatNumber((selectedOrder.cogs / selectedOrder.revenue) * 100)}%). Sản phẩm này có biên lợi nhuận gốc rất thấp, không đủ để bù đắp các chi phí sàn.`}
+                                                {selectedOrder.rootCause === 'A' && `Chi phí Voucher người bán quá cao (${formatNumber((selectedOrder.shopPromotion / selectedOrder.revenue) * 100)}%). Việc lạm dụng mã giảm giá đang làm xói mòn lợi nhuận ròng.`}
+                                                {selectedOrder.rootCause === 'B' && "Phí sàn Shopee (Cố định + Dịch vụ + Thanh toán) đang chiếm tỷ trọng lớn. Có thể do tham gia quá nhiều gói dịch vụ gia tăng."}
+                                                {selectedOrder.rootCause === 'E' && "Lợi nhuận bị bào mòn bởi tổ hợp nhiều chi phí. Cần tối ưu đồng thời cả Voucher và cấu trúc sản phẩm."}
+                                                {selectedOrder.rootCause === 'C' && "Phí cố định Shopee chiếm tỷ trọng lớn thường do giá trị đơn hàng quá thấp. Cần thúc đẩy mua kèm (Upsell/Combo) để tăng AOV."}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Recommendations */}
+                            <div className="space-y-4">
+                                <h4 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Giải pháp đề xuất</h4>
+                                <div className="grid grid-cols-1 gap-3">
+                                    <div className="flex items-start gap-3 p-3 bg-card border border-border rounded-xl">
+                                        <div className="w-6 h-6 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-500 font-bold text-xs">1</div>
+                                        <div>
+                                            <p className="text-sm font-semibold">Tăng Giá Trị Đơn Hàng (AOV)</p>
+                                            <p className="text-xs text-muted-foreground mt-0.5">Giá trị đơn thấp khiến phí cố định và phí vận hành chiếm tỷ trọng lớn. Hãy tạo các gói Combo hoặc Mua kèm deal sốc.</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-start gap-3 p-3 bg-card border border-border rounded-xl">
+                                        <div className="w-6 h-6 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-500 font-bold text-xs">2</div>
+                                        <div>
+                                            <p className="text-sm font-semibold">Kiểm soát Mã Giảm Giá</p>
+                                            <p className="text-xs text-muted-foreground mt-0.5">Đặt ngưỡng giá trị đơn tối thiểu (Min Spend) cao hơn để đảm bảo Voucher không bào mòn biên lợi nhuận ròng.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="p-6 border-t border-border bg-card flex justify-end">
+                            <button
+                                onClick={() => setSelectedOrder(null)}
+                                className="px-6 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-bold shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all active:scale-95"
+                            >
+                                Đã hiểu
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
