@@ -52,6 +52,8 @@ export const addReport = async (
   const uploadDate = new Date().toISOString();
 
   const db = await readDB();
+  if (!db.reports) db.reports = [];
+  if (!db.orders) db.orders = {};
 
   const newReport: ReportFile = {
     id,
@@ -128,10 +130,14 @@ export const deleteReport = async (id: string) => {
   const db = await readDB();
 
   // Remove report
-  db.reports = db.reports.filter(r => r.id !== id);
+  if (db.reports) {
+    db.reports = db.reports.filter(r => r.id !== id);
+  }
 
   // Remove associated orders
-  delete db.orders[id];
+  if (db.orders && db.orders[id]) {
+    delete db.orders[id];
+  }
 
   await writeDB(db);
 };
