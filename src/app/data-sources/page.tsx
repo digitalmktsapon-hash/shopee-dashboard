@@ -176,8 +176,8 @@ export default function DataSourcesPage() {
                                             key={p.value}
                                             onClick={() => setSelectedPlatform(p.value)}
                                             className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${selectedPlatform === p.value
-                                                    ? p.color + ' ring-2 ring-offset-2 ring-offset-background ring-current scale-105'
-                                                    : 'bg-muted/50 text-muted-foreground border-border hover:bg-muted'
+                                                ? p.color + ' ring-2 ring-offset-2 ring-offset-background ring-current scale-105'
+                                                : 'bg-muted/50 text-muted-foreground border-border hover:bg-muted'
                                                 }`}
                                         >
                                             {p.label}
