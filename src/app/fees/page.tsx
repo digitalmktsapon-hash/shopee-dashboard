@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useEffect, useState } from 'react';
 import { calculateMetrics, filterOrders } from '../../utils/calculator';
@@ -30,13 +30,13 @@ export default function FeesPage() {
     const [metrics, setMetrics] = useState<MetricResult | null>(null);
     const [prevMetrics, setPrevMetrics] = useState<MetricResult | null>(null);
     const [loading, setLoading] = useState(true);
-    const { startDate, endDate, warehouse } = useFilter();
+    const { startDate, endDate, warehouse, channelKey } = useFilter();
 
     useEffect(() => {
         const fetchData = async () => {
             try {
                 setLoading(true);
-                const res = await fetch('/api/orders');
+                const res = await fetch('/api/orders?channel=' + channelKey);
                 const orders: ShopeeOrder[] = await res.json();
                 // Current Period
                 const filtered = filterOrders(orders, startDate, endDate, warehouse);
@@ -78,7 +78,7 @@ export default function FeesPage() {
             }
         };
         fetchData();
-    }, [startDate, endDate, warehouse]);
+    }, [startDate, endDate, warehouse, channelKey]);
 
     if (loading) return <PageSkeleton />;
 

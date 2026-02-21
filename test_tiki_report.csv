@@ -1,0 +1,3 @@
+Mã đơn hàng,Ngày đặt hàng,Trạng Thái Đơn Hàng,Số lượng,Giá gốc,Giá ưu đãi,Tên sản phẩm,SKU sản phẩm
+ORDER_TIKI_001,2024-02-21 10:00:00,Hoàn thành,2,100000,90000,Sản phẩm Tiki A,SKU-TIKI-A
+ORDER_TIKI_002,2024-02-21 11:00:00,Hoàn thành,1,200000,180000,Sản phẩm Tiki B,SKU-TIKI-B

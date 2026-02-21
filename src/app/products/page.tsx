@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useEffect, useState } from 'react';
 import { calculateProductEconomics, ProductEconomicsResult } from '../../utils/calculator';
@@ -29,13 +29,13 @@ export default function ProductsPage() {
     const [searchOrder, setSearchOrder] = useState('');
     const [skuSort, setSkuSort] = useState<{ key: keyof SkuEconomics; dir: 'asc' | 'desc' }>({ key: 'allocatedRevenue', dir: 'desc' });
     const [orderSort, setOrderSort] = useState<{ key: keyof OrderEconomics; dir: 'asc' | 'desc' }>({ key: 'totalActualPrice', dir: 'desc' });
-    const { startDate, endDate, warehouse } = useFilter();
+    const { startDate, endDate, warehouse, channelKey } = useFilter();
 
     useEffect(() => {
         const fetchData = async () => {
             try {
                 setLoading(true);
-                const res = await fetch('/api/orders');
+                const res = await fetch('/api/orders?channel=' + channelKey);
                 const orders: ShopeeOrder[] = await res.json();
                 const filtered = filterOrders(orders, startDate, endDate, warehouse);
                 if (filtered.length > 0) {
@@ -50,7 +50,7 @@ export default function ProductsPage() {
             }
         };
         fetchData();
-    }, [startDate, endDate, warehouse]);
+    }, [startDate, endDate, warehouse, channelKey]);
 
     if (loading) return <PageSkeleton />;
 

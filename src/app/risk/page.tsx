@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useEffect, useState } from 'react';
 import { calculateMetrics, filterOrders } from '../../utils/calculator';
@@ -25,7 +25,7 @@ export default function RiskControlPage() {
     const [metrics, setMetrics] = useState<MetricResult | null>(null);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
-    const { startDate, endDate, warehouse } = useFilter();
+    const { startDate, endDate, warehouse, channelKey } = useFilter();
 
     const [selectedOrder, setSelectedOrder] = useState<OrderRiskAnalysis | null>(null);
     const [sortConfig, setSortConfig] = useState<{ key: keyof OrderRiskAnalysis, direction: 'asc' | 'desc' } | null>({ key: 'riskImpactScore', direction: 'desc' });
@@ -34,7 +34,7 @@ export default function RiskControlPage() {
         const fetchData = async () => {
             try {
                 setLoading(true);
-                const res = await fetch('/api/orders');
+                const res = await fetch('/api/orders?channel=' + channelKey);
                 const orders: ShopeeOrder[] = await res.json();
 
                 const filtered = filterOrders(orders, startDate, endDate, warehouse);
@@ -50,7 +50,7 @@ export default function RiskControlPage() {
             }
         };
         fetchData();
-    }, [startDate, endDate, warehouse]);
+    }, [startDate, endDate, warehouse, channelKey]);
 
     if (loading) return <PageSkeleton />;
 
@@ -145,52 +145,122 @@ export default function RiskControlPage() {
                 </div>
             </div>
 
-            {/* Risk Dashboard Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="p-5 rounded-2xl bg-card border border-border flex flex-col justify-between shadow-sm relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:scale-110 transition-transform">
-                        <AlertTriangle className="w-12 h-12 text-black" />
-                    </div>
-                    <div>
-                        <p className="text-muted-foreground text-sm font-medium">Đơn hàng Rủi ro (&gt;50%)</p>
-                        <h3 className="text-2xl font-bold mt-1 text-orange-500">{formatNumber(stats.highRiskCount)}</h3>
-                    </div>
-                    <p className="text-[10px] text-muted-foreground mt-2">Tổng số đơn có Phí + KM chiếm trên 50% doanh thu.</p>
-                </div>
+            {/* ===== #1 PRIORITY: COST CONTROL KPI ===== */}
+            {(() => {
+                const s = metrics.riskStats;
+                const base = s.totalListRevenue > 0 ? s.totalListRevenue : 1;
+                const sellerPct = (s.totalSellerRebate / base) * 100;
+                const voucherPct = (s.totalShopVoucher / base) * 100;
+                const returnShipPct = (s.totalReturnShippingFee / base) * 100;
+                const platformPct = (s.totalPlatformFees / base) * 100;
+                const totalPct = sellerPct + voucherPct + returnShipPct + platformPct;
+                const totalAmount = s.totalSellerRebate + s.totalShopVoucher + s.totalReturnShippingFee + s.totalPlatformFees;
+                const isSafe = totalPct <= 50;
 
-                <div className="p-5 rounded-2xl bg-card border border-border flex flex-col justify-between shadow-sm relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:scale-110 transition-transform">
-                        <TrendingDown className="w-12 h-12 text-black" />
-                    </div>
-                    <div>
-                        <p className="text-muted-foreground text-sm font-medium">Đơn hàng Bán Lỗ</p>
-                        <h3 className="text-2xl font-bold mt-1 text-rose-500">{formatNumber(stats.lossCount)}</h3>
-                    </div>
-                    <p className="text-[10px] text-muted-foreground mt-2">Đơn hàng có Lợi nhuận ròng âm (Net Profit &lt; 0).</p>
-                </div>
+                return (
+                    <div className={`rounded-2xl border-2 p-6 shadow-lg ${isSafe ? 'border-emerald-500/40 bg-emerald-500/5' : 'border-rose-500/40 bg-rose-500/5'}`}>
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5">
+                            <div className="flex items-center gap-3">
+                                <div className={`p-2.5 rounded-xl ${isSafe ? 'bg-emerald-500/15' : 'bg-rose-500/15'}`}>
+                                    <ShieldAlert className={`w-6 h-6 ${isSafe ? 'text-emerald-500' : 'text-rose-500'}`} />
+                                </div>
+                                <div>
+                                    <h2 className="text-lg font-black text-foreground tracking-tight">
+                                        🎯 Chỉ số Kiểm Soát Chi Phí
+                                    </h2>
+                                    <p className="text-xs text-muted-foreground mt-0.5">
+                                        (Trợ giá NB + Voucher Shop + Phí VC trả hàng + Phí sàn) / Giá gốc – ngưỡng an toàn ≤ 50%
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-6 shrink-0">
+                                <div className="text-right">
+                                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-none mb-1">Tổng chi phí</p>
+                                    <p className="text-2xl font-black text-foreground">{formatVND(totalAmount)}</p>
+                                </div>
+                                <div className="w-px h-10 bg-border hidden md:block"></div>
+                                <div className="text-right shrink-0">
+                                    <div className={`text-4xl font-black ${isSafe ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                        {totalPct.toFixed(2)}%
+                                    </div>
+                                    <div className={`text-xs font-bold mt-1 px-3 py-1 rounded-full inline-block ${isSafe ? 'bg-emerald-500/20 text-emerald-600' : 'bg-rose-500/20 text-rose-600'}`}>
+                                        {isSafe ? '✅ AN TOÀN' : '🚨 VƯỢT NGƯỠNG — CẦN TỐI ƯU'}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
-                <div className="p-5 rounded-2xl bg-card border border-border flex flex-col justify-between shadow-sm relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:scale-110 transition-transform">
-                        <DollarSign className="w-12 h-12 text-black" />
-                    </div>
-                    <div>
-                        <p className="text-muted-foreground text-sm font-medium">Tổng Thất Thoát Ước Tính</p>
-                        <h3 className="text-2xl font-bold mt-1 text-rose-600">{formatVND(stats.totalLossAmount)}</h3>
-                    </div>
-                    <p className="text-[10px] text-muted-foreground mt-2">Tổng số tiền lỗ thực tế từ các đơn hàng âm.</p>
-                </div>
+                        {/* Stacked progress bar */}
+                        <div className="mb-4 mt-2">
+                            <div
+                                className="relative w-full h-6 bg-muted rounded-full overflow-hidden cursor-help"
+                                title={`TỔNG CHI PHÍ: ${formatVND(totalAmount)}`}
+                            >
+                                <div
+                                    className="absolute left-0 top-0 h-full bg-orange-400 transition-all hover:brightness-110"
+                                    style={{ width: `${Math.min(sellerPct, 100)}%` }}
+                                    title={`Người bán trợ giá: ${formatVND(s.totalSellerRebate)} (${sellerPct.toFixed(2)}%)`}
+                                />
+                                <div
+                                    className="absolute top-0 h-full bg-purple-400 transition-all hover:brightness-110"
+                                    style={{ left: `${Math.min(sellerPct, 100)}%`, width: `${Math.min(voucherPct, 100 - sellerPct)}%` }}
+                                    title={`Voucher Shop: ${formatVND(s.totalShopVoucher)} (${voucherPct.toFixed(2)}%)`}
+                                />
+                                <div
+                                    className="absolute top-0 h-full bg-amber-400 transition-all hover:brightness-110"
+                                    style={{ left: `${Math.min(sellerPct + voucherPct, 100)}%`, width: `${Math.min(returnShipPct, 100 - sellerPct - voucherPct)}%` }}
+                                    title={`Phí VC trả hàng: ${formatVND(s.totalReturnShippingFee)} (${returnShipPct.toFixed(2)}%)`}
+                                />
+                                <div
+                                    className="absolute top-0 h-full bg-blue-500/80 transition-all hover:brightness-110"
+                                    style={{ left: `${Math.min(sellerPct + voucherPct + returnShipPct, 100)}%`, width: `${Math.min(platformPct, 100 - sellerPct - voucherPct - returnShipPct)}%` }}
+                                    title={`Phí sàn: ${formatVND(s.totalPlatformFees)} (${platformPct.toFixed(2)}%)`}
+                                />
+                                <div className="absolute top-0 h-full w-0.5 bg-foreground/60" style={{ left: '50%' }}>
+                                    <span className="absolute -top-5 -translate-x-1/2 text-[9px] font-bold text-foreground/60 whitespace-nowrap">50%</span>
+                                </div>
+                            </div>
+                        </div>
 
-                <div className="p-5 rounded-2xl bg-card border border-border flex flex-col justify-between shadow-sm relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:scale-110 transition-transform">
-                        <Filter className="w-12 h-12 text-black" />
+                        {/* Breakdown */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            <div className="p-3 rounded-xl bg-orange-500/10 border border-orange-500/20">
+                                <div className="flex items-center gap-2 mb-1">
+                                    <div className="w-3 h-3 rounded bg-orange-400"></div>
+                                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Người bán trợ giá</p>
+                                </div>
+                                <p className="text-lg font-black text-orange-500">{sellerPct.toFixed(2)}%</p>
+                                <p className="text-[9px] text-muted-foreground mt-0.5">CTKM giảm giá sản phẩm</p>
+                            </div>
+                            <div className="p-3 rounded-xl bg-purple-500/10 border border-purple-500/20">
+                                <div className="flex items-center gap-2 mb-1">
+                                    <div className="w-3 h-3 rounded bg-purple-400"></div>
+                                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Voucher Shop</p>
+                                </div>
+                                <p className="text-lg font-black text-purple-500">{voucherPct.toFixed(2)}%</p>
+                                <p className="text-[9px] text-muted-foreground mt-0.5">Mã giảm giá của Shop</p>
+                            </div>
+                            <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20">
+                                <div className="flex items-center gap-2 mb-1">
+                                    <div className="w-3 h-3 rounded bg-amber-400"></div>
+                                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Phí VC trả hàng</p>
+                                </div>
+                                <p className="text-lg font-black text-amber-500">{returnShipPct.toFixed(2)}%</p>
+                                <p className="text-[9px] text-muted-foreground mt-0.5">Phí vận chuyển hoàn trả</p>
+                            </div>
+                            <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20">
+                                <div className="flex items-center gap-2 mb-1">
+                                    <div className="w-3 h-3 rounded bg-blue-500"></div>
+                                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Phí sàn (CĐ+DV+TT)</p>
+                                </div>
+                                <p className="text-lg font-black text-blue-500">{platformPct.toFixed(2)}%</p>
+                                <p className="text-[9px] text-muted-foreground mt-0.5">Cố định + Dịch vụ + Thanh toán</p>
+                            </div>
+                        </div>
                     </div>
-                    <div>
-                        <p className="text-muted-foreground text-sm font-medium">Tỷ lệ Kiểm soát TB (Control Ratio)</p>
-                        <h3 className="text-2xl font-bold mt-1 text-primary">{formatNumber(stats.avgControlRatio)}%</h3>
-                    </div>
-                    <p className="text-[10px] text-muted-foreground mt-2">(Phí sàn + Voucher Shop) / Doanh thu thực nhận.</p>
-                </div>
-            </div>
+                );
+            })()}
+
 
             {/* Risk Analysis Table */}
             <div className="bg-card/50 backdrop-blur-sm border border-border rounded-xl overflow-hidden shadow-sm">
@@ -262,7 +332,7 @@ export default function RiskControlPage() {
                                                     "font-bold",
                                                     risk.controlRatio > 50 ? "text-rose-500" : (risk.controlRatio > 40 ? "text-orange-500" : "text-emerald-500")
                                                 )}>
-                                                    {formatNumber(risk.controlRatio)}%
+                                                    {formatNumber(risk.controlRatio, 2)}%
                                                 </span>
                                                 <div className="w-16 h-1 bg-muted rounded-full overflow-hidden mt-1">
                                                     <div
@@ -285,7 +355,7 @@ export default function RiskControlPage() {
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="inline-flex items-center px-2 py-0.5 rounded bg-muted/50 text-[10px] text-muted-foreground border border-border">
-                                                {getRootCauseLabel(risk.rootCause)}: {formatNumber(risk.rootCauseValue)}%
+                                                {getRootCauseLabel(risk.rootCause)}: {formatNumber(risk.rootCauseValue, 2)}%
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 text-right">

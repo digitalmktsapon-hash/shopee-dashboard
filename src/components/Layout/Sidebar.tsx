@@ -6,7 +6,6 @@ import clsx from 'clsx';
 import {
     LayoutDashboard,
     Database,
-    Settings,
     ShoppingBag,
     TrendingUp,
     Package,
@@ -14,10 +13,12 @@ import {
     Receipt,
     Truck,
     Users,
-    AlertTriangle
+    AlertTriangle,
+    BarChart3,
 } from 'lucide-react';
 
 const NAV_ITEMS = [
+    { name: 'Đa kênh', href: '/overview', icon: BarChart3 },
     { name: 'Tổng quan', href: '/', icon: LayoutDashboard },
     { name: 'Doanh thu', href: '/revenue', icon: TrendingUp },
     { name: 'Sản phẩm', href: '/products', icon: Package },
@@ -27,8 +28,8 @@ const NAV_ITEMS = [
     { name: 'Khách hàng', href: '/customers', icon: Users },
     { name: 'Rủi ro', href: '/risk', icon: AlertTriangle },
     { name: 'Nguồn dữ liệu', href: '/data-sources', icon: Database },
-    //    { name: 'Cài đặt (Settings)', href: '/settings', icon: Settings }, // Creating space?
 ];
+
 
 export const LoadingSkeleton = ({ className }: { className?: string }) => (
     <div className={clsx("animate-pulse bg-slate-800/50 rounded-lg", className)}></div>
@@ -43,15 +44,39 @@ export function Sidebar() {
 
     return (
         <div className="flex flex-col w-72 h-screen bg-card/80 backdrop-blur-lg text-foreground fixed left-0 top-0 overflow-y-auto shadow-2xl z-50 border-r border-border">
-            <div className="flex items-center h-24 px-8 border-b border-border">
-                <div className="bg-primary/20 p-2 rounded-lg mr-3">
-                    <ShoppingBag className="w-8 h-8 text-primary" />
+            {/* Logo */}
+            <div className="flex items-center h-24 px-6 border-b border-border gap-3">
+                {/* PhamThang Agency Logo */}
+                <div className="shrink-0 w-12 h-12 rounded-xl overflow-hidden bg-white flex items-center justify-center shadow-md">
+                    <img
+                        src="/pts-logo.jpg"
+                        alt="PhamThang PTS Logo"
+                        className="w-full h-full object-cover"
+                    />
                 </div>
+                {/* Brand Name */}
                 <div>
-                    <h1 className="text-xl font-bold tracking-tight text-foreground italic">PhamThang <span className="text-primary">PTS</span></h1>
-                    <p className="text-[10px] text-muted-foreground font-bold tracking-widest mt-0.5">ANALYTICS DASHBOARD v1.0.0</p>
+                    <h1 className="text-foreground leading-none" style={{
+                        fontFamily: "'Helvetica Neue', 'Arial', 'Segoe UI', sans-serif",
+                        fontWeight: 900,
+                        fontSize: '16px',
+                        letterSpacing: '0.06em',
+                        fontStyle: 'normal',
+                        textTransform: 'uppercase',
+                    }}>
+                        <span style={{ color: 'hsl(var(--primary))' }}>Pham</span><span>Thang</span>
+                        {' '}
+                        <span style={{ color: 'hsl(var(--primary))' }}>PTS</span>
+                    </h1>
+                    <p className="text-muted-foreground font-bold mt-1" style={{
+                        fontSize: '8.5px',
+                        letterSpacing: '0.22em',
+                        textTransform: 'uppercase',
+                        fontFamily: "'Helvetica Neue', 'Arial', sans-serif",
+                    }}>Analytics Dashboard v1.0.0</p>
                 </div>
             </div>
+
 
             <nav className="flex-1 px-4 py-8 space-y-2">
                 {NAV_ITEMS.map((item) => {

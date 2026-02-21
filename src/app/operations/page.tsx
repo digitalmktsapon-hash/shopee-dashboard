@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useEffect, useState } from 'react';
 import { calculateMetrics, filterOrders } from '../../utils/calculator';
@@ -25,13 +25,13 @@ import { ChartTooltip } from '../../components/ChartTooltip';
 export default function OperationsPage() {
     const [metrics, setMetrics] = useState<MetricResult | null>(null);
     const [loading, setLoading] = useState(true);
-    const { startDate, endDate, warehouse } = useFilter();
+    const { startDate, endDate, warehouse, channelKey } = useFilter();
 
     useEffect(() => {
         const fetchData = async () => {
             try {
                 setLoading(true);
-                const res = await fetch('/api/orders');
+                const res = await fetch('/api/orders?channel=' + channelKey);
                 const orders: ShopeeOrder[] = await res.json();
                 const filtered = filterOrders(orders, startDate, endDate, warehouse);
 
@@ -47,7 +47,7 @@ export default function OperationsPage() {
             }
         };
         fetchData();
-    }, [startDate, endDate, warehouse]);
+    }, [startDate, endDate, warehouse, channelKey]);
 
     if (loading) return <PageSkeleton />;
 

@@ -90,7 +90,7 @@ export const calculateMetrics = (orders: ShopeeOrder[]): MetricResult => {
     let totalListRevenueRealized = 0; // New: Giá gốc * Qty thực giữ (Realized only)
 
     const productMap: Record<string, ProductPerformance> = {};
-    const locationMap: Record<string, { revenue: number, count: number }> = {};
+    const locationMap: Record<string, { revenue: number, count: number, profit: number }> = {};
     const statusMap: Record<string, { revenue: number, count: number }> = {};
     const customerMap: Record<string, CustomerAnalysis> = {};
     const carrierMap: Record<string, { count: number, shipTimeTotal: number, shipTimeCount: number }> = {};
@@ -132,20 +132,29 @@ export const calculateMetrics = (orders: ShopeeOrder[]): MetricResult => {
         const isRealized = status !== 'Đã hủy' && returnStatus !== 'Đã Chấp Thuận Yêu Cầu';
         const isCancelled = status === 'Đã hủy';
 
-        // 1. Order Level Metrics
-        // 2. Trừ phí sàn (Cố định, Dịch vụ, Thanh toán) và 3. Phí vận chuyển trả hàng
-        const orderFixedFee = firstLine.fixedFee || 0;
-        const orderServiceFee = firstLine.serviceFee || 0;
-        const orderPaymentFee = firstLine.paymentFee || 0;
-        const orderReturnShippingFee = firstLine.returnShippingFee || 0;
+        // 1. Order Level Metrics & Retention Logic
+        // Calculate retention ratio: items kept vs items originally ordered
+        const totalQtyBeforeReturn = orderLines.reduce((sum, l) => sum + (l.quantity || 0), 0);
+        const totalReturnQtyInOrder = orderLines.reduce((sum, l) => sum + (l.returnQuantity || 0), 0);
+        const qtyKept = (totalQtyBeforeReturn - totalReturnQtyInOrder) > 0 ? (totalQtyBeforeReturn - totalReturnQtyInOrder) : 0;
+
+        // Retention Ratio (R): Ratio of value/fees we expect to keep after returns
+        const retentionRatio = totalQtyBeforeReturn > 0 ? (qtyKept / totalQtyBeforeReturn) : 0;
+
+        // Order-level fees (ONLY take from first line to avoid overcounting in multi-line orders)
+        // Scall fees by retentionRatio to estimate actual non-refunded fees (Option A)
+        const orderFixedFee = (firstLine.fixedFee || 0) * retentionRatio;
+        const orderServiceFee = (firstLine.serviceFee || 0) * retentionRatio;
+        const orderPaymentFee = (firstLine.paymentFee || 0) * retentionRatio;
+        const orderReturnShippingFee = firstLine.returnShippingFee || 0; // Return shipping is a full lost cost
         const totalOrderFees = orderFixedFee + orderServiceFee + orderPaymentFee + orderReturnShippingFee;
 
         let orderNetRevenue = 0;
         let orderListRevenue = 0; // Seller Mindset: Dùng để tính Margin (Giá gốc * qty thực giữ)
         let orderTotalOriginalRevenue = 0; // To keep track of pure original revenue for list displays
-        let orderSubsidies = 0;
         let orderQty = 0;
         let orderReturnQty = 0;
+        let orderSubsidiesRaw = 0;
 
         // Calculate Order Totals from Lines
         orderLines.forEach(line => {
@@ -157,21 +166,31 @@ export const calculateMetrics = (orders: ShopeeOrder[]): MetricResult => {
 
             const effectiveQty = (qty - rQty) > 0 ? (qty - rQty) : 0;
             const lineEffectiveOriginalRev = originalPrice * effectiveQty;
-            const lineCOGS = lineEffectiveOriginalRev * 0.4;
 
             orderQty += qty;
             orderReturnQty += rQty;
 
             if (!isCancelled) {
-                // Doanh thu thực nhận (A) = (Giá sau CTKM * Qty) - Voucher Shop (seller rebate)
-                const lineNetRev = (actualSalePrice * qty) - sellerRebate;
+                // Doanh thu thực nhận sản phẩm (Giá ưu đãi đã trừ Trợ giá người bán)
+                // Phản ánh tiền về cho phần số lượng thực giữ
+                const lineNetRev = (actualSalePrice * effectiveQty);
                 orderNetRevenue += lineNetRev;
 
                 orderListRevenue += lineEffectiveOriginalRev;
-                orderSubsidies += sellerRebate;
+                orderSubsidiesRaw += sellerRebate * (effectiveQty / (qty || 1)); // Scale rebate too
                 orderTotalOriginalRevenue += (originalPrice * qty);
             }
         });
+
+        let orderSubsidies = 0;
+
+        // Add order-level discounts (ONLY once per order, scaled by Retention)
+        if (!isCancelled) {
+            const rawShopVoucher = firstLine.shopVoucher || 0;
+            const effectiveShopVoucher = rawShopVoucher * retentionRatio;
+            orderNetRevenue -= effectiveShopVoucher;
+            orderSubsidies += (orderSubsidiesRaw + effectiveShopVoucher);
+        }
 
         const orderCOGS = orderListRevenue * 0.4; // Correctly scoped for the trends logic below
 
@@ -210,6 +229,7 @@ export const calculateMetrics = (orders: ShopeeOrder[]): MetricResult => {
                     margin: 0,
                     returnQuantity: 0,
                     returnRate: 0,
+                    contribution: 0,
                     badges: [],
                     relatedOrders: []
                 };
@@ -228,16 +248,36 @@ export const calculateMetrics = (orders: ShopeeOrder[]): MetricResult => {
                     // Allocation
                     const sellerRebate = line.sellerRebate || 0;
                     const actualSalePrice = (line.dealPrice && line.dealPrice > 0) ? line.dealPrice : (line.originalPrice || 0);
-                    const lineNetRev = (actualSalePrice * qty) - sellerRebate;
-
                     const effectiveQty = (qty - returnQty) > 0 ? (qty - returnQty) : 0;
                     const lineEffectiveOriginalRev = (line.originalPrice || 0) * effectiveQty;
                     const lineCOGS = lineEffectiveOriginalRev * 0.4;
 
-                    // Fee Allocation by Revenue Contribution
-                    const ratio = orderNetRevenue > 0 ? (lineNetRev / orderNetRevenue) : 0;
-                    const allocatedFee = totalOrderFees * ratio;
+                    // Proportional Allocation for Product Performance
+                    // This ensures order-level vouchers and fees are distributed fairly across items
+                    // We use the "Retention Logic": scale by items actually kept
+                    const grossAfterReturnLine = (actualSalePrice * effectiveQty);
 
+                    const sumGrossAfterReturnOrder = orderLines.reduce((sum, l) => {
+                        const lp = (l.dealPrice && l.dealPrice > 0) ? l.dealPrice : (l.originalPrice || 0);
+                        const lQty = l.quantity || 0;
+                        const lrQty = l.returnQuantity || 0;
+                        const lEffectiveQty = (lQty - lrQty) > 0 ? (lQty - lrQty) : 0;
+                        return sum + (lp * lEffectiveQty);
+                    }, 0);
+
+                    const allocationRatio = sumGrossAfterReturnOrder > 0 ? (grossAfterReturnLine / sumGrossAfterReturnOrder) : 0;
+
+                    // Order-level shop voucher allocation (Scaled by Retention)
+                    const rawShopVoucher = firstLine.shopVoucher || 0;
+                    const effectiveShopVoucher = rawShopVoucher * retentionRatio;
+                    const effectiveLineRevenue = grossAfterReturnLine - (effectiveShopVoucher * allocationRatio);
+
+                    productMap[sku].revenue += effectiveLineRevenue;
+                    productMap[sku].cogs += lineCOGS;
+
+                    // Fee allocation based on effective revenue contribution
+                    const feeRatio = orderNetRevenue > 0 ? (effectiveLineRevenue / orderNetRevenue) : 0;
+                    productMap[sku].fees += totalOrderFees * feeRatio;
                 }
             }
         });
@@ -262,7 +302,7 @@ export const calculateMetrics = (orders: ShopeeOrder[]): MetricResult => {
             daily.fees += totalOrderFees;
             daily.subsidies += orderSubsidies;
             daily.cogs += orderCOGS; // Using the orderCOGS we calculated above
-            daily.profit = orderNetRevenue - totalOrderFees - orderCOGS;
+            daily.profit += orderNetRevenue - totalOrderFees - orderCOGS;
             daily.successfulOrders++;
 
             // Update Trends
@@ -276,8 +316,9 @@ export const calculateMetrics = (orders: ShopeeOrder[]): MetricResult => {
 
             // Location
             const province = firstLine.province || 'Khác';
-            if (!locationMap[province]) locationMap[province] = { revenue: 0, count: 0 };
+            if (!locationMap[province]) locationMap[province] = { revenue: 0, count: 0, profit: 0 };
             locationMap[province].revenue += orderNetRevenue;
+            locationMap[province].profit += (orderNetRevenue - totalOrderFees - orderCOGS);
             locationMap[province].count += 1;
 
             // Status
@@ -331,7 +372,8 @@ export const calculateMetrics = (orders: ShopeeOrder[]): MetricResult => {
             if (isRealized) {
                 // Only count and track realized (completed) orders - must match history
                 customer.orderCount++;
-                customer.totalSpent += orderLines.reduce((sum, o) => sum + (o.orderTotalAmount || 0), 0);
+                // orderTotalAmount is order-level total (count only once)
+                customer.totalSpent += firstLine.orderTotalAmount || 0;
 
                 // Track History
                 customerMap[customerId].history.push({
@@ -382,6 +424,7 @@ export const calculateMetrics = (orders: ShopeeOrder[]): MetricResult => {
             let orderSellerSubsidies = 0;
             let orderShopeeSubsidies = 0;
             // 2. Trừ phí sàn (Cố định, Dịch vụ, Thanh toán) và 3. Phí vận chuyển trả hàng
+            // ONLY take from first line for order-level fields
             let orderFee = (first.fixedFee || 0) + (first.serviceFee || 0) + (first.paymentFee || 0) + (first.returnShippingFee || 0);
 
             lines.forEach(line => {
@@ -391,8 +434,8 @@ export const calculateMetrics = (orders: ShopeeOrder[]): MetricResult => {
                 const actualSalePrice = (line.dealPrice && line.dealPrice > 0) ? line.dealPrice : originalPrice;
                 const sellerRebate = line.sellerRebate || 0;
 
-                // 1. Doanh thu thực nhận (A)
-                const lineNetRev = (actualSalePrice * qty) - sellerRebate;
+                // 1. Doanh thu thực nhận sản phẩm (Giá ưu đãi đã trừ Trợ giá)
+                const lineNetRev = (actualSalePrice * qty);
                 orderNet += lineNetRev;
 
                 const effectiveQty = (qty - rQty) > 0 ? (qty - rQty) : 0;
@@ -405,6 +448,11 @@ export const calculateMetrics = (orders: ShopeeOrder[]): MetricResult => {
                 orderSellerSubsidies += sellerRebate;
                 orderShopeeSubsidies += (line.shopeeRebate || 0);
             });
+
+            // Subtract order-level Voucher (ONLY once)
+            const orderShopVoucher = first.shopVoucher || 0;
+            orderNet -= orderShopVoucher;
+            orderSellerSubsidies += orderShopVoucher;
 
             realizedRevenue += orderNet;
             realizedCOGS += orderCogs;
@@ -504,6 +552,7 @@ export const calculateMetrics = (orders: ShopeeOrder[]): MetricResult => {
         p.grossProfit = profit;
         p.netProfit = profit;
         p.margin = revenue > 0 ? (profit / revenue) * 100 : 0;
+        p.contribution = totalNetRevenue > 0 ? (revenue / totalNetRevenue) * 100 : 0;
         // Basic badging
         if (p.margin < 10) p.badges.push('Risk');
         if (revenue > 1000000) p.badges.push('Hero');
@@ -517,6 +566,12 @@ export const calculateMetrics = (orders: ShopeeOrder[]): MetricResult => {
     let riskLossCount = 0; // Net Profit < 0
     let riskSumControlRatio = 0;
     let riskTotalLossAmount = 0;
+    // Tích lũy các thành phần chi phí từ TẤT CẢ đơn không hủy (kể cả đơn hoàn trả)
+    let allReturnShippingFee = 0;
+    let allListRevenue = 0;
+    let allShopVoucher = 0;
+    let allSellerRebate = 0;
+    let allPlatformFees = 0;
 
     Object.values(orderGroups).forEach(lines => {
         const first = lines[0];
@@ -529,6 +584,34 @@ export const calculateMetrics = (orders: ShopeeOrder[]): MetricResult => {
         if (dateStr) {
             const d = parseShopeeDate(dateStr);
             if (d) dateKey = d.toISOString().split('T')[0];
+        }
+
+        // Retention Ratio for Risk Section
+        const totalQtyBeforeReturn = lines.reduce((sum, l) => sum + (l.quantity || 0), 0);
+        const totalReturnQtyInOrder = lines.reduce((sum, l) => sum + (l.returnQuantity || 0), 0);
+        const qtyKept = (totalQtyBeforeReturn - totalReturnQtyInOrder) > 0 ? (totalQtyBeforeReturn - totalReturnQtyInOrder) : 0;
+        const retentionRatio = totalQtyBeforeReturn > 0 ? (qtyKept / totalQtyBeforeReturn) : 0;
+
+        // 1. Phí VC trả hàng: Tính từ TẤT CẢ đơn không hủy
+        if (status !== 'Đã hủy') {
+            allReturnShippingFee += first.returnShippingFee || 0;
+        }
+
+        // 2. Các thành phần khác và Mẫu số (List Revenue): Cần loại trừ đơn hoàn/hủy theo yêu cầu
+        if (status !== 'Đã hủy' && returnStatus !== 'Đã Chấp Thuận Yêu Cầu') {
+            // Apply Retention Scaling for Estimated Cashflow View
+            allPlatformFees += ((first.fixedFee || 0) + (first.serviceFee || 0) + (first.paymentFee || 0)) * retentionRatio;
+
+            lines.forEach(line => {
+                const qty = line.quantity || 0;
+                const rQty = line.returnQuantity || 0;
+                const effectiveQty = (qty - rQty) > 0 ? (qty - rQty) : 0;
+
+                allListRevenue += (line.originalPrice || 0) * effectiveQty; // Managerial: list revenue of items kept
+                allSellerRebate += (line.sellerRebate || 0) * (effectiveQty / (qty || 1));
+            });
+            // Shop Voucher is order-level, scaled by Retention
+            allShopVoucher += (first.shopVoucher || 0) * retentionRatio;
         }
 
         // Filter: Loại trừ Đã hủy và Đã Chấp Thuận Yêu Cầu
@@ -548,7 +631,7 @@ export const calculateMetrics = (orders: ShopeeOrder[]): MetricResult => {
                 const actualSalePrice = (line.dealPrice && line.dealPrice > 0) ? line.dealPrice : originalPrice;
                 const sellerRebate = line.sellerRebate || 0;
 
-                revenue += (actualSalePrice * qty) - sellerRebate;
+                revenue += (actualSalePrice * qty);
                 shopPromotion += sellerRebate;
 
                 const netQty = qty - returnQty;
@@ -556,17 +639,61 @@ export const calculateMetrics = (orders: ShopeeOrder[]): MetricResult => {
                 cogs += originalPrice * effectiveNetQty * 0.4;
             });
 
-            // Platform Fees (Order Level) = Phí cố định + Phí dịch vụ + Phí thanh toán + Phí VC trả hàng
-            const fixedFee = first.fixedFee || 0;
-            const serviceFee = first.serviceFee || 0;
-            const paymentFee = first.paymentFee || 0;
-            const returnShippingFee = first.returnShippingFee || 0;
-            const platformFee = fixedFee + serviceFee + paymentFee + returnShippingFee;
+            // Adjust order-level fields (Take ONLY once)
+            const orderLvShopVoucher = first.shopVoucher || 0;
+            revenue -= orderLvShopVoucher;
+            shopPromotion += orderLvShopVoucher;
 
-            const controlCost = shopPromotion + platformFee;
-            const controlRatio = revenue > 0 ? (controlCost / revenue) * 100 : 0;
-            const netProfit = revenue - cogs - controlCost;
-            const grossMarginBeforePromo = revenue - cogs - platformFee;
+            // ---------- NEW COST CONTROL FORMULA ----------
+            // Tử số: Người bán trợ giá + Mã giảm giá Shop + Phí vận chuyển trả hàng + (Phí cố định + Phí DV + Phí TT)
+            // Mẫu số: Giá gốc × Số lượng (listRevenue - giá niêm yết ban đầu)
+
+            let listRevenue = 0; // Giá gốc × qty thực giữ
+            let lostGrossRevenue = 0; // Giá gốc × qty hoàn trả (Mất cơ hội)
+            let shopVoucher = 0; // Mã giảm giá của Shop (scaled)
+
+            lines.forEach(line => {
+                const qty = line.quantity || 0;
+                const rQty = line.returnQuantity || 0;
+                const originalPrice = line.originalPrice || 0;
+                const actualSalePrice = (line.dealPrice && line.dealPrice > 0) ? line.dealPrice : originalPrice;
+
+                listRevenue += originalPrice * (qty - rQty > 0 ? qty - rQty : 0);
+                lostGrossRevenue += actualSalePrice * rQty;
+            });
+            // Shop Voucher is order-level, scaled by Retention
+            shopVoucher = (first.shopVoucher || 0) * retentionRatio;
+
+            // Platform Fees (Order Level - Scaled by Retention)
+            const rawFixedFee = first.fixedFee || 0;
+            const rawServiceFee = first.serviceFee || 0;
+            const rawPaymentFee = first.paymentFee || 0;
+            const returnShippingFee = first.returnShippingFee || 0;
+
+            const fixedFee = rawFixedFee * retentionRatio;
+            const serviceFee = rawServiceFee * retentionRatio;
+            const paymentFee = rawPaymentFee * retentionRatio;
+
+            const platformFee = fixedFee + serviceFee + paymentFee + returnShippingFee;
+            const nonRefundableFee = (rawFixedFee + rawServiceFee + rawPaymentFee) * (1 - retentionRatio);
+
+            // Controlable Cost = Người bán trợ giá (sellerRebate) + Mã giảm giá Shop (shopVoucher)
+            //                  + Phí VC trả hàng + Phí cố định + Phí DV + Phí TT
+            const controlCost = shopPromotion   // sellerRebate (Người bán trợ giá = CTKM giảm giá sản phẩm)
+                + shopVoucher    // Mã giảm giá của Shop (do shop tạo)
+                + returnShippingFee
+                + fixedFee + serviceFee + paymentFee;
+
+            // controlRatio = controlCost / Giá gốc (thực giữ) × 100  (≤ 50% là an toàn)
+            const controlRatio = listRevenue > 0 ? (controlCost / listRevenue) * 100 : 0;
+
+            // --- RETURN IMPACT (RISK LAYER) ---
+            const returnImpactValue = lostGrossRevenue + nonRefundableFee + returnShippingFee;
+            const originalOrderValue = lines.reduce((sum, l) => sum + ((l.dealPrice || l.originalPrice || 0) * (l.quantity || 0)), 0);
+            const returnImpactRate = originalOrderValue > 0 ? (returnImpactValue / originalOrderValue) * 100 : 0;
+
+            const netProfit = revenue - cogs - platformFee;
+            const grossMarginBeforePromo = revenue - cogs - (platformFee - returnShippingFee); // Margin before return shipping risk
             const structuralMargin = grossMarginBeforePromo;
 
             // A. Absolute Loss Flag
@@ -579,11 +706,12 @@ export const calculateMetrics = (orders: ShopeeOrder[]): MetricResult => {
             const targetMargin = 0.15;
             const breakEvenPrice = (cogs + platformFee + shopPromotion) / (1 - targetMargin);
 
-            // D. Risk Impact Score: |Net Loss| * 0.5 + (Control Ratio - 50%) * 0.3 * (Revenue scaling) + Revenue Weight * 0.2
+            // D. Risk Impact Score: Updated to include Return Impact
             const lossTerm = netProfit < 0 ? Math.abs(netProfit) * 0.5 : 0;
             const controlTerm = controlRatio > 50 ? ((controlRatio - 50) / 100) * revenue * 0.3 : 0;
-            const revTerm = revenue * 0.2;
-            const riskImpactScore = lossTerm + controlTerm + revTerm;
+            const returnTerm = (returnImpactRate / 100) * originalOrderValue * 0.4;
+            const revTerm = revenue * 0.1;
+            const riskImpactScore = lossTerm + controlTerm + returnTerm + revTerm;
 
             // 2. Classification
             let warningLevel: 'SAFE' | 'MONITOR' | 'WARNING' | 'DANGER' = 'SAFE';
@@ -648,7 +776,10 @@ export const calculateMetrics = (orders: ShopeeOrder[]): MetricResult => {
                 revenue,
                 cogs,
                 shopPromotion,
-                platformFee,
+                shopVoucher,
+                returnShippingFee,
+                platformFee: fixedFee + serviceFee + paymentFee, // not including returnShipping here for breakdown clarity
+                listRevenue,
                 controlCost,
                 controlRatio,
                 netProfit,
@@ -661,6 +792,11 @@ export const calculateMetrics = (orders: ShopeeOrder[]): MetricResult => {
 
                 warningLevel,
                 isLoss,
+
+                returnImpactValue,
+                returnImpactRate,
+                lostGrossRevenue,
+                nonRefundableFee,
 
                 rootCause,
                 rootCauseValue
@@ -678,7 +814,7 @@ export const calculateMetrics = (orders: ShopeeOrder[]): MetricResult => {
 
     // 4. Finalize
     const totalGrossProfit = realizedRevenue - realizedCOGS - realizedFees;
-    const netMargin = totalListRevenueRealized > 0 ? (totalGrossProfit / totalListRevenueRealized) * 100 : 0;
+    const netMargin = realizedRevenue > 0 ? (totalGrossProfit / realizedRevenue) * 100 : 0;
     const orderReturnRateVal = totalOrders > 0 ? (totalReturnQty / totalProductQty) * 100 : 0;
 
     // Risk Profile Generation (Products)
@@ -741,13 +877,23 @@ export const calculateMetrics = (orders: ShopeeOrder[]): MetricResult => {
             netRevenue: t.revenue, // Rev 2
             grossProfit: t.revenue - t.cost, // Approx placeholder
             netProfit: t.profit,
-            profitMargin: t.revenue1 > 0 ? (t.profit / t.revenue1) * 100 : 0,
+            profitMargin: t.revenue > 0 ? (t.profit / t.revenue) * 100 : 0,
             orders: t.orders
         })),
 
         productPerformance: finalizedProducts,
-        locationAnalysis: Object.keys(locationMap).map(p => ({ province: p, revenue: locationMap[p].revenue, orderCount: locationMap[p].count })),
-        statusAnalysis: Object.keys(statusMap).map(s => ({ status: s, ...statusMap[s] })),
+        locationAnalysis: Object.keys(locationMap).map(p => ({
+            province: p,
+            revenue: locationMap[p].revenue,
+            profit: locationMap[p].profit || 0,
+            contribution: realizedRevenue > 0 ? (locationMap[p].revenue / realizedRevenue) * 100 : 0,
+            orderCount: locationMap[p].count
+        })).sort((a, b) => b.revenue - a.revenue),
+        statusAnalysis: Object.keys(statusMap).map(s => ({
+            status: s,
+            ...statusMap[s],
+            percentage: totalOrders > 0 ? (statusMap[s].count / totalOrders) * 100 : 0
+        })),
         customerAnalysis: Object.values(customerMap),
 
         topProducts: finalizedProducts.sort((a, b) => b.revenue - a.revenue).slice(0, 15),
@@ -767,7 +913,14 @@ export const calculateMetrics = (orders: ShopeeOrder[]): MetricResult => {
             highRiskCount: riskHighRiskCount,
             lossCount: riskLossCount,
             avgControlRatio,
-            totalLossAmount: riskTotalLossAmount
+            totalLossAmount: riskTotalLossAmount,
+            totalShopVoucher: allShopVoucher,
+            totalReturnShippingFee: allReturnShippingFee,
+            totalListRevenue: allListRevenue,
+            totalSellerRebate: allSellerRebate,
+            totalPlatformFees: allPlatformFees,
+            totalReturnImpactValue: riskAnalysis.reduce((sum, r) => sum + r.returnImpactValue, 0),
+            totalReturnImpactRate: riskTotalOrders > 0 ? (riskAnalysis.reduce((sum, r) => sum + r.returnImpactRate, 0) / riskTotalOrders) : 0
         },
 
         // Empty Stubs

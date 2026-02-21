@@ -1,18 +1,50 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTheme } from '../../contexts/ThemeContext';
-import { Sun, Moon, User, LogOut, ChevronDown, Bell } from 'lucide-react';
+import { Sun, Moon, User, LogOut, ChevronDown, Bell, Store } from 'lucide-react';
 import clsx from 'clsx';
+import { useAuth } from '../../contexts/AuthContext';
+
 
 import { useFilter } from '../../contexts/FilterContext';
 import { DateRangePicker } from '../DateRangePicker';
+import { ReportFile, Platform } from '../../utils/types';
 
 export const Header = () => {
     const { theme, toggleTheme } = useTheme();
-    const { warehouse, setWarehouse } = useFilter();
+    const { warehouse, setWarehouse, channelKey, setChannelKey } = useFilter();
+    const { user, logout } = useAuth();
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+    const [channels, setChannels] = useState<{ key: string; label: string }[]>([]);
+
+    // Load available channels from uploaded reports
+    useEffect(() => {
+        const PLATFORM_LABEL: Record<string, string> = {
+            shopee: 'Shopee', tiki: 'Tiki', lazada: 'Lazada',
+            tiktok: 'TiktokShop', thuocsi: 'Thuocsi', other: 'Khác',
+        };
+        fetch('/api/reports')
+            .then(r => r.json())
+            .then((reports: ReportFile[]) => {
+                const seen = new Set<string>();
+                const list: { key: string; label: string }[] = [];
+                reports.forEach(r => {
+                    const plt = r.platform || 'shopee';
+                    const key = `${plt}_${r.shopName || ''}`;
+                    if (!seen.has(key)) {
+                        seen.add(key);
+                        const label = r.shopName
+                            ? `${PLATFORM_LABEL[plt]} · ${r.shopName}`
+                            : PLATFORM_LABEL[plt];
+                        list.push({ key, label });
+                    }
+                });
+                setChannels(list);
+            })
+            .catch(() => { });
+    }, []);
 
     // Mock Notifications State
     const [notifications, setNotifications] = useState([
@@ -58,21 +90,38 @@ export const Header = () => {
 
     return (
         <header className="px-8 py-4 flex items-center justify-between bg-background/50 backdrop-blur-md sticky top-0 z-20 border-b border-border/50 transition-colors duration-300">
-            {/* Left side spacer or breadcrumbs if needed in future */}
-            <div className="flex-1"></div>
+            {/* Left Title */}
+            <div className="flex-1 flex items-center">
+                <span className="text-xl font-black text-primary uppercase" style={{ letterSpacing: '0.12em' }}>
+                    {user?.title || 'Quản trị kênh TMĐT đa nền tảng'}
+                </span>
+            </div>
 
-            <div className="flex items-center gap-4">
-                {/* Dashboard Title */}
-                <div className="flex items-center px-4 py-2 bg-primary/10 border border-primary/20 rounded-xl">
-                    <span className="text-sm font-extrabold text-primary tracking-wide uppercase">Shopee Miền Bắc SAPON GROUP</span>
-                </div>
+            <div className="flex items-center gap-3">
+                {/* Channel Selector */}
+                {channels.length > 0 && (
+                    <div className="flex items-center gap-2 px-3 py-2 bg-card border border-border rounded-xl">
+                        <Store className="w-4 h-4 text-muted-foreground shrink-0" />
+                        <select
+                            value={channelKey}
+                            onChange={e => setChannelKey(e.target.value)}
+                            className="bg-card text-sm font-semibold text-foreground focus:outline-none cursor-pointer max-w-[180px] dark:[color-scheme:dark]"
+                        >
+                            <option value="all">Tất cả kênh</option>
+                            {channels.map(c => (
+                                <option key={c.key} value={c.key}>{c.label}</option>
+                            ))}
+                        </select>
+                    </div>
+                )}
 
-                <div className="h-6 w-px bg-border mx-2"></div>
+                <div className="h-6 w-px bg-border"></div>
 
                 {/* Date Range Picker */}
                 <DateRangePicker />
 
-                <div className="h-6 w-px bg-border mx-2"></div>
+                <div className="h-6 w-px bg-border"></div>
+
                 {/* Theme Toggle */}
                 <button
                     onClick={toggleTheme}
@@ -149,8 +198,8 @@ export const Header = () => {
                             <User className="w-5 h-5" />
                         </div>
                         <div className="text-left hidden sm:block">
-                            <p className="text-sm font-bold text-foreground group-hover:text-primary transition-colors">Trưởng BP TMĐT</p>
-                            <p className="text-[10px] text-muted-foreground font-medium">Quản lý Shop</p>
+                            <p className="text-sm font-bold text-foreground group-hover:text-primary transition-colors">{user?.displayName || 'Admin'}</p>
+                            <p className="text-[10px] text-muted-foreground font-medium">{user?.role || ''}</p>
                         </div>
                         <ChevronDown className={clsx("w-4 h-4 text-muted-foreground transition-transform duration-200", isDropdownOpen && "rotate-180")} />
                     </button>
@@ -164,8 +213,8 @@ export const Header = () => {
                             />
                             <div className="absolute right-0 mt-2 w-56 bg-popover border border-border rounded-xl shadow-xl z-30 p-2 animate-in fade-in zoom-in-95 duration-200">
                                 <div className="px-3 py-2 border-b border-border mb-1">
-                                    <p className="text-sm font-bold text-foreground">Tài khoản</p>
-                                    <p className="text-xs text-muted-foreground">admin@shopee-analytics.com</p>
+                                    <p className="text-sm font-bold text-foreground">{user?.displayName || 'Tài khoản'}</p>
+                                    <p className="text-xs text-muted-foreground">{user?.email || ''}</p>
                                 </div>
                                 <button
                                     onClick={() => { toggleTheme(); setIsDropdownOpen(false); }}
@@ -174,7 +223,10 @@ export const Header = () => {
                                     {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
                                     Chế độ: {theme === 'dark' ? 'Tối' : 'Sáng'}
                                 </button>
-                                <button className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium text-destructive hover:bg-destructive/10 rounded-lg transition-colors text-left mt-1">
+                                <button
+                                    onClick={() => { logout(); setIsDropdownOpen(false); }}
+                                    className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium text-destructive hover:bg-destructive/10 rounded-lg transition-colors text-left mt-1"
+                                >
                                     <LogOut className="w-4 h-4" />
                                     Đăng xuất
                                 </button>

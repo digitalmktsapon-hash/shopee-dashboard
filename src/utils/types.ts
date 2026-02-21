@@ -102,6 +102,7 @@ export interface ProductPerformance {
   margin: number; // Gross Margin %
   returnQuantity: number;
   returnRate: number;
+  contribution: number; // % contribution to total net revenue
   badges: string[]; // 'Hero', 'Risk', 'Traffic Driver', 'Kill List'
   relatedOrders?: {
     orderId: string;
@@ -224,6 +225,8 @@ export interface OperationAnalysis {
 export interface LocationAnalysis {
   province: string;
   revenue: number;
+  profit: number;
+  contribution: number;
   orderCount: number;
 }
 
@@ -231,6 +234,7 @@ export interface StatusAnalysis {
   status: string;
   revenue: number;
   count: number;
+  percentage: number;
 }
 
 export interface DailyFinancialMetric {
@@ -334,8 +338,11 @@ export interface OrderRiskAnalysis {
   // 1. Calculated Metrics
   revenue: number; // Sum(Original Price * Qty)
   cogs: number; // 40% * Revenue
-  shopPromotion: number; // Shop Voucher/Rebate
-  platformFee: number; // Sum(Fixed + Service + Payment + Affiliate)
+  shopPromotion: number; // Người bán trợ giá (sellerRebate - giảm giá sản phẩm từ CTKM)
+  shopVoucher: number;   // Mã giảm giá của Shop (do shop tạo)
+  returnShippingFee: number; // Phí vận chuyển trả hàng
+  platformFee: number;   // Phí cố định + Phí DV + Phí thanh toán (không gồm VC trả hàng)
+  listRevenue: number;   // Giá gốc × số lượng (mẫu số của control ratio)
   controlCost: number; // Shop Promo + Platform Fee
   controlRatio: number; // Control Cost / Revenue
   netProfit: number; // Revenue - COGS - Control Cost
@@ -346,11 +353,16 @@ export interface OrderRiskAnalysis {
   absoluteLossFlag: boolean;
   riskImpactScore: number;
 
-  // 2. Classification
   warningLevel: 'SAFE' | 'MONITOR' | 'WARNING' | 'DANGER';
   isLoss: boolean;
 
-  // 3. Root Cause
+  // 3. Return Impact Layer
+  returnImpactValue: number;
+  returnImpactRate: number;
+  lostGrossRevenue: number;
+  nonRefundableFee: number;
+
+  // 4. Root Cause
   rootCause: 'A' | 'B' | 'C' | 'D' | 'E' | 'N/A';
   rootCauseValue: number; // The % driving the cause (e.g. Fee %, Promo %)
 }
@@ -423,6 +435,13 @@ export interface MetricResult {
     lossCount: number; // Net Profit < 0
     avgControlRatio: number;
     totalLossAmount: number;
+    totalShopVoucher: number;
+    totalReturnShippingFee: number;
+    totalListRevenue: number;
+    totalSellerRebate: number;
+    totalPlatformFees: number;
+    totalReturnImpactValue: number;
+    totalReturnImpactRate: number;
   };
 
   // Optional/Legacy
@@ -441,6 +460,8 @@ export interface MetricResult {
   riskAlerts?: any[]; // legacy
 }
 
+export type Platform = 'shopee' | 'tiki' | 'lazada' | 'tiktok' | 'thuocsi' | 'other';
+
 export interface ReportFile {
   id: string;
   name: string;
@@ -448,6 +469,8 @@ export interface ReportFile {
   isActive: boolean;
   orders: ShopeeOrder[];
   orderCount?: number;
+  platform?: Platform;
+  shopName?: string;
 }
 
 export interface Database {

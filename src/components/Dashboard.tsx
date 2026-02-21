@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
@@ -19,7 +19,7 @@ export default function Dashboard() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [selectedRiskItem, setSelectedRiskItem] = useState<ProductRiskProfile | null>(null);
-    const { startDate, endDate, warehouse } = useFilter();
+    const { startDate, endDate, warehouse, channelKey } = useFilter();
 
     const chartData = useMemo(() => {
         if (!metrics) return [];
@@ -35,7 +35,7 @@ export default function Dashboard() {
         const fetchData = async () => {
             setLoading(true);
             try {
-                const res = await fetch('/api/orders');
+                const res = await fetch('/api/orders?channel=' + channelKey);
                 const orders: ShopeeOrder[] = await res.json();
 
                 // Current Period
@@ -80,7 +80,7 @@ export default function Dashboard() {
         };
 
         fetchData();
-    }, [startDate, endDate, warehouse]);
+    }, [startDate, endDate, warehouse, channelKey]);
 
     if (loading) return <PageSkeleton />;
 
@@ -569,11 +569,6 @@ export default function Dashboard() {
                     </div>
                 </div>
             </section >
-
-            {metrics?.riskAnalysis && metrics.riskAnalysis.length > 0 && metrics.riskStats && (
-                <OrderRiskControlCenter analysis={metrics.riskAnalysis} stats={metrics.riskStats} />
-            )}
-
 
 
         </div >

@@ -14,7 +14,8 @@ import {
     Download,
     Percent,
     DollarSign,
-    Activity
+    Activity,
+    RotateCcw
 } from 'lucide-react';
 import clsx from 'clsx';
 import {
@@ -31,6 +32,8 @@ interface OrderRiskControlCenterProps {
         lossCount: number;
         avgControlRatio: number;
         totalLossAmount: number;
+        totalReturnImpactValue: number;
+        totalReturnImpactRate: number;
     };
 }
 
@@ -167,7 +170,7 @@ export const OrderRiskControlCenter: React.FC<OrderRiskControlCenterProps> = ({ 
             </div>
 
             {/* 1. KPI Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
                 <KPICard
                     title="Đơn Thành Công (Realized Orders)"
                     value={stats.totalOrders}
@@ -200,6 +203,13 @@ export const OrderRiskControlCenter: React.FC<OrderRiskControlCenterProps> = ({ 
                     icon={<DollarSign className="text-red-600 dark:text-red-400" />}
                     subtext="Do đơn lỗ gây ra"
                     color="text-red-600 dark:text-red-400"
+                />
+                <KPICard
+                    title="Return Impact (Risk Layer)"
+                    value={formatVND(stats.totalReturnImpactValue)}
+                    icon={<RotateCcw className="text-rose-500 dark:text-rose-400" />}
+                    subtext={`${stats.totalReturnImpactRate.toFixed(1)}% Doanh thu bị bốc hơi`}
+                    color="text-rose-600 dark:text-rose-400"
                 />
             </div>
 
@@ -368,6 +378,7 @@ export const OrderRiskControlCenter: React.FC<OrderRiskControlCenterProps> = ({ 
                                 <th className="p-3 text-center">Tỷ Lệ KS (Control Ratio)</th>
                                 <th className="p-3 text-right">LCB (Structural Margin)</th>
                                 <th className="p-3 text-right">Lợi Nhuận (Net Profit)</th>
+                                <th className="p-3 text-right">Return Impact (Lỗ Hoàn)</th>
                                 <th className="p-3">Nguyên Nhân (Root Cause)</th>
                                 <th className="p-3 text-center">Cảnh báo (Warning)</th>
                             </tr>
@@ -392,6 +403,17 @@ export const OrderRiskControlCenter: React.FC<OrderRiskControlCenterProps> = ({ 
                                     </td>
                                     <td className={clsx("p-3 text-right font-bold font-mono", order.netProfit < 0 ? "text-red-600 bg-red-50/50 dark:text-red-400 dark:bg-red-900/20" : "text-emerald-600 dark:text-emerald-400")}>
                                         {formatVND(order.netProfit)}
+                                    </td>
+                                    <td className="p-3 text-right">
+                                        <div className="font-mono text-rose-500 font-bold">
+                                            {formatVND(order.returnImpactValue)}
+                                        </div>
+                                        {order.returnImpactValue > 0 && (
+                                            <div className="text-[10px] text-muted-foreground flex flex-col items-end">
+                                                <span>-{formatVND(order.lostGrossRevenue)} (Doanh thu)</span>
+                                                <span>-{formatVND(order.nonRefundableFee)} (Phí ko hoàn)</span>
+                                            </div>
+                                        )}
                                     </td>
                                     <td className="p-3">
                                         {order.rootCause !== 'N/A' && (

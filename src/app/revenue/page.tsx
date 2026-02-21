@@ -1,8 +1,8 @@
-"use client";
+﻿"use client";
 
 import React, { useEffect, useState } from 'react';
-import { filterOrders, parseShopeeDate } from '../../utils/calculator';
-import { ShopeeOrder } from '../../utils/types';
+import { filterOrders, parseShopeeDate, calculateMetrics } from '../../utils/calculator';
+import { ShopeeOrder, MetricResult } from '../../utils/types';
 import {
     BarChart,
     Bar,
@@ -83,207 +83,40 @@ interface RevenueDashboardMetrics {
     }[];
 }
 
-const calculateRevenueMetrics = (orders: ShopeeOrder[]): RevenueDashboardMetrics => {
-    // Group orders by orderId
-    const orderGroups: Record<string, ShopeeOrder[]> = {};
-    orders.forEach(line => {
-        if (!orderGroups[line.orderId]) orderGroups[line.orderId] = [];
-        orderGroups[line.orderId].push(line);
-    });
-
-    let totalRealizedNetRevenue = 0;
-    let totalRealizedProfit = 0;
-    let totalRealizedListRevenue = 0; // New global aggregator for Margin Denominator
-    let totalRealizedSuccessfulOrdersCount = 0;
-
-    const statusCounts: Record<string, { count: number, listRevenue: number }> = {};
-    const trendsMap: Record<string, { netRevenue: number, profit: number, listRevenue: number }> = {};
-    const skuMap: Record<string, { name: string, quantity: number, listRevenue: number, netRevenue: number, profit: number }> = {};
-    const provinceMap: Record<string, { listRevenue: number, netRevenue: number, profit: number }> = {};
-
-    let totalAllOrdersCount = Object.keys(orderGroups).length;
-
-    Object.values(orderGroups).forEach(lines => {
-        const firstLine = lines[0];
-        const status = firstLine.orderStatus;
-        const returnStatus = firstLine.returnStatus;
-        const dateStr = firstLine.orderDate || (firstLine as any).orderCreationDate;
-        let dateKey = 'Unknown';
-        if (dateStr) {
-            const d = parseShopeeDate(dateStr);
-            if (d) dateKey = d.toISOString().split('T')[0];
-        }
-        const province = firstLine.province || 'Khác';
-
-        // Custom status grouping for Section V
-        let finalStatus = 'Khác';
-        if (status === 'Đã hủy') {
-            finalStatus = 'Đã hủy';
-        } else if (status === 'Đang giao' || status === 'Chờ lấy hàng' || status === 'Đang vận chuyển' || status === 'Chờ giao hàng') {
-            finalStatus = 'Đang giao';
-        } else if (returnStatus === 'Đã Chấp Thuận Yêu Cầu') {
-            finalStatus = 'Hoàn trả';
-        } else if (status === 'Hoàn thành') {
-            finalStatus = 'Hoàn thành';
-        } else if (status.includes('Người mua xác nhận đã nhận được hàng') || status.includes('Trả hàng/Hoàn tiền')) {
-            finalStatus = 'Giao hàng thành công (Có Y/C Trả hàng)';
-        } else {
-            finalStatus = status || 'Khác';
-        }
-
-        let orderListRevenue = 0; // list based on net qty for margin denominator
-        let orderNetRevenue = 0;
-        let orderCOGS = 0;
-        let orderFees = 0;
-        let orderProfit = 0;
-
-        // 2. Trừ phí sàn (Cố định, Dịch vụ, Thanh toán) và 3. Phí vận chuyển trả hàng
-        const fixedFee = firstLine.fixedFee || 0;
-        const serviceFee = firstLine.serviceFee || 0;
-        const paymentFee = firstLine.paymentFee || 0;
-        const returnShippingFee = firstLine.returnShippingFee || 0;
-        orderFees = fixedFee + serviceFee + paymentFee + returnShippingFee;
-
-        lines.forEach(line => {
-            const qty = line.quantity || 0;
-            const returnQty = line.returnQuantity || 0;
-            const originalPrice = line.originalPrice || 0;
-            const actualSalePrice = (line.dealPrice && line.dealPrice > 0) ? line.dealPrice : originalPrice;
-            const sellerRebate = line.sellerRebate || 0;
-
-            // 1. Doanh thu thực nhận
-            const lineNetRev = (actualSalePrice * qty) - sellerRebate;
-            orderNetRevenue += lineNetRev;
-
-            // 4. Giá vốn & Tính theo số lượng thực tế (ko hoàn trả)
-            const netQty = qty - returnQty;
-            const effectiveNetQty = netQty > 0 ? netQty : 0;
-
-            const lineEffectiveOriginalRev = originalPrice * effectiveNetQty;
-            orderListRevenue += lineEffectiveOriginalRev; // Dùng cho mẫu số của Margin
-            orderCOGS += lineEffectiveOriginalRev * 0.4;
-        });
-
-        orderProfit = orderNetRevenue - orderCOGS - orderFees;
-
-        // Status Map
-        if (!statusCounts[finalStatus]) statusCounts[finalStatus] = { count: 0, listRevenue: 0 };
-        statusCounts[finalStatus].count += 1;
-        statusCounts[finalStatus].listRevenue += orderListRevenue;
-
-        // Is Realized?
-        // Trạng thái đơn hàng <> "Đã hủy"
-        // Trạng thái Trả hàng/Hoàn tiền <> "Đã Chấp Thuận Yêu Cầu"
-        const isRealized = status !== 'Đã hủy' && returnStatus !== 'Đã Chấp Thuận Yêu Cầu';
-
-        if (isRealized) {
-            totalRealizedNetRevenue += orderNetRevenue;
-            totalRealizedProfit += orderProfit;
-            totalRealizedListRevenue += orderListRevenue; // Accumulate globally
-            totalRealizedSuccessfulOrdersCount += 1;
-
-            // Trend
-            if (!trendsMap[dateKey]) trendsMap[dateKey] = { listRevenue: 0, netRevenue: 0, profit: 0 };
-            trendsMap[dateKey].listRevenue += orderListRevenue;
-            trendsMap[dateKey].netRevenue += orderNetRevenue;
-            trendsMap[dateKey].profit += orderProfit;
-
-            // Province
-            if (!provinceMap[province]) provinceMap[province] = { listRevenue: 0, netRevenue: 0, profit: 0 };
-            provinceMap[province].listRevenue += orderListRevenue;
-            provinceMap[province].netRevenue += orderNetRevenue;
-            provinceMap[province].profit += orderProfit;
-
-            // SKU
-            lines.forEach(line => {
-                const sku = line.skuReferenceNo || line.productName || 'Unknown';
-                const qty = line.quantity || 0;
-                const returnQty = line.returnQuantity || 0;
-                const originalPrice = line.originalPrice || 0;
-
-                const actualSalePrice = (line.dealPrice && line.dealPrice > 0) ? line.dealPrice : originalPrice;
-                const sellerRebate = line.sellerRebate || 0;
-
-                // 1. Doanh thu thực nhận
-                const lineNetRev = (actualSalePrice * qty) - sellerRebate;
-
-                // Tính theo số lượng thực tế
-                const netQty = qty - returnQty;
-                const effectiveNetQty = netQty > 0 ? netQty : 0;
-                const lineEffectiveOriginalRev = originalPrice * effectiveNetQty;
-                const lineCOGS = lineEffectiveOriginalRev * 0.4;
-
-                // Allocate fees proportional to lineNetRev / orderNetRevenue
-                const feeRatio = orderNetRevenue > 0 ? (lineNetRev / orderNetRevenue) : 0;
-                const lineFee = orderFees * feeRatio;
-                const lineProfit = lineNetRev - lineCOGS - lineFee;
-
-                if (!skuMap[sku]) skuMap[sku] = { name: line.productName || 'Unknown', quantity: 0, listRevenue: 0, netRevenue: 0, profit: 0 };
-                skuMap[sku].quantity += effectiveNetQty;
-                skuMap[sku].listRevenue += lineEffectiveOriginalRev;
-                skuMap[sku].netRevenue += lineNetRev;
-                skuMap[sku].profit += lineProfit;
-            });
-        }
-    });
-
-    // Mẫu số của Margin dựa trên listRevenue (Giá gốc * sl giữ lại)
-    const currentMargin = totalRealizedListRevenue > 0 ? (totalRealizedProfit / totalRealizedListRevenue) * 100 : 0;
-    const currentAOV = totalRealizedSuccessfulOrdersCount > 0 ? (totalRealizedNetRevenue / totalRealizedSuccessfulOrdersCount) : 0;
-
-    const statusData = Object.keys(statusCounts).map(status => {
-        const count = statusCounts[status].count;
-        return {
-            status,
-            count,
-            revenue: statusCounts[status].listRevenue,
-            percentOfCount: totalAllOrdersCount > 0 ? (count / totalAllOrdersCount) * 100 : 0
-        };
-    }).sort((a, b) => b.revenue - a.revenue);
-
-    const dailyTrends = Object.keys(trendsMap).sort().map(date => {
-        const item = trendsMap[date];
-        return {
-            date,
-            netRevenue: item.netRevenue,
-            profit: item.profit,
-            margin: Number((item.listRevenue > 0 ? (item.profit / item.listRevenue) * 100 : 0).toFixed(2))
-        };
-    });
-
-    const topSKUs = Object.keys(skuMap).map(sku => {
-        const item = skuMap[sku];
-        return {
-            sku,
-            name: item.name,
-            revenue: item.netRevenue,
-            profit: item.profit,
-            margin: item.listRevenue > 0 ? (item.profit / item.listRevenue) * 100 : 0,
-            quantity: item.quantity,
-            contribution: totalRealizedNetRevenue > 0 ? (item.netRevenue / totalRealizedNetRevenue) * 100 : 0
-        };
-    }).sort((a, b) => b.revenue - a.revenue);
-
-    const topProvinces = Object.keys(provinceMap).map(province => {
-        const item = provinceMap[province];
-        return {
-            province,
-            revenue: item.netRevenue,
-            profit: item.profit,
-            margin: item.netRevenue > 0 ? (item.profit / item.netRevenue) * 100 : 0,
-            contribution: totalRealizedNetRevenue > 0 ? (item.netRevenue / totalRealizedNetRevenue) * 100 : 0
-        };
-    }).sort((a, b) => b.revenue - a.revenue);
-
+const mapToRevenueMetrics = (result: MetricResult): RevenueDashboardMetrics => {
     return {
-        currentNetRevenue: totalRealizedNetRevenue,
-        currentProfit: totalRealizedProfit,
-        currentMargin,
-        currentAOV,
-        statusData,
-        dailyTrends,
-        topSKUs,
-        topProvinces
+        currentNetRevenue: result.totalNetRevenue,
+        currentProfit: result.totalGrossProfit,
+        currentMargin: result.netMargin,
+        currentAOV: result.avgOrderValue,
+        statusData: result.statusAnalysis.map(s => ({
+            status: s.status,
+            count: s.count,
+            revenue: s.revenue,
+            percentOfCount: s.percentage
+        })),
+        dailyTrends: result.revenueTrend.map(t => ({
+            date: t.date,
+            netRevenue: t.netRevenue,
+            profit: t.netProfit,
+            margin: t.profitMargin
+        })),
+        topSKUs: result.topProducts.map(p => ({
+            sku: p.sku,
+            name: p.name,
+            revenue: p.revenue,
+            profit: p.netProfit,
+            margin: p.margin,
+            quantity: p.quantity,
+            contribution: p.contribution
+        })),
+        topProvinces: result.locationAnalysis.map(l => ({
+            province: l.province,
+            revenue: l.revenue,
+            profit: l.profit,
+            margin: l.revenue > 0 ? (l.profit / l.revenue) * 100 : 0,
+            contribution: l.contribution
+        }))
     };
 };
 
@@ -291,19 +124,20 @@ export default function RevenuePage() {
     const [metrics, setMetrics] = useState<RevenueDashboardMetrics | null>(null);
     const [prevMetrics, setPrevMetrics] = useState<RevenueDashboardMetrics | null>(null);
     const [loading, setLoading] = useState(true);
-    const { startDate, endDate, warehouse } = useFilter();
+    const { startDate, endDate, warehouse, channelKey } = useFilter();
 
     useEffect(() => {
         const fetchData = async () => {
             try {
                 setLoading(true);
-                const res = await fetch('/api/orders');
+                const res = await fetch('/api/orders?channel=' + channelKey);
                 const orders: ShopeeOrder[] = await res.json();
 
                 // Current Period
                 const filtered = filterOrders(orders, startDate, endDate, warehouse);
                 if (filtered.length > 0) {
-                    setMetrics(calculateRevenueMetrics(filtered));
+                    const result = calculateMetrics(filtered);
+                    setMetrics(mapToRevenueMetrics(result));
                 } else {
                     setMetrics(null);
                 }
@@ -326,7 +160,8 @@ export default function RevenuePage() {
 
                     const prevFiltered = filterOrders(orders, prevStartDateStr, prevEndDateStr, warehouse);
                     if (prevFiltered.length > 0) {
-                        setPrevMetrics(calculateRevenueMetrics(prevFiltered));
+                        const result = calculateMetrics(prevFiltered);
+                        setPrevMetrics(mapToRevenueMetrics(result));
                     } else {
                         setPrevMetrics(null);
                     }
@@ -341,7 +176,7 @@ export default function RevenuePage() {
             }
         };
         fetchData();
-    }, [startDate, endDate, warehouse]);
+    }, [startDate, endDate, warehouse, channelKey]);
 
     if (loading) return <PageSkeleton />;
 

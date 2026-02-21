@@ -112,7 +112,7 @@ export const Login = () => {
                     {/* Footer */}
                     <div className="mt-8 pt-6 border-t border-white/5 text-center">
                         <p className="text-xs text-muted-foreground/50 font-medium tracking-wide italic">
-                            PTS Agency BI System &copy; 2024
+                            PTS Agency BI System &copy; 2026
                         </p>
                     </div>
                 </div>

@@ -3,76 +3,77 @@
 import React, { useEffect, useState } from 'react';
 import { UploadZone } from '@/components/UploadZone';
 import { parseShopeeReport } from '@/utils/parser';
-import { ReportFile, ShopeeOrder } from '@/utils/types';
-import { Trash2, ToggleLeft, ToggleRight, FileText, Calendar, Plus, AlertCircle, CheckCircle, X, Save, Plug, RefreshCw, CheckCircle2 } from 'lucide-react';
+import { Platform, ReportFile, ShopeeOrder } from '@/utils/types';
+import { Trash2, ToggleLeft, ToggleRight, FileText, Calendar, Plus, CheckCircle, X, Save, Store } from 'lucide-react';
 import { useToast } from '@/contexts/ToastContext';
-import { useSearchParams } from 'next/navigation';
+
+const PLATFORMS: { value: Platform; label: string; color: string }[] = [
+    { value: 'shopee', label: 'Shopee', color: 'bg-orange-500/20 text-orange-400 border-orange-500/30' },
+    { value: 'tiki', label: 'Tiki', color: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
+    { value: 'lazada', label: 'Lazada', color: 'bg-purple-500/20 text-purple-400 border-purple-500/30' },
+    { value: 'tiktok', label: 'TiktokShop', color: 'bg-pink-500/20 text-pink-400 border-pink-500/30' },
+    { value: 'thuocsi', label: 'Thuocsi', color: 'bg-green-500/20 text-green-400 border-green-500/30' },
+    { value: 'other', label: 'Khác', color: 'bg-muted text-muted-foreground border-border' },
+];
+
+export const PLATFORM_BADGE_STYLE: Record<Platform, string> = {
+    shopee: 'bg-orange-500/15 text-orange-400 border border-orange-500/30',
+    tiki: 'bg-blue-500/15 text-blue-400 border border-blue-500/30',
+    lazada: 'bg-purple-500/15 text-purple-400 border border-purple-500/30',
+    tiktok: 'bg-pink-500/15 text-pink-400 border border-pink-500/30',
+    thuocsi: 'bg-green-500/15 text-green-400 border border-green-500/30',
+    other: 'bg-muted text-muted-foreground border border-border',
+};
+
+export const PLATFORM_LABEL: Record<Platform, string> = {
+    shopee: 'Shopee',
+    tiki: 'Tiki',
+    lazada: 'Lazada',
+    tiktok: 'TiktokShop',
+    thuocsi: 'Thuocsi',
+    other: 'Khác',
+};
 
 export default function DataSourcesPage() {
     const [reports, setReports] = useState<ReportFile[]>([]);
     const [loading, setLoading] = useState(true);
     const [uploading, setUploading] = useState(false);
-    const [connecting, setConnecting] = useState(false);
-    const [shopeeConnected, setShopeeConnected] = useState(false);
 
-    // Staging state for review
+    // Staging
     const [parsedFile, setParsedFile] = useState<{ name: string, orders: ShopeeOrder[] } | null>(null);
+    const [selectedPlatform, setSelectedPlatform] = useState<Platform>('shopee');
+    const [shopName, setShopName] = useState('');
 
     const { showToast } = useToast();
-    const searchParams = useSearchParams();
-
-    useEffect(() => {
-        if (searchParams.get('shopee_connected') === '1') {
-            setShopeeConnected(true);
-            showToast('Kết nối Shopee thành công!', 'success');
-        }
-    }, []);
 
     const fetchReports = async () => {
         setLoading(true);
         try {
             const res = await fetch('/api/reports');
             const data = await res.json();
-            if (Array.isArray(data)) {
-                setReports(data);
-            } else if (data.reports) {
-                setReports(data.reports);
-            }
+            if (Array.isArray(data)) setReports(data);
+            else if (data.reports) setReports(data.reports);
         } catch (err) {
-            console.error(err);
             showToast("Không thể tải danh sách báo cáo", "error");
         } finally {
             setLoading(false);
         }
     };
 
-    useEffect(() => {
-        fetchReports();
-    }, []);
+    useEffect(() => { fetchReports(); }, []);
 
     const handleFileProcess = async (file: File) => {
         setUploading(true);
         try {
-            const result = await parseShopeeReport(file);
-            const { data: orders, headers } = result;
-
+            const { data: orders } = await parseShopeeReport(file);
             const validOrders = orders.filter(o => o.orderId);
-
             if (validOrders.length === 0) {
                 showToast("Không tìm thấy đơn hàng hợp lệ trong file", "error");
-                console.error("Missing headers or data. Found:", headers);
                 return;
             }
-
-            // Set to staging for review
-            setParsedFile({
-                name: file.name,
-                orders: validOrders
-            });
-            showToast("Đã đọc file thành công! Vui lòng xác nhận lưu.", "info");
-
+            setParsedFile({ name: file.name, orders: validOrders });
+            showToast("Đã đọc file thành công! Vui lòng xác nhận thông tin.", "info");
         } catch (err) {
-            console.error(err);
             showToast("Lỗi khi đọc file. Vui lòng kiểm tra định dạng.", "error");
         } finally {
             setUploading(false);
@@ -81,24 +82,28 @@ export default function DataSourcesPage() {
 
     const confirmUpload = async () => {
         if (!parsedFile) return;
-
         setUploading(true);
         try {
             const res = await fetch('/api/reports', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: parsedFile.name, orders: parsedFile.orders }),
+                body: JSON.stringify({
+                    name: parsedFile.name,
+                    orders: parsedFile.orders,
+                    platform: selectedPlatform,
+                    shopName: shopName.trim(),
+                }),
             });
-
             if (res.ok) {
                 showToast("Lưu báo cáo thành công!", "success");
-                setParsedFile(null); // Clear staging
+                setParsedFile(null);
+                setShopName('');
+                setSelectedPlatform('shopee');
                 await fetchReports();
             } else {
                 showToast("Lưu thất bại. Vui lòng thử lại.", "error");
             }
         } catch (err) {
-            console.error(err);
             showToast("Lỗi kết nối đến server.", "error");
         } finally {
             setUploading(false);
@@ -107,129 +112,91 @@ export default function DataSourcesPage() {
 
     const cancelUpload = () => {
         setParsedFile(null);
+        setShopName('');
+        setSelectedPlatform('shopee');
     };
 
     const handleDelete = async (id: string) => {
         if (!confirm('Bạn có chắc muốn xóa báo cáo này? Dữ liệu sẽ mất vĩnh viễn.')) return;
-        try {
-            const res = await fetch(`/api/reports?id=${id}`, { method: 'DELETE' });
-            if (res.ok) {
-                showToast("Đã xóa báo cáo", "success");
-                await fetchReports();
-            } else {
-                showToast("Xóa thất bại", "error");
-            }
-        } catch (err) {
-            console.error(err);
-            showToast("Lỗi kết nối", "error");
-        }
+        const res = await fetch(`/api/reports?id=${id}`, { method: 'DELETE' });
+        if (res.ok) { showToast("Đã xóa báo cáo", "success"); await fetchReports(); }
+        else showToast("Xóa thất bại", "error");
     };
 
     const handleToggle = async (id: string) => {
-        try {
-            const res = await fetch(`/api/reports`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id })
-            });
-            if (res.ok) {
-                // Optimistic update or refetch
-                await fetchReports();
-                showToast("Đã cập nhật trạng thái", "success");
-            }
-        } catch (err) {
-            console.error(err);
-            showToast("Lỗi cập nhật", "error");
-        }
-    };
-
-    const handleConnectShopee = async () => {
-        setConnecting(true);
-        try {
-            const res = await fetch('/api/auth/shopee/authorize');
-            const { url, error } = await res.json();
-            if (error) throw new Error(error);
-            // Open in new window so user can authorize
-            window.open(url, '_blank', 'width=800,height=600,scrollbars=yes');
-        } catch (err: any) {
-            showToast(`Lỗi: ${err.message}`, 'error');
-        } finally {
-            setConnecting(false);
-        }
+        const res = await fetch('/api/reports', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id })
+        });
+        if (res.ok) { await fetchReports(); showToast("Đã cập nhật trạng thái", "success"); }
     };
 
     return (
         <div className="space-y-6 max-w-5xl mx-auto">
-            <div className="flex justify-between items-center">
-                <div>
-                    <h1 className="text-2xl font-bold text-foreground">Quản lý Dữ liệu</h1>
-                    <p className="text-muted-foreground mt-1 font-medium">Tải lên hoặc kết nối API Shopee để đồng bộ tự động.</p>
-                </div>
+            <div>
+                <h1 className="text-2xl font-bold text-foreground">Quản lý Dữ liệu</h1>
+                <p className="text-muted-foreground mt-1 font-medium">Tải lên báo cáo từ các sàn thương mại điện tử.</p>
             </div>
 
-            {/* Shopee API Connect Card */}
-            <div className="bg-card/50 backdrop-blur-md p-6 rounded-2xl shadow-xl border border-border">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2.5 bg-orange-500/10 rounded-xl border border-orange-500/20">
-                            <Plug className="w-5 h-5 text-orange-400" />
-                        </div>
-                        <div>
-                            <h2 className="font-bold text-foreground">Kết nối Shopee Open Platform API</h2>
-                            <p className="text-xs text-muted-foreground mt-0.5">Partner ID: 1220489 · Sandbox Mode</p>
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                        {shopeeConnected && (
-                            <span className="flex items-center gap-1.5 text-xs font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-full">
-                                <CheckCircle2 className="w-3.5 h-3.5" /> Đã kết nối
-                            </span>
-                        )}
-                        <button
-                            onClick={handleConnectShopee}
-                            disabled={connecting}
-                            className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-xl hover:bg-orange-600 transition-all font-bold text-sm disabled:opacity-50 shadow-lg shadow-orange-500/20 active:scale-95"
-                        >
-                            {connecting
-                                ? <><RefreshCw className="w-4 h-4 animate-spin" /> Đang tạo URL...</>
-                                : <><Plug className="w-4 h-4" /> {shopeeConnected ? 'Kết nối lại' : 'Authorize Test Partner'}</>
-                            }
-                        </button>
-                    </div>
-                </div>
-
-                <div className="mt-4 p-4 bg-muted/30 rounded-xl border border-border text-xs text-muted-foreground space-y-1.5">
-                    <p className="font-semibold text-foreground text-sm mb-2">Hướng dẫn thực hiện:</p>
-                    <p>1️⃣ Trong Shopee Open Platform, mận <strong className="text-foreground">Authorize Test Partner</strong></p>
-                    <p>2️⃣ Điền Redirect URL: <code className="bg-muted px-1.5 py-0.5 rounded font-mono text-primary">https://shopee-dashboard-rho.vercel.app/api/auth/shopee/callback</code></p>
-                    <p>3️⃣ Bấm nút <strong className="text-orange-400">Authorize Test Partner</strong> ở trên → cửa sổ xác thực sẽ mở</p>
-                    <p>4️⃣ Sau khi xác nhận → Shopee redirect về dashboard và hiển thị “Đã kết nối”</p>
-                </div>
-            </div>
-
-            {/* Upload Area or Review Area */}
+            {/* Upload Area */}
             <div className="bg-card/50 backdrop-blur-md p-6 rounded-2xl shadow-xl border border-border">
                 {parsedFile ? (
                     <div className="animate-fade-in">
-                        <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
-                            <CheckCircle className="w-5 h-5 text-emerald-400" /> Xác nhận dữ liệu
+                        <h2 className="text-lg font-bold text-foreground mb-5 flex items-center gap-2">
+                            <CheckCircle className="w-5 h-5 text-emerald-400" /> Xác nhận thông tin báo cáo
                         </h2>
-                        <div className="bg-muted/50 p-4 rounded-xl border border-border mb-6">
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div>
-                                    <p className="text-xs text-muted-foreground uppercase font-bold tracking-widest mb-1">Tên File</p>
-                                    <p className="font-bold text-foreground truncate" title={parsedFile.name}>{parsedFile.name}</p>
+
+                        {/* File Info */}
+                        <div className="bg-muted/50 p-4 rounded-xl border border-border mb-5 grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <p className="text-xs text-muted-foreground uppercase font-bold tracking-widest mb-1">Tên File</p>
+                                <p className="font-bold text-foreground truncate" title={parsedFile.name}>{parsedFile.name}</p>
+                            </div>
+                            <div>
+                                <p className="text-xs text-muted-foreground uppercase font-bold tracking-widest mb-1">Số lượng đơn</p>
+                                <p className="font-bold text-foreground">{parsedFile.orders.length} đơn hàng</p>
+                            </div>
+                            <div>
+                                <p className="text-xs text-muted-foreground uppercase font-bold tracking-widest mb-1">Loại file</p>
+                                <p className="font-bold text-foreground">Shopee Excel Report</p>
+                            </div>
+                        </div>
+
+                        {/* Platform & Shop Selector */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                            {/* Platform */}
+                            <div>
+                                <label className="text-xs text-muted-foreground uppercase font-bold tracking-widest mb-2 block">
+                                    🛒 Chọn Sàn
+                                </label>
+                                <div className="flex flex-wrap gap-2">
+                                    {PLATFORMS.map(p => (
+                                        <button
+                                            key={p.value}
+                                            onClick={() => setSelectedPlatform(p.value)}
+                                            className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${selectedPlatform === p.value
+                                                    ? p.color + ' ring-2 ring-offset-2 ring-offset-background ring-current scale-105'
+                                                    : 'bg-muted/50 text-muted-foreground border-border hover:bg-muted'
+                                                }`}
+                                        >
+                                            {p.label}
+                                        </button>
+                                    ))}
                                 </div>
-                                <div>
-                                    <p className="text-xs text-muted-foreground uppercase font-bold tracking-widest mb-1">Số lượng đơn</p>
-                                    <p className="font-bold text-foreground">{parsedFile.orders.length} đơn hàng</p>
-                                </div>
-                                <div>
-                                    <p className="text-xs text-muted-foreground uppercase font-bold tracking-widest mb-1">Khoảng thời gian</p>
-                                    <p className="font-bold text-foreground">
-                                        Tự động phát hiện
-                                    </p>
-                                </div>
+                            </div>
+                            {/* Shop Name */}
+                            <div>
+                                <label className="text-xs text-muted-foreground uppercase font-bold tracking-widest mb-2 block">
+                                    🏪 Tên Shop (tuỳ chọn)
+                                </label>
+                                <input
+                                    type="text"
+                                    value={shopName}
+                                    onChange={e => setShopName(e.target.value)}
+                                    placeholder='VD: Miền Bắc, Miền Nam...'
+                                    className="w-full px-4 py-2.5 bg-muted/50 border border-border rounded-xl text-foreground font-semibold placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm"
+                                />
                             </div>
                         </div>
 
@@ -263,7 +230,7 @@ export default function DataSourcesPage() {
                             </div>
                         )}
                         <p className="mt-4 text-xs text-muted-foreground font-medium">
-                            Hỗ trợ file .xls, .xlsx xuất từ Shopee Seller Center. Dung lượng tối đa 50MB.
+                            Hỗ trợ file .xls, .xlsx từ Shopee, Tiki, Lazada, TiktokShop, Thuocsi. Dung lượng tối đa 50MB.
                         </p>
                     </>
                 )}
@@ -271,8 +238,9 @@ export default function DataSourcesPage() {
 
             {/* Reports List */}
             <div className="bg-card/50 backdrop-blur-md rounded-2xl shadow-xl border border-border overflow-hidden">
-                <div className="px-6 py-4 border-b border-border bg-muted/30">
+                <div className="px-6 py-4 border-b border-border bg-muted/30 flex items-center justify-between">
                     <h2 className="font-bold text-foreground">Danh sách báo cáo đã lưu</h2>
+                    <span className="text-xs text-muted-foreground font-medium">{reports.length} báo cáo</span>
                 </div>
                 {loading ? (
                     <div className="p-12 text-center text-muted-foreground font-bold">Đang tải dữ liệu...</div>
@@ -282,7 +250,7 @@ export default function DataSourcesPage() {
                             <FileText className="w-8 h-8 text-muted-foreground" />
                         </div>
                         <p className="text-muted-foreground font-bold">Chưa có báo cáo nào</p>
-                        <p className="text-muted-foreground text-sm mt-1 font-medium">Hãy tải lên báo cáo đầu tiên của bạn để bắt đầu phân tích.</p>
+                        <p className="text-muted-foreground text-sm mt-1 font-medium">Hãy tải lên báo cáo đầu tiên để bắt đầu phân tích.</p>
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
@@ -290,6 +258,7 @@ export default function DataSourcesPage() {
                             <thead className="bg-muted/50 text-muted-foreground font-bold text-xs uppercase tracking-widest">
                                 <tr>
                                     <th className="px-6 py-4">Tên file</th>
+                                    <th className="px-6 py-4">Sàn & Shop</th>
                                     <th className="px-6 py-4">Ngày tải lên</th>
                                     <th className="px-6 py-4 text-center">Số đơn</th>
                                     <th className="px-6 py-4 text-center">Trạng thái</th>
@@ -297,58 +266,73 @@ export default function DataSourcesPage() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-border text-sm">
-                                {reports.map((report) => (
-                                    <tr key={report.id} className="hover:bg-muted/30 transition-colors group">
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center gap-3">
-                                                <div className="p-2 bg-primary/10 rounded-lg text-primary border border-primary/20">
-                                                    <FileText className="w-5 h-5" />
+                                {reports.map((report) => {
+                                    const plt = report.platform || 'shopee';
+                                    return (
+                                        <tr key={report.id} className="hover:bg-muted/30 transition-colors group">
+                                            <td className="px-6 py-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="p-2 bg-primary/10 rounded-lg text-primary border border-primary/20">
+                                                        <FileText className="w-5 h-5" />
+                                                    </div>
+                                                    <span className="font-bold text-foreground max-w-[200px] truncate" title={report.name}>{report.name}</span>
                                                 </div>
-                                                <span className="font-bold text-foreground">{report.name}</span>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 text-muted-foreground font-medium">
-                                            <div className="flex items-center gap-2">
-                                                <Calendar className="w-4 h-4 text-muted-foreground" />
-                                                {new Date(report.uploadDate).toLocaleDateString("vi-VN", {
-                                                    year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'
-                                                })}
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 text-muted-foreground text-center font-bold font-mono">
-                                            {report.orderCount ? new Intl.NumberFormat('vi-VN').format(report.orderCount) : 0}
-                                        </td>
-                                        <td className="px-6 py-4 text-center">
-                                            <button
-                                                onClick={() => handleToggle(report.id)}
-                                                className={`inline-flex items-center px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${report.isActive
-                                                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/30'
-                                                    : 'bg-muted text-muted-foreground border border-border hover:bg-muted/80'
-                                                    }`}
-                                            >
-                                                {report.isActive ? 'Đang dùng' : 'Tắt'}
-                                            </button>
-                                        </td>
-                                        <td className="px-6 py-4 text-right">
-                                            <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300">
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="flex flex-col gap-1">
+                                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase tracking-wide w-fit ${PLATFORM_BADGE_STYLE[plt]}`}>
+                                                        {PLATFORM_LABEL[plt]}
+                                                    </span>
+                                                    {report.shopName && (
+                                                        <span className="flex items-center gap-1 text-xs text-muted-foreground font-medium">
+                                                            <Store className="w-3 h-3" />{report.shopName}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 text-muted-foreground font-medium">
+                                                <div className="flex items-center gap-2">
+                                                    <Calendar className="w-4 h-4 text-muted-foreground" />
+                                                    {new Date(report.uploadDate).toLocaleDateString("vi-VN", {
+                                                        year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'
+                                                    })}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 text-muted-foreground text-center font-bold font-mono">
+                                                {report.orderCount ? new Intl.NumberFormat('vi-VN').format(report.orderCount) : 0}
+                                            </td>
+                                            <td className="px-6 py-4 text-center">
                                                 <button
                                                     onClick={() => handleToggle(report.id)}
-                                                    className="p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-xl transition-all"
-                                                    title={report.isActive ? "Tắt báo cáo" : "Bật báo cáo"}
+                                                    className={`inline-flex items-center px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${report.isActive
+                                                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/30'
+                                                        : 'bg-muted text-muted-foreground border border-border hover:bg-muted/80'
+                                                        }`}
                                                 >
-                                                    {report.isActive ? <ToggleRight className="w-5 h-5 text-emerald-400" /> : <ToggleLeft className="w-5 h-5" />}
+                                                    {report.isActive ? 'Đang dùng' : 'Tắt'}
                                                 </button>
-                                                <button
-                                                    onClick={() => handleDelete(report.id)}
-                                                    className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl transition-all"
-                                                    title="Xóa báo cáo"
-                                                >
-                                                    <Trash2 className="w-5 h-5" />
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
+                                            </td>
+                                            <td className="px-6 py-4 text-right">
+                                                <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300">
+                                                    <button
+                                                        onClick={() => handleToggle(report.id)}
+                                                        className="p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-xl transition-all"
+                                                        title={report.isActive ? "Tắt báo cáo" : "Bật báo cáo"}
+                                                    >
+                                                        {report.isActive ? <ToggleRight className="w-5 h-5 text-emerald-400" /> : <ToggleLeft className="w-5 h-5" />}
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDelete(report.id)}
+                                                        className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl transition-all"
+                                                        title="Xóa báo cáo"
+                                                    >
+                                                        <Trash2 className="w-5 h-5" />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
                             </tbody>
                         </table>
                     </div>

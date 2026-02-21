@@ -6,23 +6,23 @@ interface FilterContextType {
     startDate: string; // YYYY-MM-DD
     endDate: string;   // YYYY-MM-DD
     warehouse: string; // "All" or specific
+    channelKey: string; // "all" | "shopee_Miền Bắc" | "tiki_" etc.
     setStartDate: (date: string) => void;
     setEndDate: (date: string) => void;
     setWarehouse: (wh: string) => void;
+    setChannelKey: (key: string) => void;
 }
 
 const FilterContext = createContext<FilterContextType | undefined>(undefined);
 
 export const FilterProvider = ({ children }: { children: ReactNode }) => {
-    // Default to last 30 days? Or empty?
-    // Let's default to empty (All Time) or reasonable default.
-    // For now, let's leave empty strings as "No Filter"
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
     const [warehouse, setWarehouse] = useState('All');
+    const [channelKey, setChannelKey] = useState('all');
 
     return (
-        <FilterContext.Provider value={{ startDate, endDate, setStartDate, setEndDate, warehouse, setWarehouse }}>
+        <FilterContext.Provider value={{ startDate, endDate, setStartDate, setEndDate, warehouse, setWarehouse, channelKey, setChannelKey }}>
             {children}
         </FilterContext.Provider>
     );
