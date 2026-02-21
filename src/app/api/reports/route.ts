@@ -38,23 +38,33 @@ export async function POST(request: Request) {
 
 
 export async function PUT(request: Request) {
-    await initDatabase();
-    const body = await request.json();
-    const { id } = body;
-    if (id) {
-        await toggleReportStatus(id);
-        return NextResponse.json({ success: true });
+    try {
+        await initDatabase();
+        const body = await request.json();
+        const { id } = body;
+        if (id) {
+            await toggleReportStatus(id);
+            return NextResponse.json({ success: true });
+        }
+        return NextResponse.json({ error: 'Missing ID' }, { status: 400 });
+    } catch (error) {
+        console.error('API Error in PUT /api/reports:', error);
+        return NextResponse.json({ error: 'Failed to update report status' }, { status: 500 });
     }
-    return NextResponse.json({ error: 'Missing ID' }, { status: 400 });
 }
 
 export async function DELETE(request: Request) {
-    await initDatabase();
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
-    if (id) {
-        await deleteReport(id);
-        return NextResponse.json({ success: true });
+    try {
+        await initDatabase();
+        const { searchParams } = new URL(request.url);
+        const id = searchParams.get('id');
+        if (id) {
+            await deleteReport(id);
+            return NextResponse.json({ success: true });
+        }
+        return NextResponse.json({ error: 'Missing ID' }, { status: 400 });
+    } catch (error) {
+        console.error('API Error in DELETE /api/reports:', error);
+        return NextResponse.json({ error: 'Failed to delete report' }, { status: 500 });
     }
-    return NextResponse.json({ error: 'Missing ID' }, { status: 400 });
 }
