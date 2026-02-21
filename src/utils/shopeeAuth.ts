@@ -1,9 +1,14 @@
 import crypto from 'crypto';
 
-const PARTNER_ID = Number(process.env.SHOPEE_PARTNER_ID);
-const PARTNER_KEY = process.env.SHOPEE_PARTNER_KEY || '';
+// Sandbox credentials - hardcoded as fallback (sandbox only, safe to commit)
+const SANDBOX_PARTNER_ID = 1220489;
+const SANDBOX_PARTNER_KEY = 'shpk5a70594a584e4d6a425057654b586a6d624b504977416b69785075526d6e';
+const SANDBOX_REDIRECT_URL = 'https://shopee-dashboard-rho.vercel.app/api/auth/shopee/callback';
+
+const PARTNER_ID = Number(process.env.SHOPEE_PARTNER_ID) || SANDBOX_PARTNER_ID;
+const PARTNER_KEY = process.env.SHOPEE_PARTNER_KEY || SANDBOX_PARTNER_KEY;
 const BASE_URL = process.env.SHOPEE_BASE_URL || 'https://partner.test-stable.shopeemobile.com';
-const REDIRECT_URL = process.env.SHOPEE_REDIRECT_URL || 'https://shopee-dashboard-rho.vercel.app/api/auth/shopee/callback';
+const REDIRECT_URL = process.env.SHOPEE_REDIRECT_URL || SANDBOX_REDIRECT_URL;
 
 /** Generate HMAC-SHA256 signature */
 export function generateSignature(baseString: string): string {
@@ -13,17 +18,14 @@ export function generateSignature(baseString: string): string {
 /** Build the authorization URL to redirect shop owner to */
 export function buildAuthUrl(): string {
     const timestamp = Math.floor(Date.now() / 1000);
-    const baseString = `${PARTNER_ID}/api/v2/shop/auth_partner${timestamp}`;
+    // Shopee v2: base_string = partner_id + path + timestamp (path starts with /)
+    const path = '/api/v2/shop/auth_partner';
+    const baseString = `${PARTNER_ID}${path}${timestamp}`;
     const sign = generateSignature(baseString);
 
-    const params = new URLSearchParams({
-        partner_id: String(PARTNER_ID),
-        timestamp: String(timestamp),
-        sign,
-        redirect: REDIRECT_URL,
-    });
-
-    return `${BASE_URL}/api/v2/shop/auth_partner?${params.toString()}`;
+    // Build URL manually to avoid double-encoding of redirect URL
+    const authUrl = `${BASE_URL}${path}?partner_id=${PARTNER_ID}&timestamp=${timestamp}&sign=${sign}&redirect=${encodeURIComponent(REDIRECT_URL)}`;
+    return authUrl;
 }
 
 /** Exchange auth code for access_token */
