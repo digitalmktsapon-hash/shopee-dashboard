@@ -201,7 +201,7 @@ export default function DataSourcesPage() {
                 <div className="mt-4 p-4 bg-muted/30 rounded-xl border border-border text-xs text-muted-foreground space-y-1.5">
                     <p className="font-semibold text-foreground text-sm mb-2">Hướng dẫn thực hiện:</p>
                     <p>1️⃣ Trong Shopee Open Platform, mận <strong className="text-foreground">Authorize Test Partner</strong></p>
-                    <p>2️⃣ Điền Redirect URL: <code className="bg-muted px-1.5 py-0.5 rounded font-mono text-primary">http://localhost:3000/api/auth/shopee/callback</code></p>
+                    <p>2️⃣ Điền Redirect URL: <code className="bg-muted px-1.5 py-0.5 rounded font-mono text-primary">https://shopee-dashboard-rho.vercel.app/api/auth/shopee/callback</code></p>
                     <p>3️⃣ Bấm nút <strong className="text-orange-400">Authorize Test Partner</strong> ở trên → cửa sổ xác thực sẽ mở</p>
                     <p>4️⃣ Sau khi xác nhận → Shopee redirect về dashboard và hiển thị “Đã kết nối”</p>
                 </div>
