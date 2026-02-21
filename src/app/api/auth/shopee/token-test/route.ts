@@ -3,9 +3,10 @@ import crypto from 'crypto';
 
 const PARTNER_ID = 1220489;
 const KEY_FULL = 'shpk5a70594a584e4d6a425057654b586a6d624b504977416b69785075526d6e';
-const KEY_STRIPPED = KEY_FULL.slice(4); // remove 'shpk' prefix
-const KEY_HEX_DECODED = Buffer.from(KEY_STRIPPED, 'hex'); // treat hex as binary
-const BASE_URL = 'https://partner.test-stable.shopeemobile.com';
+const KEY_STRIPPED = KEY_FULL.slice(4);
+const KEY_HEX_DECODED = Buffer.from(KEY_STRIPPED, 'hex');
+// ✅ Correct sandbox URL (discovered from API Test Tool on Shopee Open Platform)
+const BASE_URL = 'https://openplatform.sandbox.test-stable.shopee.sg';
 const PATH = '/api/v2/auth/token/get';
 
 function sign(key: string | Buffer, baseStr: string) {
