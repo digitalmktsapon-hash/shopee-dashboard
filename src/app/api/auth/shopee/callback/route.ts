@@ -1,27 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { exchangeCodeForToken } from '../../../../../utils/shopeeAuth';
-import fs from 'fs';
-import path from 'path';
-
-const TOKEN_FILE = path.join(process.cwd(), 'src/data/shopee_tokens.json');
-
-function saveTokens(tokens: object) {
-    const dir = path.dirname(TOKEN_FILE);
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(TOKEN_FILE, JSON.stringify(tokens, null, 2));
-}
 
 /**
  * GET /api/auth/shopee/callback
  * Shopee redirects here after authorization.
- * URL may contain: ?code=ABC123&shop_id=987654
- * OR for main/test accounts: ?code=ABC123&main_account_id=111222
+ * Stores tokens in HttpOnly cookies (Vercel has a read-only filesystem).
  */
 export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const code = searchParams.get('code');
-
-    // Shopee returns shop_id for shops, main_account_id for main/test accounts
     const shopIdStr = searchParams.get('shop_id');
     const mainAccountIdStr = searchParams.get('main_account_id');
     const allParams = Object.fromEntries(searchParams);
@@ -31,31 +18,39 @@ export async function GET(req: NextRequest) {
             `<html><body style="font-family:sans-serif;padding:40px;background:#0f0f0f;color:#fff">
                 <h2 style="color:#f87171">❌ Authorization Failed</h2>
                 <p>Missing <code>code</code> in callback URL.</p>
-                <p>All params received: <pre style="background:#1a1a1a;padding:12px;border-radius:8px;color:#a3e635">${JSON.stringify(allParams, null, 2)}</pre></p>
+                <pre style="background:#1a1a1a;padding:12px;border-radius:8px;color:#a3e635">${JSON.stringify(allParams, null, 2)}</pre>
             </body></html>`,
             { status: 400, headers: { 'Content-Type': 'text/html' } }
         );
     }
 
-    // Use shop_id if available, otherwise main_account_id
     const shopId = shopIdStr ? Number(shopIdStr) : 0;
     const mainAccountId = mainAccountIdStr ? Number(mainAccountIdStr) : 0;
     const isMainAccount = !shopIdStr && !!mainAccountIdStr;
 
     try {
         const tokens = await exchangeCodeForToken(code, shopId, mainAccountId, isMainAccount);
+        const expiresAt = Math.floor(Date.now() / 1000) + (tokens.expire_in || 14400);
 
-        const tokenData = {
-            ...tokens,
-            is_main_account: isMainAccount,
-            obtained_at: Math.floor(Date.now() / 1000),
-            expires_at: Math.floor(Date.now() / 1000) + (tokens.expire_in || 14400),
-            all_params: allParams,
+        // Store tokens in HttpOnly cookies (no filesystem writes on Vercel)
+        const redirectUrl = new URL('/data-sources?shopee_connected=1', req.url);
+        const res = NextResponse.redirect(redirectUrl);
+
+        const cookieOptions = {
+            httpOnly: true,
+            secure: true,
+            sameSite: 'lax' as const,
+            maxAge: tokens.expire_in || 14400,
+            path: '/',
         };
 
-        saveTokens(tokenData);
+        res.cookies.set('shopee_access_token', tokens.access_token, cookieOptions);
+        res.cookies.set('shopee_refresh_token', tokens.refresh_token, cookieOptions);
+        res.cookies.set('shopee_shop_id', String(tokens.shop_id || shopId || mainAccountId), cookieOptions);
+        // shopee_expires_at is readable by JS (for UI to show connection status)
+        res.cookies.set('shopee_expires_at', String(expiresAt), { ...cookieOptions, httpOnly: false });
 
-        return NextResponse.redirect(new URL('/data-sources?shopee_connected=1', req.url));
+        return res;
 
     } catch (err: any) {
         return new NextResponse(
