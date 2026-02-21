@@ -3,9 +3,14 @@ import { getReports, addReport, deleteReport, toggleReportStatus, initDatabase }
 import { Platform, ShopeeOrder } from '@/utils/types';
 
 export async function GET() {
-    await initDatabase();
-    const reports = await getReports();
-    return NextResponse.json(reports);
+    try {
+        await initDatabase();
+        const reports = await getReports();
+        return NextResponse.json(reports || []);
+    } catch (error) {
+        console.error('API Error in /api/reports GET:', error);
+        return NextResponse.json([]); // Prevent JSON crash on frontend
+    }
 }
 
 export async function POST(request: Request) {

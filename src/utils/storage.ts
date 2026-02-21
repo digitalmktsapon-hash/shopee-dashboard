@@ -1,138 +1,137 @@
-import { sql } from '@vercel/postgres';
+import fs from 'fs/promises';
+import path from 'path';
 import { ReportFile, ShopeeOrder, Platform } from './types';
 
-// Initialize tables if they don't exist
-export async function initDatabase() {
-    try {
-        await sql`
-      CREATE TABLE IF NOT EXISTS reports (
-        id TEXT PRIMARY KEY,
-        name TEXT NOT NULL,
-        upload_date TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-        is_active BOOLEAN DEFAULT TRUE,
-        order_count INTEGER DEFAULT 0,
-        platform TEXT DEFAULT 'shopee',
-        shop_name TEXT DEFAULT ''
-      )
-    `;
-        await sql`
-      CREATE TABLE IF NOT EXISTS orders (
-        id SERIAL PRIMARY KEY,
-        report_id TEXT REFERENCES reports(id) ON DELETE CASCADE,
-        order_id TEXT NOT NULL,
-        data JSONB NOT NULL,
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-      )
-    `;
-        await sql`CREATE INDEX IF NOT EXISTS idx_orders_report_id ON orders(report_id)`;
-        await sql`CREATE INDEX IF NOT EXISTS idx_orders_order_id ON orders(order_id)`;
-    } catch (error) {
-        console.error('Database Initialization Error:', error);
+// Path to the local JSON database
+const DB_PATH = path.join(process.cwd(), 'src', 'data', 'db.json');
+
+// Interface for our local JSON database structure
+interface LocalDatabase {
+  reports: ReportFile[];
+  orders: Record<string, ShopeeOrder[]>; // map of report_id -> orders array
+}
+
+// Helper to read the DB
+async function readDB(): Promise<LocalDatabase> {
+  try {
+    const data = await fs.readFile(DB_PATH, 'utf-8');
+    return JSON.parse(data);
+  } catch (error: any) {
+    if (error.code === 'ENOENT') {
+      // Document doesn't exist, create default
+      const defaultDB: LocalDatabase = { reports: [], orders: {} };
+      await writeDB(defaultDB);
+      return defaultDB;
     }
+    throw error;
+  }
+}
+
+// Helper to write the DB
+async function writeDB(db: LocalDatabase): Promise<void> {
+  // Ensure directory exists
+  const dir = path.dirname(DB_PATH);
+  await fs.mkdir(dir, { recursive: true });
+
+  // Write atomically
+  await fs.writeFile(DB_PATH, JSON.stringify(db, null, 2), 'utf-8');
+}
+
+export async function initDatabase() {
+  // Just ensures the file exists
+  await readDB();
 }
 
 export const addReport = async (
-    name: string,
-    orders: ShopeeOrder[],
-    platform: Platform = 'shopee',
-    shopName: string = ''
+  name: string,
+  orders: ShopeeOrder[],
+  platform: Platform = 'shopee',
+  shopName: string = ''
 ): Promise<ReportFile> => {
-    const id = Date.now().toString();
-    const uploadDate = new Date().toISOString();
+  const id = Date.now().toString();
+  const uploadDate = new Date().toISOString();
 
-    // Insert report
-    await sql`
-    INSERT INTO reports (id, name, upload_date, is_active, order_count, platform, shop_name)
-    VALUES (${id}, ${name}, ${uploadDate}, TRUE, ${orders.length}, ${platform}, ${shopName})
-  `;
+  const db = await readDB();
 
-    // Insert orders in batches or individually (Postgres jsonb is powerful)
-    // For large reports, we might want to optimize this, but for now:
-    for (const order of orders) {
-        await sql`
-      INSERT INTO orders (report_id, order_id, data)
-      VALUES (${id}, ${order.orderId}, ${JSON.stringify(order)})
-    `;
-    }
+  const newReport: ReportFile = {
+    id,
+    name,
+    uploadDate,
+    isActive: true,
+    orders: [], // We don't store full orders in the report metadata object
+    orderCount: orders.length,
+    platform,
+    shopName,
+  };
 
-    const newReport: ReportFile = {
-        id,
-        name,
-        uploadDate,
-        isActive: true,
-        orders,
-        orderCount: orders.length,
-        platform,
-        shopName,
-    };
+  // Save report metadata
+  db.reports.push(newReport);
 
-    return { ...newReport, orders: [] };
+  // Save orders list mapping to this report id
+  db.orders[id] = orders;
+
+  // Persist to file
+  await writeDB(db);
+
+  return newReport;
 };
 
 export const getReports = async (): Promise<ReportFile[]> => {
-    const { rows } = await sql`
-    SELECT id, name, upload_date as "uploadDate", is_active as "isActive", order_count as "orderCount", platform, shop_name as "shopName"
-    FROM reports
-    ORDER BY upload_date DESC
-  `;
-    return rows as ReportFile[];
+  const db = await readDB();
+  // Sort descending by uploadDate
+  return db.reports.sort((a, b) => new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime());
 };
 
 export const getReportById = async (id: string): Promise<ReportFile | undefined> => {
-    const { rows: reportRows } = await sql`
-    SELECT id, name, upload_date as "uploadDate", is_active as "isActive", order_count as "orderCount", platform, shop_name as "shopName"
-    FROM reports
-    WHERE id = ${id}
-  `;
+  const db = await readDB();
+  const report = db.reports.find(r => r.id === id);
+  if (!report) return undefined;
 
-    if (reportRows.length === 0) return undefined;
-
-    const { rows: orderRows } = await sql`
-    SELECT data
-    FROM orders
-    WHERE report_id = ${id}
-  `;
-
-    return {
-        ...reportRows[0],
-        orders: orderRows.map(r => r.data)
-    } as ReportFile;
+  // Attach orders
+  return {
+    ...report,
+    orders: db.orders[id] || []
+  };
 };
 
 export const getAllOrders = async (platform?: string, shopName?: string): Promise<ShopeeOrder[]> => {
-    if (platform && platform !== 'all') {
-        const { rows } = await sql`
-      SELECT o.data
-      FROM orders o
-      JOIN reports r ON o.report_id = r.id
-      WHERE r.is_active = TRUE 
-      AND r.platform = ${platform}
-      AND r.shop_name = ${shopName || ''}
-    `;
-        return rows.map(r => r.data) as ShopeeOrder[];
-    }
+  const db = await readDB();
 
-    const { rows } = await sql`
-    SELECT o.data
-    FROM orders o
-    JOIN reports r ON o.report_id = r.id
-    WHERE r.is_active = TRUE
-  `;
-    return rows.map(r => r.data) as ShopeeOrder[];
+  // Filter active reports
+  let activeReports = db.reports.filter(r => r.isActive);
+
+  // Filter by platform & shopName if provided
+  if (platform && platform !== 'all') {
+    activeReports = activeReports.filter(r => r.platform === platform && r.shopName === (shopName || ''));
+  }
+
+  let allOrders: ShopeeOrder[] = [];
+  for (const report of activeReports) {
+    if (db.orders[report.id]) {
+      allOrders = allOrders.concat(db.orders[report.id]);
+    }
+  }
+
+  return allOrders;
 };
 
 export const toggleReportStatus = async (id: string) => {
-    await sql`
-    UPDATE reports
-    SET is_active = NOT is_active
-    WHERE id = ${id}
-  `;
+  const db = await readDB();
+  const report = db.reports.find(r => r.id === id);
+  if (report) {
+    report.isActive = !report.isActive;
+    await writeDB(db);
+  }
 };
 
 export const deleteReport = async (id: string) => {
-    // Cascading delete is handled by the DB foreign key constraint ON DELETE CASCADE
-    await sql`
-    DELETE FROM reports
-    WHERE id = ${id}
-  `;
+  const db = await readDB();
+
+  // Remove report
+  db.reports = db.reports.filter(r => r.id !== id);
+
+  // Remove associated orders
+  delete db.orders[id];
+
+  await writeDB(db);
 };

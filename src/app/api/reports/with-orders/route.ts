@@ -7,17 +7,22 @@ import { getReports, getReportById, initDatabase } from '@/utils/storage';
  * Used by the overview page to avoid N+1 API calls.
  */
 export async function GET() {
-    await initDatabase();
-    const reports = await getReports();
-    const activeReports = reports.filter(r => r.isActive);
+    try {
+        await initDatabase();
+        const reports = await getReports();
+        const activeReports = reports ? reports.filter(r => r.isActive) : [];
 
-    // Fetch orders for each report in parallel
-    const withOrders = await Promise.all(
-        activeReports.map(async (r) => {
-            const full = await getReportById(r.id);
-            return { ...r, orders: full?.orders || [] };
-        })
-    );
+        // Fetch orders for each report in parallel
+        const withOrders = await Promise.all(
+            activeReports.map(async (r) => {
+                const full = await getReportById(r.id);
+                return { ...r, orders: full?.orders || [] };
+            })
+        );
 
-    return NextResponse.json(withOrders);
+        return NextResponse.json(withOrders || []);
+    } catch (error) {
+        console.error('API Error in /api/reports/with-orders GET:', error);
+        return NextResponse.json([]); // Prevent JSON parse crash on the frontend
+    }
 }
