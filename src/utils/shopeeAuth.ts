@@ -30,8 +30,17 @@ export function buildAuthUrl(): string {
     return authUrl;
 }
 
-/** Exchange auth code for access_token */
-export async function exchangeCodeForToken(code: string, shopId: number): Promise<{
+/** Exchange auth code for access_token.
+ * shopId: shop ID (0 if main account)
+ * mainAccountId: main account ID (0 if shop)  
+ * isMainAccount: true when sandbox returns main_account_id instead of shop_id
+ */
+export async function exchangeCodeForToken(
+    code: string,
+    shopId: number,
+    mainAccountId: number = 0,
+    isMainAccount: boolean = false,
+): Promise<{
     access_token: string;
     refresh_token: string;
     shop_id: number;
@@ -42,11 +51,10 @@ export async function exchangeCodeForToken(code: string, shopId: number): Promis
     const baseString = `${PARTNER_ID}${path}${timestamp}`;
     const sign = generateSignature(baseString);
 
-    const body = {
-        code,
-        shop_id: shopId,
-        partner_id: PARTNER_ID,
-    };
+    // Body differs for shop vs main account
+    const body = isMainAccount
+        ? { code, main_account_id: mainAccountId, partner_id: PARTNER_ID }
+        : { code, shop_id: shopId, partner_id: PARTNER_ID };
 
     const url = `${BASE_URL}${path}?partner_id=${PARTNER_ID}&timestamp=${timestamp}&sign=${sign}`;
     const res = await fetch(url, {
@@ -68,7 +76,7 @@ export async function exchangeCodeForToken(code: string, shopId: number): Promis
     return {
         access_token: data.access_token,
         refresh_token: data.refresh_token,
-        shop_id: data.shop_id || shopId,
+        shop_id: data.shop_id || shopId || mainAccountId,
         expire_in: data.expire_in,
     };
 }
