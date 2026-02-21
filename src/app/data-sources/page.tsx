@@ -4,18 +4,29 @@ import React, { useEffect, useState } from 'react';
 import { UploadZone } from '@/components/UploadZone';
 import { parseShopeeReport } from '@/utils/parser';
 import { ReportFile, ShopeeOrder } from '@/utils/types';
-import { Trash2, ToggleLeft, ToggleRight, FileText, Calendar, Plus, AlertCircle, CheckCircle, X, Save } from 'lucide-react';
+import { Trash2, ToggleLeft, ToggleRight, FileText, Calendar, Plus, AlertCircle, CheckCircle, X, Save, Plug, RefreshCw, CheckCircle2 } from 'lucide-react';
 import { useToast } from '@/contexts/ToastContext';
+import { useSearchParams } from 'next/navigation';
 
 export default function DataSourcesPage() {
     const [reports, setReports] = useState<ReportFile[]>([]);
     const [loading, setLoading] = useState(true);
     const [uploading, setUploading] = useState(false);
+    const [connecting, setConnecting] = useState(false);
+    const [shopeeConnected, setShopeeConnected] = useState(false);
 
     // Staging state for review
     const [parsedFile, setParsedFile] = useState<{ name: string, orders: ShopeeOrder[] } | null>(null);
 
     const { showToast } = useToast();
+    const searchParams = useSearchParams();
+
+    useEffect(() => {
+        if (searchParams.get('shopee_connected') === '1') {
+            setShopeeConnected(true);
+            showToast('Kết nối Shopee thành công!', 'success');
+        }
+    }, []);
 
     const fetchReports = async () => {
         setLoading(true);
@@ -132,12 +143,67 @@ export default function DataSourcesPage() {
         }
     };
 
+    const handleConnectShopee = async () => {
+        setConnecting(true);
+        try {
+            const res = await fetch('/api/auth/shopee/authorize');
+            const { url, error } = await res.json();
+            if (error) throw new Error(error);
+            // Open in new window so user can authorize
+            window.open(url, '_blank', 'width=800,height=600,scrollbars=yes');
+        } catch (err: any) {
+            showToast(`Lỗi: ${err.message}`, 'error');
+        } finally {
+            setConnecting(false);
+        }
+    };
+
     return (
         <div className="space-y-6 max-w-5xl mx-auto">
             <div className="flex justify-between items-center">
                 <div>
                     <h1 className="text-2xl font-bold text-foreground">Quản lý Dữ liệu</h1>
-                    <p className="text-muted-foreground mt-1 font-medium">Tải lên và quản lý các file báo cáo Shopee để phân tích.</p>
+                    <p className="text-muted-foreground mt-1 font-medium">Tải lên hoặc kết nối API Shopee để đồng bộ tự động.</p>
+                </div>
+            </div>
+
+            {/* Shopee API Connect Card */}
+            <div className="bg-card/50 backdrop-blur-md p-6 rounded-2xl shadow-xl border border-border">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2.5 bg-orange-500/10 rounded-xl border border-orange-500/20">
+                            <Plug className="w-5 h-5 text-orange-400" />
+                        </div>
+                        <div>
+                            <h2 className="font-bold text-foreground">Kết nối Shopee Open Platform API</h2>
+                            <p className="text-xs text-muted-foreground mt-0.5">Partner ID: 1220489 · Sandbox Mode</p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        {shopeeConnected && (
+                            <span className="flex items-center gap-1.5 text-xs font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-full">
+                                <CheckCircle2 className="w-3.5 h-3.5" /> Đã kết nối
+                            </span>
+                        )}
+                        <button
+                            onClick={handleConnectShopee}
+                            disabled={connecting}
+                            className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-xl hover:bg-orange-600 transition-all font-bold text-sm disabled:opacity-50 shadow-lg shadow-orange-500/20 active:scale-95"
+                        >
+                            {connecting
+                                ? <><RefreshCw className="w-4 h-4 animate-spin" /> Đang tạo URL...</>
+                                : <><Plug className="w-4 h-4" /> {shopeeConnected ? 'Kết nối lại' : 'Authorize Test Partner'}</>
+                            }
+                        </button>
+                    </div>
+                </div>
+
+                <div className="mt-4 p-4 bg-muted/30 rounded-xl border border-border text-xs text-muted-foreground space-y-1.5">
+                    <p className="font-semibold text-foreground text-sm mb-2">Hướng dẫn thực hiện:</p>
+                    <p>1️⃣ Trong Shopee Open Platform, mận <strong className="text-foreground">Authorize Test Partner</strong></p>
+                    <p>2️⃣ Điền Redirect URL: <code className="bg-muted px-1.5 py-0.5 rounded font-mono text-primary">http://localhost:3000/api/auth/shopee/callback</code></p>
+                    <p>3️⃣ Bấm nút <strong className="text-orange-400">Authorize Test Partner</strong> ở trên → cửa sổ xác thực sẽ mở</p>
+                    <p>4️⃣ Sau khi xác nhận → Shopee redirect về dashboard và hiển thị “Đã kết nối”</p>
                 </div>
             </div>
 
