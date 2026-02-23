@@ -88,6 +88,7 @@ export const calculateMetrics = (orders: ShopeeOrder[]): MetricResult => {
     let totalReturnQty = 0;
     let totalNetQty = 0;
     let totalListRevenueRealized = 0; // New: Giá gốc * Qty thực giữ (Realized only)
+    let totalAffiliateFees = 0; // Tracked explicitly
 
     const productMap: Record<string, ProductPerformance> = {};
     const locationMap: Record<string, { revenue: number, count: number, profit: number }> = {};
@@ -160,58 +161,51 @@ export const calculateMetrics = (orders: ShopeeOrder[]): MetricResult => {
         // Retention Ratio (R): Ratio of value/fees we expect to keep after returns
         const retentionRatio = totalQtyBeforeReturn > 0 ? (qtyKept / totalQtyBeforeReturn) : 0;
 
-        // Order-level fees (ONLY take from first line to avoid overcounting in multi-line orders)
-        // Scall fees by retentionRatio to estimate actual non-refunded fees (Option A)
+        // User Instruction 1: Platform Fee = fixed + service + payment
         const orderFixedFee = (firstLine.fixedFee || 0) * retentionRatio;
         const orderServiceFee = (firstLine.serviceFee || 0) * retentionRatio;
         const orderPaymentFee = (firstLine.paymentFee || 0) * retentionRatio;
-        const orderReturnShippingFee = firstLine.returnShippingFee || 0; // Return shipping is a full lost cost
-        const totalOrderFees = orderFixedFee + orderServiceFee + orderPaymentFee + orderReturnShippingFee;
+        const totalOrderPlatformFees = orderFixedFee + orderServiceFee + orderPaymentFee;
 
-        let orderNetRevenue = 0;
-        let orderListRevenue = 0; // Seller Mindset: Dùng để tính Margin (Giá gốc * qty thực giữ)
-        let orderTotalOriginalRevenue = 0; // To keep track of pure original revenue for list displays
+        const orderAffiliateFee = (firstLine.affiliateCommission || 0) * retentionRatio;
+        const orderReturnShippingFee = firstLine.returnShippingFee || 0;
+        const totalOrderFees = totalOrderPlatformFees; // Used for generalized UI "Phí Sàn" mapping
+
+        let orderGrossRevenue = 0;
+        let orderMarketingCost = 0;
+        let orderCOGS = 0;
         let orderQty = 0;
         let orderReturnQty = 0;
-        let orderSubsidiesRaw = 0;
 
         // Calculate Order Totals from Lines
         orderLines.forEach(line => {
             const qty = line.quantity || 0;
             const rQty = line.returnQuantity || 0;
             const originalPrice = line.originalPrice || 0;
-            const actualSalePrice = (line.dealPrice && line.dealPrice > 0) ? line.dealPrice : originalPrice;
-            const sellerRebate = line.sellerRebate || 0;
 
             const effectiveQty = (qty - rQty) > 0 ? (qty - rQty) : 0;
-            const lineEffectiveOriginalRev = originalPrice * effectiveQty;
+            const lineGross = originalPrice * effectiveQty;
 
             orderQty += qty;
             orderReturnQty += rQty;
 
             if (!isCancelled) {
-                // Doanh thu thực nhận sản phẩm (Giá ưu đãi đã trừ Trợ giá người bán)
-                // Phản ánh tiền về cho phần số lượng thực giữ
-                const lineNetRev = (actualSalePrice * effectiveQty);
-                orderNetRevenue += lineNetRev;
-
-                orderListRevenue += lineEffectiveOriginalRev;
-                orderSubsidiesRaw += sellerRebate * (effectiveQty / (qty || 1)); // Scale rebate too
-                orderTotalOriginalRevenue += (originalPrice * qty);
+                orderGrossRevenue += lineGross;
+                orderCOGS += lineGross * 0.4;
+                // User Instruction 5: Chi phí Marketing = Seller Rebate
+                orderMarketingCost += (line.sellerRebate || 0) * (effectiveQty / (qty || 1));
             }
         });
 
-        let orderSubsidies = 0;
-
         // Add order-level discounts (ONLY once per order, scaled by Retention)
         if (!isCancelled) {
-            const rawShopVoucher = firstLine.shopVoucher || 0;
-            const effectiveShopVoucher = rawShopVoucher * retentionRatio;
-            orderNetRevenue -= effectiveShopVoucher;
-            orderSubsidies += (orderSubsidiesRaw + effectiveShopVoucher);
+            const effectiveShopVoucher = (firstLine.shopVoucher || 0) * retentionRatio;
+            orderMarketingCost += effectiveShopVoucher;
         }
 
-        const orderCOGS = orderListRevenue * 0.4; // Correctly scoped for the trends logic below
+        // User Instruction 3 & 5: Doanh thu Net trừ đi chi phí MKT và phí vận chuyển hoàn
+        const orderNetRevenue = orderGrossRevenue - orderMarketingCost - orderReturnShippingFee;
+        const orderNetProfit = orderNetRevenue - totalOrderPlatformFees - orderAffiliateFee - orderCOGS;
 
         // Global Accumulators
         totalOrders++;
@@ -219,10 +213,10 @@ export const calculateMetrics = (orders: ShopeeOrder[]): MetricResult => {
 
         // Only add to totals if valid status (not cancelled)
         if (!isCancelled) {
-            totalSurcharges += totalOrderFees;
-            totalSubsidies += orderSubsidies;
+            totalSurcharges += totalOrderPlatformFees;
+            totalSubsidies += orderMarketingCost;
             totalNetRevenue += orderNetRevenue;
-            totalListRevenue += orderListRevenue;
+            totalListRevenue += orderGrossRevenue;
             totalProductQty += orderQty;
         }
 
@@ -311,17 +305,17 @@ export const calculateMetrics = (orders: ShopeeOrder[]): MetricResult => {
 
         const daily = dailyMap[dateKey];
         if (!isCancelled) {
-            daily.revenue1 += orderListRevenue;
+            daily.revenue1 += orderGrossRevenue;
             // @ts-ignore
             daily.totalItems += orderQty;
         }
 
         if (isRealized) {
             daily.revenue2 += orderNetRevenue;
-            daily.fees += totalOrderFees;
-            daily.subsidies += orderSubsidies;
-            daily.cogs += orderCOGS; // Using the orderCOGS we calculated above
-            daily.profit += orderNetRevenue - totalOrderFees - orderCOGS;
+            daily.fees += totalOrderPlatformFees;
+            daily.subsidies += orderMarketingCost;
+            daily.cogs += orderCOGS;
+            daily.profit += orderNetProfit;
             daily.successfulOrders++;
 
             // Update Trends
@@ -329,15 +323,15 @@ export const calculateMetrics = (orders: ShopeeOrder[]): MetricResult => {
             trends[dateKey].revenue += orderNetRevenue;
             trends[dateKey].orders += 1;
             trends[dateKey].cost += orderCOGS;
-            trends[dateKey].profit += (orderNetRevenue - totalOrderFees - orderCOGS);
+            trends[dateKey].profit += orderNetProfit;
             if (!(trends[dateKey] as any).fees) (trends[dateKey] as any).fees = 0;
-            (trends[dateKey] as any).fees += totalOrderFees;
+            (trends[dateKey] as any).fees += totalOrderPlatformFees;
 
             // Location
             const province = firstLine.province || 'Khác';
             if (!locationMap[province]) locationMap[province] = { revenue: 0, count: 0, profit: 0 };
             locationMap[province].revenue += orderNetRevenue;
-            locationMap[province].profit += (orderNetRevenue - totalOrderFees - orderCOGS);
+            locationMap[province].profit += orderNetProfit;
             locationMap[province].count += 1;
 
             // Status
@@ -433,6 +427,7 @@ export const calculateMetrics = (orders: ShopeeOrder[]): MetricResult => {
     let realizedFees = 0;
     let successfulOrdersRealized = 0;
     let cancelledOrdersCount = 0;
+    let returnOrderCount = 0;
 
     // Captured Risky Orders (High Fee + Promo > 50%)
     const riskyOrderItems: ProductRiskProfile[] = [];
@@ -447,49 +442,57 @@ export const calculateMetrics = (orders: ShopeeOrder[]): MetricResult => {
             cancelledOrdersCount++;
         }
 
+        const totalReturnQtyInOrder = lines.reduce((sum, l) => sum + (l.returnQuantity || 0), 0);
+        if (returnStatus === 'Đã Chấp Thuận Yêu Cầu' || totalReturnQtyInOrder > 0) {
+            returnOrderCount++;
+        }
+
         if (status !== 'Đã hủy' && returnStatus !== 'Đã Chấp Thuận Yêu Cầu') {
             successfulOrdersRealized++;
             // Calculate Order Totals
-            let orderNet = 0;
-            let orderEffectiveList = 0; // (Price * Qty_keeping)
+            let orderGrossRev = 0;
             let orderCogs = 0;
-            let orderSellerSubsidies = 0;
+            let orderMarketingCost = 0;
             let orderShopeeSubsidies = 0;
-            // 2. Trừ phí sàn (Cố định, Dịch vụ, Thanh toán) và 3. Phí vận chuyển trả hàng
-            // ONLY take from first line for order-level fields
-            let orderFee = (first.fixedFee || 0) + (first.serviceFee || 0) + (first.paymentFee || 0) + (first.returnShippingFee || 0);
+
+            const totalQtyBeforeReturn = lines.reduce((sum, l) => sum + (l.quantity || 0), 0);
+            const qtyKept = (totalQtyBeforeReturn - totalReturnQtyInOrder) > 0 ? (totalQtyBeforeReturn - totalReturnQtyInOrder) : 0;
+            const retRatio = totalQtyBeforeReturn > 0 ? (qtyKept / totalQtyBeforeReturn) : 0;
+
+            let orderPlatformFee = ((first.fixedFee || 0) + (first.serviceFee || 0) + (first.paymentFee || 0)) * retRatio;
+            let orderAffiliateFee = (first.affiliateCommission || 0) * retRatio;
+            let orderReturnShippingFee = first.returnShippingFee || 0;
 
             lines.forEach(line => {
                 const qty = line.quantity || 0;
                 const rQty = line.returnQuantity || 0;
                 const originalPrice = line.originalPrice || 0;
-                const actualSalePrice = (line.dealPrice && line.dealPrice > 0) ? line.dealPrice : originalPrice;
-                const sellerRebate = line.sellerRebate || 0;
-
-                // 1. Doanh thu thực nhận sản phẩm (Giá ưu đãi đã trừ Trợ giá)
-                const lineNetRev = (actualSalePrice * qty);
-                orderNet += lineNetRev;
 
                 const effectiveQty = (qty - rQty) > 0 ? (qty - rQty) : 0;
                 const lineLosslessRev = (originalPrice * effectiveQty);
-                orderEffectiveList += lineLosslessRev;
 
-                // 4. Giá vốn = Giá gốc * Qty_thực_giữ * 40%
+                orderGrossRev += lineLosslessRev;
                 orderCogs += lineLosslessRev * 0.4;
+                orderMarketingCost += (line.sellerRebate || 0) * (effectiveQty / (qty || 1));
 
-                orderSellerSubsidies += sellerRebate;
                 orderShopeeSubsidies += (line.shopeeRebate || 0);
             });
 
-            // Subtract order-level Voucher (ONLY once)
-            const orderShopVoucher = first.shopVoucher || 0;
-            orderNet -= orderShopVoucher;
-            orderSellerSubsidies += orderShopVoucher;
+            const orderShopVoucher = (first.shopVoucher || 0) * retRatio;
+            orderMarketingCost += orderShopVoucher;
+
+            let orderNet = orderGrossRev - orderMarketingCost - orderReturnShippingFee;
 
             realizedRevenue += orderNet;
             realizedCOGS += orderCogs;
-            realizedFees += orderFee;
-            totalListRevenueRealized += orderEffectiveList;
+            realizedFees += orderPlatformFee;
+            totalAffiliateFees += orderAffiliateFee;
+            totalListRevenueRealized += orderGrossRev;
+
+            // Extract for Risk
+            const orderEffectiveList = orderGrossRev;
+            const orderFee = orderPlatformFee + orderReturnShippingFee; // Legacy compat for Risk Section
+            const orderSellerSubsidies = orderMarketingCost;
 
             // Aggregated Fees Analysis
             feeMap['Phí cố định'] += (first.fixedFee || 0);
@@ -881,9 +884,10 @@ export const calculateMetrics = (orders: ShopeeOrder[]): MetricResult => {
     const avgControlRatio = riskTotalOrders > 0 ? riskSumControlRatio / riskTotalOrders : 0;
 
     // 4. Finalize
-    const totalGrossProfit = realizedRevenue - realizedCOGS - realizedFees;
+    const cancelRateVal = totalOrders > 0 ? (cancelledOrdersCount / totalOrders) * 100 : 0;
+    const orderReturnRateVal = totalOrders > 0 ? (returnOrderCount / totalOrders) * 100 : 0;
+    const totalGrossProfit = realizedRevenue - realizedCOGS - realizedFees - totalAffiliateFees;
     const netMargin = realizedRevenue > 0 ? (totalGrossProfit / realizedRevenue) * 100 : 0;
-    const orderReturnRateVal = totalOrders > 0 ? (totalReturnQty / totalProductQty) * 100 : 0;
 
     // Risk Profile Generation (Products)
     let riskProfile = generateRiskProfile(
@@ -935,9 +939,10 @@ export const calculateMetrics = (orders: ShopeeOrder[]): MetricResult => {
         totalProductQty,
         totalReturnQty,
         successfulOrders: totalSuccessfulOrders,
-        returnOrderCount: 0, // Need calc
-        returnRate: 0,
-        orderReturnRate: 0,
+        returnOrderCount: returnOrderCount,
+        returnRate: orderReturnRateVal,
+        orderReturnRate: orderReturnRateVal,
+        cancelRate: cancelRateVal,
 
         revenueTrend: Object.values(trends).sort((a: any, b: any) => a.date.localeCompare(b.date)).map((t: any) => ({
             date: t.date,

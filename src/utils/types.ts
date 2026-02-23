@@ -391,6 +391,7 @@ export interface MetricResult {
   avgOrderValue: number;
   profitPerOrder: number;
   orderReturnRate: number;
+  cancelRate: number; // Added
   daysWithNegativeProfit: number;
 
   // Legacy / Compatibility fields
