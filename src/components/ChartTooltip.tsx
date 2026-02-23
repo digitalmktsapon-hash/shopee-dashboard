@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import { formatDateVN } from '../utils/format';
 
 interface ChartTooltipProps {
     active?: boolean;
@@ -12,9 +12,10 @@ interface ChartTooltipProps {
 
 export const ChartTooltip: React.FC<ChartTooltipProps> = ({ active, payload, label, formatter, hideLabel }) => {
     if (active && payload && payload.length) {
+        const formattedLabel = label ? formatDateVN(label) : label;
         return (
             <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-2xl text-sm z-50 ring-1 ring-slate-900/5">
-                {!hideLabel && <p className="font-bold text-slate-900 mb-2 border-b border-slate-100 pb-1">{label}</p>}
+                {!hideLabel && <p className="font-bold text-slate-900 mb-2 border-b border-slate-100 pb-1">{formattedLabel}</p>}
                 {payload.map((entry: any, index: number) => (
                     <div key={index} className="flex items-center justify-between gap-4 mb-1.5 last:mb-0">
                         <div className="flex items-center gap-2">

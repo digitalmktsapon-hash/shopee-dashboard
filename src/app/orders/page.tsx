@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useEffect, useState } from 'react';
 import { calculateMetrics, filterOrders } from '../../utils/calculator';
@@ -11,12 +11,14 @@ import {
     ResponsiveContainer,
     BarChart,
     Bar,
+    LineChart,
+    Line,
     XAxis,
     YAxis,
     CartesianGrid,
     Legend
 } from 'recharts';
-import { ShoppingCart, XCircle, RotateCcw, Truck, CheckCircle, AlertTriangle } from 'lucide-react';
+import { ShoppingCart, XCircle, RotateCcw, Truck, CheckCircle, AlertTriangle, TrendingUp } from 'lucide-react';
 import { useFilter } from '../../contexts/FilterContext';
 import { PageSkeleton } from '../../components/Skeleton';
 import { formatNumber, formatVND } from '../../utils/format';
@@ -34,7 +36,9 @@ export default function OrdersPage() {
         const fetchData = async () => {
             try {
                 setLoading(true);
-                const res = await fetch('/api/orders?channel=' + channelKey);
+                const queryParams = new URLSearchParams();
+                if (channelKey && channelKey !== 'all') queryParams.append('channels', channelKey);
+                const res = await fetch('/api/orders?' + queryParams.toString());
                 const orders: ShopeeOrder[] = await res.json();
                 const filtered = filterOrders(orders, startDate, endDate, warehouse);
 
@@ -77,6 +81,8 @@ export default function OrdersPage() {
     const cancelRate = totalOrders > 0 ? (totalCancels / totalOrders) * 100 : 0;
     const returnRate = totalOrders > 0 ? (totalReturns / totalOrders) * 100 : 0;
     const successRate = 100 - cancelRate - returnRate;
+
+    const trendData = [...(metrics.revenueTrend || [])].sort((a, b) => a.date.localeCompare(b.date));
 
     return (
         <div className="space-y-6 max-w-[1600px] mx-auto">
@@ -143,6 +149,47 @@ export default function OrdersPage() {
                 </div>
             </div>
 
+            {/* Daily Order Trend */}
+            <div className="bg-card/50 backdrop-blur-md p-6 rounded-2xl border border-border shadow-lg">
+                <h3 className="text-base font-bold text-foreground mb-6 flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 text-primary" />
+                    Xu Hướng Đặt Hàng Theo Ngày (Daily Order Trend)
+                </h3>
+                <div className="h-[300px] w-full">
+                    {trendData.length > 0 ? (
+                        <ResponsiveContainer width="100%" height="100%">
+                            <LineChart data={trendData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
+                                <XAxis
+                                    dataKey="date"
+                                    tickFormatter={(val) => {
+                                        const d = new Date(val);
+                                        return `${d.getDate()}/${d.getMonth() + 1}`;
+                                    }}
+                                    stroke="var(--muted-foreground)"
+                                    fontSize={12}
+                                    tickLine={false}
+                                    axisLine={false}
+                                />
+                                <YAxis stroke="var(--muted-foreground)" fontSize={12} tickLine={false} axisLine={false} />
+                                <Tooltip content={(props: any) => <ChartTooltip {...props} />} />
+                                <Line
+                                    type="monotone"
+                                    dataKey="orders"
+                                    name="Số lượng đơn (Orders)"
+                                    stroke="#0ea5e9"
+                                    strokeWidth={3}
+                                    dot={{ r: 4, fill: '#0ea5e9', strokeWidth: 2, stroke: 'var(--background)' }}
+                                    activeDot={{ r: 6, strokeWidth: 0 }}
+                                />
+                            </LineChart>
+                        </ResponsiveContainer>
+                    ) : (
+                        <div className="flex h-full items-center justify-center text-muted-foreground text-sm">Chưa có dữ liệu</div>
+                    )}
+                </div>
+            </div>
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Cancel Reason Analysis */}
                 <div className="bg-card/50 backdrop-blur-md p-6 rounded-2xl border border-border shadow-lg">
@@ -168,7 +215,7 @@ export default function OrdersPage() {
                                                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                             ))}
                                         </Pie>
-                                        <Tooltip content={(props: any) => <ChartTooltip {...props} />} />
+                                        <Tooltip content={(props: any) => <ChartTooltip {...props} hideLabel />} />
                                     </PieChart>
                                 </ResponsiveContainer>
                             ) : (

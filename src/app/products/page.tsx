@@ -113,7 +113,7 @@ export default function ProductsPage() {
     ];
 
     return (
-        <div className="space-y-6 max-w-[1700px] mx-auto">
+        <div className="space-y-6 max-w-[1600px] mx-auto">
             {/* Header */}
             <div>
                 <h1 className="text-2xl font-bold tracking-tight text-foreground">Phân Tích Sản Phẩm</h1>
@@ -197,7 +197,7 @@ export default function ProductsPage() {
                                         <tr key={i} className="hover:bg-muted/30 transition-colors">
                                             <td className="px-4 py-3 sticky left-0 bg-background/80 backdrop-blur-sm hover:bg-muted/30 transition-colors border-r border-border/50">
                                                 <div className="font-semibold text-foreground truncate max-w-[260px]" title={p.name}>{p.name}</div>
-                                                <div className="text-xs text-muted-foreground font-mono">{p.sku}</div>
+                                                <div className="text-xs text-muted-foreground">{p.sku}</div>
                                             </td>
                                             <td className="px-4 py-3 text-center">
                                                 <span className={clsx('px-2 py-0.5 rounded text-[10px] font-bold border',
@@ -206,19 +206,19 @@ export default function ProductsPage() {
                                                             'bg-muted/50 text-muted-foreground border-border'
                                                 )}>{p.skuType}</span>
                                             </td>
-                                            <td className="px-4 py-3 text-right font-mono text-foreground">{formatNumber(p.quantity)}</td>
-                                            <td className="px-4 py-3 text-right font-mono text-muted-foreground">{formatVND(p.listPrice)}</td>
-                                            <td className="px-4 py-3 text-right font-mono font-medium text-foreground">{formatVND(p.allocatedRevenue)}</td>
-                                            <td className="px-4 py-3 text-right font-mono text-muted-foreground">{formatVND(p.cogs)}</td>
-                                            <td className="px-4 py-3 text-right font-mono text-orange-400">{formatVND(p.fees)}</td>
-                                            <td className="px-4 py-3 text-right font-mono text-emerald-400">{formatVND(p.subsidy)}</td>
-                                            <td className={clsx('px-4 py-3 text-right font-mono font-bold', p.profit >= 0 ? 'text-emerald-400' : 'text-rose-400')}>
+                                            <td className="px-4 py-3 text-right text-foreground">{formatNumber(p.quantity)}</td>
+                                            <td className="px-4 py-3 text-right text-muted-foreground">{formatVND(p.listPrice)}</td>
+                                            <td className="px-4 py-3 text-right font-medium text-foreground">{formatVND(p.allocatedRevenue)}</td>
+                                            <td className="px-4 py-3 text-right text-muted-foreground">{formatVND(p.cogs)}</td>
+                                            <td className="px-4 py-3 text-right text-orange-400">{formatVND(p.fees)}</td>
+                                            <td className="px-4 py-3 text-right text-emerald-400">{formatVND(p.subsidy)}</td>
+                                            <td className={clsx('px-4 py-3 text-right font-bold', p.profit >= 0 ? 'text-emerald-400' : 'text-rose-400')}>
                                                 {formatVND(p.profit)}
                                             </td>
-                                            <td className={clsx('px-4 py-3 text-right font-mono font-bold', p.margin >= 25 ? 'text-emerald-400' : p.margin >= 15 ? 'text-yellow-400' : 'text-rose-400')}>
+                                            <td className={clsx('px-4 py-3 text-right font-bold', p.margin >= 25 ? 'text-emerald-400' : p.margin >= 15 ? 'text-yellow-400' : 'text-rose-400')}>
                                                 {p.margin.toFixed(1)}%
                                             </td>
-                                            <td className={clsx('px-4 py-3 text-right font-mono', p.returnRate >= 10 ? 'text-rose-400' : 'text-muted-foreground')}>
+                                            <td className={clsx('px-4 py-3 text-right', p.returnRate >= 10 ? 'text-rose-400' : 'text-muted-foreground')}>
                                                 {p.returnRate.toFixed(1)}%
                                             </td>
                                             <td className="px-4 py-3 text-center">
@@ -307,21 +307,21 @@ export default function ProductsPage() {
                                     {orderFiltered.length > 0 ? orderFiltered.map((o, i) => (
                                         <tr key={i} className={clsx('hover:bg-muted/30 transition-colors', o.guardrailBreached && 'bg-rose-500/5')}>
                                             <td className="px-4 py-3 sticky left-0 bg-background/80 backdrop-blur-sm hover:bg-muted/30 border-r border-border/50">
-                                                <div className="font-mono text-xs text-foreground">{o.orderId}</div>
+                                                <div className="text-xs text-foreground">{o.orderId}</div>
                                                 <div className="text-[10px] text-muted-foreground">{o.orderDate?.split(' ')[0]} · {o.lineCount} dòng</div>
                                             </td>
-                                            <td className="px-4 py-3 text-right font-mono text-muted-foreground">{formatVND(o.totalListPrice)}</td>
-                                            <td className="px-4 py-3 text-right font-mono font-medium text-foreground">{formatVND(o.totalActualPrice)}</td>
-                                            <td className={clsx('px-4 py-3 text-right font-mono font-bold', o.guardrailBreached ? 'text-rose-400' : 'text-muted-foreground')}>
+                                            <td className="px-4 py-3 text-right text-muted-foreground">{formatVND(o.totalListPrice)}</td>
+                                            <td className="px-4 py-3 text-right font-medium text-foreground">{formatVND(o.totalActualPrice)}</td>
+                                            <td className={clsx('px-4 py-3 text-right font-bold', o.guardrailBreached ? 'text-rose-400' : 'text-muted-foreground')}>
                                                 {o.discountPct.toFixed(1)}%
                                             </td>
-                                            <td className="px-4 py-3 text-right font-mono text-muted-foreground">{formatVND(o.totalCogs)}</td>
-                                            <td className="px-4 py-3 text-right font-mono text-orange-400">{formatVND(o.totalFees)}</td>
-                                            <td className="px-4 py-3 text-right font-mono text-emerald-400">{formatVND(o.totalSubsidy)}</td>
-                                            <td className={clsx('px-4 py-3 text-right font-mono font-bold', o.orderProfit >= 0 ? 'text-emerald-400' : 'text-rose-400')}>
+                                            <td className="px-4 py-3 text-right text-muted-foreground">{formatVND(o.totalCogs)}</td>
+                                            <td className="px-4 py-3 text-right text-orange-400">{formatVND(o.totalFees)}</td>
+                                            <td className="px-4 py-3 text-right text-emerald-400">{formatVND(o.totalSubsidy)}</td>
+                                            <td className={clsx('px-4 py-3 text-right font-bold', o.orderProfit >= 0 ? 'text-emerald-400' : 'text-rose-400')}>
                                                 {formatVND(o.orderProfit)}
                                             </td>
-                                            <td className={clsx('px-4 py-3 text-right font-mono font-bold', o.orderMargin >= 15 ? 'text-emerald-400' : o.orderMargin >= 0 ? 'text-yellow-400' : 'text-rose-400')}>
+                                            <td className={clsx('px-4 py-3 text-right font-bold', o.orderMargin >= 15 ? 'text-emerald-400' : o.orderMargin >= 0 ? 'text-yellow-400' : 'text-rose-400')}>
                                                 {o.orderMargin.toFixed(1)}%
                                             </td>
                                             <td className="px-4 py-3 text-center">
@@ -388,12 +388,12 @@ export default function ProductsPage() {
                                 <tbody className="divide-y divide-border">
                                     {portfolio.pareto.map((item: ParetoItem, i: number) => (
                                         <tr key={i} className={clsx('hover:bg-muted/30 transition-colors', item.isTop20 && 'bg-blue-500/5')}>
-                                            <td className="px-4 py-3 text-muted-foreground font-mono text-xs">{i + 1}</td>
+                                            <td className="px-4 py-3 text-muted-foreground text-xs">{i + 1}</td>
                                             <td className="px-4 py-3">
                                                 <div className="font-medium text-foreground truncate max-w-[300px]">{item.name}</div>
-                                                <div className="text-xs text-muted-foreground font-mono">{item.sku}</div>
+                                                <div className="text-xs text-muted-foreground">{item.sku}</div>
                                             </td>
-                                            <td className={clsx('px-4 py-3 text-right font-mono font-bold', item.profit >= 0 ? 'text-emerald-400' : 'text-rose-400')}>
+                                            <td className={clsx('px-4 py-3 text-right font-bold', item.profit >= 0 ? 'text-emerald-400' : 'text-rose-400')}>
                                                 {formatVND(item.profit)}
                                             </td>
                                             <td className="px-4 py-3 text-right">
@@ -401,7 +401,7 @@ export default function ProductsPage() {
                                                     <div className="w-24 h-1.5 bg-muted rounded-full overflow-hidden">
                                                         <div className="h-full bg-blue-500 rounded-full" style={{ width: `${Math.min(100, item.cumProfitPct)}%` }} />
                                                     </div>
-                                                    <span className="font-mono text-xs text-muted-foreground w-12 text-right">{item.cumProfitPct.toFixed(1)}%</span>
+                                                    <span className="text-xs text-muted-foreground w-12 text-right">{item.cumProfitPct.toFixed(1)}%</span>
                                                 </div>
                                             </td>
                                             <td className="px-4 py-3 text-center">

@@ -211,3 +211,118 @@ export const parseShopeeReport = async (file: File): Promise<{ data: ShopeeOrder
         reader.readAsBinaryString(file);
     });
 };
+export const parseReportAutoDetect = async (file: File): Promise<{ data: ShopeeOrder[], headers: string[], detectedPlatform: Platform }> => {
+    const fileName = file.name.toLowerCase();
+    if (fileName.includes('thuocsi')) {
+        const res = await parseThuocsiReport(file);
+        return { ...res, detectedPlatform: 'thuocsi' as Platform };
+    }
+    const res = await parseShopeeReport(file);
+    return { ...res, detectedPlatform: 'shopee' as Platform };
+};
+
+export const parseThuocsiReport = async (file: File): Promise<{ data: ShopeeOrder[], headers: string[] }> => {
+    // Advanced parser for Thuocsi format (2 sheets)
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const data = e.target?.result;
+                const workbook = XLSX.read(data, { type: 'binary' });
+
+                // Thuocsi typically has 'Thông tin đơn hàng' and 'Sản phẩm đã đặt'
+                const sheetNames = workbook.SheetNames;
+
+                // Fallback to first sheet if names don't match exactly
+                const orderSheetName = sheetNames.find(n => n.includes('Thông tin đơn hàng')) || sheetNames[0];
+                const productSheetName = sheetNames.find(n => n.includes('Sản phẩm đã đặt')) || sheetNames[1] || sheetNames[0];
+
+                const orderSheet = workbook.Sheets[orderSheetName];
+                const productSheet = workbook.Sheets[productSheetName];
+
+                const orderAray = XLSX.utils.sheet_to_json(orderSheet) as any[];
+                const productArray = XLSX.utils.sheet_to_json(productSheet) as any[];
+
+                // Map Order info by ID for fast lookup
+                const orderInfoMap: Record<string, any> = {};
+                orderAray.forEach(row => {
+                    const id = String(row['ID đơn hàng'] || row['Mã đơn hàng'] || row['Order ID'] || row['SO'] || '');
+                    if (id) {
+                        orderInfoMap[id] = row;
+                    }
+                });
+
+                const orders: ShopeeOrder[] = [];
+
+                // Loop through Products (lines) and enrich with Order Info
+                productArray.forEach(row => {
+                    const id = String(row['ID đơn hàng'] || row['Mã đơn hàng'] || row['Order ID'] || '');
+                    const orderInfo = orderInfoMap[id] || {};
+
+                    // Parse Numbers carefully
+                    const qty = Number(row['SL đặt'] || row['Số lượng'] || 0);
+                    const dealPrice = Number(row['Giá bán sau KM'] || row['Giá bán'] || row['Giá ưu đãi'] || 0);
+                    const originalPrice = Number(row['Giá listing'] || row['Giá niêm yết'] || row['Giá gốc'] || dealPrice);
+
+                    const buyerPaidText = String(orderInfo['Tổng tiền'] || orderInfo['Tổng giá trị đơn hàng (VND)'] || '0').replace(/[,.]/g, '');
+                    const buyerPaid = parseFloat(buyerPaidText) || 0;
+
+                    orders.push({
+                        orderId: id,
+                        productName: String(row['Sản phẩm'] || row['Tên sản phẩm'] || ''),
+                        quantity: qty,
+                        originalPrice: originalPrice,
+                        dealPrice: dealPrice,
+                        productSku: String(row['SKU'] || row['Mã sản phẩm'] || row['ID sản phẩm'] || ''),
+
+                        // Order details inherited from Sheet 1
+                        orderDate: String(orderInfo['Ngày đặt hàng'] || orderInfo['Ngày tạo'] || ''),
+                        shipTime: String(orderInfo['Ngày giao'] || orderInfo['Ngày gửi hàng'] || ''),
+                        completeDate: String(orderInfo['Ngày hoàn tất'] || orderInfo['Thời gian hoàn thành đơn hàng'] || ''),
+                        orderStatus: String(orderInfo['Trạng thái đơn hàng'] || 'Hoàn thành'),
+                        returnStatus: String(orderInfo['Trạng thái trả hàng'] || orderInfo['Trạng thái Trả hàng/Hoàn tiền'] || ''),
+
+                        buyerUsername: String(orderInfo['Tên khách hàng'] || orderInfo['ID Khách hàng'] || orderInfo['Người Mua'] || ''),
+                        province: String(orderInfo['Tỉnh/Thành phố'] || ''),
+                        district: String(orderInfo['Quận/Huyện'] || ''),
+                        ward: String(orderInfo['Phường/Xã'] || ''),
+
+                        buyerPaid: buyerPaid,
+                        orderTotalAmount: buyerPaid,
+
+                        // Subsidies / Vouchers mapping
+                        shopVoucher: Number(orderInfo['Giá trị voucher'] || 0),
+                        returnQuantity: Number(row['SL trả'] || 0),
+
+                        // Fake tracking for display
+                        trackingNumber: id ? `TS-${id}` : '',
+                        deliveryCarrier: 'Thuocsi Logistics',
+                        warehouseName: String(orderInfo['Trạng thái đối soát'] || '')
+                    } as ShopeeOrder);
+                });
+
+                // If for some reason product sheet is empty or we couldn't parse products, fallback to order sheet
+                if (orders.length === 0 && orderAray.length > 0) {
+                    orderAray.forEach(row => {
+                        const id = String(row['ID đơn hàng'] || row['Mã đơn hàng'] || row['SO'] || '');
+                        orders.push({
+                            orderId: id,
+                            productName: 'Sản phẩm Thuocsi',
+                            quantity: Number(row['Số lượng mặt hàng'] || row['Số lượng sản phẩm'] || 1),
+                            originalPrice: Number(String(row['Tổng tiền'] || '0').replace(/[,.]/g, '')),
+                            dealPrice: Number(String(row['Tổng tiền'] || '0').replace(/[,.]/g, '')),
+                            orderDate: String(row['Ngày đặt hàng'] || ''),
+                            orderStatus: String(row['Trạng thái đơn hàng'] || 'Hoàn thành'),
+                            buyerUsername: String(row['Tên khách hàng'] || '')
+                        } as ShopeeOrder);
+                    });
+                }
+
+                resolve({ data: orders, headers: Object.keys(orderAray[0] || {}) });
+            } catch (err) { reject(err); }
+        };
+        reader.readAsBinaryString(file);
+    });
+};
+
+import { Platform } from './types';

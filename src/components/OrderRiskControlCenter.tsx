@@ -386,26 +386,26 @@ export const OrderRiskControlCenter: React.FC<OrderRiskControlCenterProps> = ({ 
                         <tbody className="divide-y divide-border">
                             {paginatedData.map((order, idx) => (
                                 <tr key={idx} className="hover:bg-muted/50 transition-colors">
-                                    <td className="p-3 font-mono text-xs">
+                                    <td className="p-3 text-xs">
                                         <div className="font-bold text-blue-600 dark:text-blue-400">{order.orderId}</div>
                                         <div className="text-muted-foreground text-[10px]">{order.trackingNumber}</div>
                                     </td>
-                                    <td className="p-3 text-right font-mono text-card-foreground">
+                                    <td className="p-3 text-right text-card-foreground">
                                         {formatVND(order.revenue)}
                                     </td>
                                     <td className="p-3 text-right">
-                                        <div className={clsx("font-mono font-bold", order.structuralMargin < 0 ? "text-red-500" : "text-card-foreground")}>
+                                        <div className={clsx("font-bold", order.structuralMargin < 0 ? "text-red-500" : "text-card-foreground")}>
                                             {formatVND(order.structuralMargin)}
                                         </div>
                                         <div className="text-[10px] text-muted-foreground">
                                             {order.revenue > 0 ? ((order.structuralMargin / order.revenue) * 100).toFixed(1) : 0}%
                                         </div>
                                     </td>
-                                    <td className={clsx("p-3 text-right font-bold font-mono", order.netProfit < 0 ? "text-red-600 bg-red-50/50 dark:text-red-400 dark:bg-red-900/20" : "text-emerald-600 dark:text-emerald-400")}>
+                                    <td className={clsx("p-3 text-right font-bold", order.netProfit < 0 ? "text-red-600 bg-red-50/50 dark:text-red-400 dark:bg-red-900/20" : "text-emerald-600 dark:text-emerald-400")}>
                                         {formatVND(order.netProfit)}
                                     </td>
                                     <td className="p-3 text-right">
-                                        <div className="font-mono text-rose-500 font-bold">
+                                        <div className="text-rose-500 font-bold">
                                             {formatVND(order.returnImpactValue)}
                                         </div>
                                         {order.returnImpactValue > 0 && (
@@ -419,7 +419,7 @@ export const OrderRiskControlCenter: React.FC<OrderRiskControlCenterProps> = ({ 
                                         {order.rootCause !== 'N/A' && (
                                             <span className="flex flex-col items-start gap-0.5">
                                                 <span className="font-bold text-xs text-card-foreground">{ROOT_CAUSE_LABELS[order.rootCause]}</span>
-                                                <span className="text-[10px] text-muted-foreground font-mono">
+                                                <span className="text-[10px] text-muted-foreground">
                                                     Tỷ trọng (Weight) {order.rootCauseValue.toFixed(1)}%
                                                 </span>
                                             </span>

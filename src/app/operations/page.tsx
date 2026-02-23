@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useEffect, useState } from 'react';
 import { calculateMetrics, filterOrders } from '../../utils/calculator';
@@ -191,7 +191,55 @@ export default function OperationsPage() {
                 </div>
             </div>
 
+            {/* Daily Shipping Trends */}
+            <div className="bg-card/50 backdrop-blur-md p-6 rounded-2xl border border-border shadow-lg mt-6">
+                <h3 className="text-base font-bold text-foreground mb-6 flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-purple-500" />
+                    Xu Hướng Thời Gian Giao Hàng Từng Ngày
+                </h3>
+                <div className="h-[300px] w-full">
+                    {metrics.dailyShippingMetrics && metrics.dailyShippingMetrics.length > 0 ? (
+                        <ResponsiveContainer width="100%" height="100%">
+                            <LineChart
+                                data={metrics.dailyShippingMetrics}
+                                margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                            >
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
+                                <XAxis
+                                    dataKey="date"
+                                    tickFormatter={(v) => new Date(v).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })}
+                                    tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }}
+                                    axisLine={false}
+                                    tickLine={false}
+                                />
+                                <YAxis
+                                    tick={{ fill: 'var(--muted-foreground)', fontSize: 11 }}
+                                    axisLine={false}
+                                    tickLine={false}
+                                />
+                                <Tooltip
+                                    content={(props: any) => <ChartTooltip {...props} formatter={(val: number) => val.toFixed(1) + ' ngày'} />}
+                                />
+                                <Legend />
+                                <Line
+                                    type="monotone"
+                                    dataKey="avgShipTime"
+                                    name="Thời gian giao (ngày)"
+                                    stroke="#a855f7"
+                                    strokeWidth={3}
+                                    dot={{ r: 4, fill: '#a855f7' }}
+                                    activeDot={{ r: 6 }}
+                                />
+                            </LineChart>
+                        </ResponsiveContainer>
+                    ) : (
+                        <div className="flex h-full items-center justify-center text-muted-foreground text-sm">Không có dữ liệu thời gian toàn trình từng ngày</div>
+                    )}
+                </div>
+            </div>
+
             {/* Detailed List */}
+
             <div className="bg-card/50 backdrop-blur-md rounded-2xl border border-border shadow-xl overflow-hidden">
                 <div className="px-6 py-4 border-b border-border">
                     <h3 className="font-bold text-foreground">Chi tiết hiệu quả Đơn vị vận chuyển</h3>
@@ -210,7 +258,7 @@ export default function OperationsPage() {
                             {opData.map((item, idx) => (
                                 <tr key={idx} className="hover:bg-muted/30 transition-colors">
                                     <td className="px-6 py-4 text-sm text-foreground font-medium">{item.carrier}</td>
-                                    <td className="px-6 py-4 text-sm text-muted-foreground text-right font-mono">{item.orderCount}</td>
+                                    <td className="px-6 py-4 text-sm text-muted-foreground text-right">{item.orderCount}</td>
                                     <td className="px-6 py-4 text-sm text-foreground text-right font-bold">
                                         {item.avgShipTime.toFixed(1)} ngày
                                     </td>
@@ -229,6 +277,6 @@ export default function OperationsPage() {
                     </table>
                 </div>
             </div>
-        </div>
+        </div >
     );
 }

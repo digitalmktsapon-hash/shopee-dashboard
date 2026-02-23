@@ -92,8 +92,8 @@ export const Header = () => {
         <header className="px-8 py-4 flex items-center justify-between bg-background/50 backdrop-blur-md sticky top-0 z-20 border-b border-border/50 transition-colors duration-300">
             {/* Left Title */}
             <div className="flex-1 flex items-center">
-                <span className="text-xl font-black text-primary uppercase" style={{ letterSpacing: '0.12em' }}>
-                    {user?.title || 'Quản trị kênh TMĐT đa nền tảng'}
+                <span className="text-xl font-black text-[#06b6d4] uppercase tracking-[0.05em] drop-shadow-[0_0_8px_rgba(6,182,212,0.3)]">
+                    QUẢN TRỊ KÊNH TMĐT ĐA NỀN TẢNG
                 </span>
             </div>
 

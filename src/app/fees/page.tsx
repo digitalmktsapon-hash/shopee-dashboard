@@ -297,7 +297,7 @@ export default function FeesPage() {
                                 return (
                                     <tr key={idx} className="hover:bg-muted/30 transition-colors">
                                         <td className="px-6 py-4 text-sm text-foreground font-medium">{item.type}</td>
-                                        <td className="px-6 py-4 text-sm text-foreground text-right font-bold font-mono">
+                                        <td className="px-6 py-4 text-sm text-foreground text-right font-bold">
                                             {formatVND(item.value)}
                                         </td>
                                         <td className="px-6 py-4 text-sm text-muted-foreground text-right font-medium">

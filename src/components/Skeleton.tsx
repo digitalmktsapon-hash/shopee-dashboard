@@ -6,7 +6,7 @@ export const LoadingSkeleton = ({ className }: { className?: string }) => (
 );
 
 export const DashboardSkeleton = () => (
-    <div className="space-y-8 max-w-7xl mx-auto">
+    <div className="w-full space-y-8 max-w-7xl mx-auto">
         <LoadingSkeleton className="h-48 w-full rounded-2xl" />
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {[...Array(4)].map((_, i) => (
@@ -21,7 +21,7 @@ export const DashboardSkeleton = () => (
 );
 
 export const PageSkeleton = () => (
-    <div className="space-y-6 max-w-7xl mx-auto">
+    <div className="w-full space-y-6 max-w-7xl mx-auto">
         <div className="space-y-2">
             <LoadingSkeleton className="h-8 w-1/3" />
             <LoadingSkeleton className="h-4 w-1/2" />

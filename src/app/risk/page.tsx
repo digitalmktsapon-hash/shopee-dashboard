@@ -308,7 +308,7 @@ export default function RiskControlPage() {
                                     <tr key={risk.orderId} className="hover:bg-muted/30 transition-colors group">
                                         <td className="px-6 py-4">
                                             <div className="flex flex-col">
-                                                <span className="font-mono font-bold text-xs group-hover:text-primary transition-colors text-slate-800 dark:text-slate-200">
+                                                <span className="font-bold text-xs group-hover:text-primary transition-colors text-slate-800 dark:text-slate-200">
                                                     {risk.orderId}
                                                 </span>
                                                 <span className="text-[10px] text-muted-foreground mt-0.5">{risk.orderDate}</span>
@@ -394,7 +394,7 @@ export default function RiskControlPage() {
                                 </div>
                                 <div>
                                     <h3 className="text-lg font-bold">Phân Tích Đơn Hàng</h3>
-                                    <p className="text-xs text-muted-foreground font-mono">{selectedOrder.orderId}</p>
+                                    <p className="text-xs text-muted-foreground">{selectedOrder.orderId}</p>
                                 </div>
                             </div>
                             <button

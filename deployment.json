@@ -1,0 +1,1910 @@
+﻿{
+  "id": "dpl_GiKPkdkKXKBcMPAbnf99yWtKfHBT",
+  "name": "shopee-dashboard",
+  "url": "shopee-dashboard-iubpbuare-pham-thangs-projects-2cad050f.vercel.app",
+  "target": "production",
+  "readyState": "READY",
+  "createdAt": 1771736527757,
+  "aliases": [
+    "shopee-dashboard-rho.vercel.app",
+    "shopee-dashboard-pham-thangs-projects-2cad050f.vercel.app"
+  ],
+  "builds": [
+    {
+      "id": "bld_g50quq3p0",
+      "deploymentId": "dpl_GiKPkdkKXKBcMPAbnf99yWtKfHBT",
+      "entrypoint": ".",
+      "readyState": "READY",
+      "readyStateAt": 1771736528449,
+      "createdAt": 1771736528449,
+      "createdIn": "sfo1",
+      "use": "@vercel/vc-build",
+      "config": {
+        "framework": "nextjs",
+        "nodeVersion": "24.x",
+        "projectCreatedAt": 1771639647660,
+        "vercelConfig": {
+          "name": "shopee-dashboard",
+          "version": 2
+        }
+      },
+      "middleware": [],
+      "output": [
+        {
+          "prerender": null,
+          "type": "lambda",
+          "path": "favicon.ico.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/3d4f29704012d9a40a6247734dfba57b805fff8b4729a04c51dfb705f3b6b60f",
+          "mode": 49590,
+          "size": 668247,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-76cc2bad19edfaf5d33a1b2c912f1a697d",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "favicon.ico",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/3d4f29704012d9a40a6247734dfba57b805fff8b4729a04c51dfb705f3b6b60f",
+          "mode": 49590,
+          "size": 668247,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-76cc2bad19edfaf5d33a1b2c912f1a697d",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": null,
+          "type": "lambda",
+          "path": "api/orders",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/b9dd14390bfbf3dcaef5cce3c234356a4ece57351d5db4cdd882c3597387353f",
+          "mode": 49590,
+          "size": 2615181,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-8c6c214d1242e5b744c0076e8bd88bd770",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": null,
+          "type": "lambda",
+          "path": "api/orders.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/b9dd14390bfbf3dcaef5cce3c234356a4ece57351d5db4cdd882c3597387353f",
+          "mode": 49590,
+          "size": 2615181,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-8c6c214d1242e5b744c0076e8bd88bd770",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": null,
+          "type": "lambda",
+          "path": "api/reports/with-orders",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/b9dd14390bfbf3dcaef5cce3c234356a4ece57351d5db4cdd882c3597387353f",
+          "mode": 49590,
+          "size": 2615181,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-8c6c214d1242e5b744c0076e8bd88bd770",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": null,
+          "type": "lambda",
+          "path": "api/reports/with-orders.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/b9dd14390bfbf3dcaef5cce3c234356a4ece57351d5db4cdd882c3597387353f",
+          "mode": 49590,
+          "size": 2615181,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-8c6c214d1242e5b744c0076e8bd88bd770",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": null,
+          "type": "lambda",
+          "path": "api/reports",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/b9dd14390bfbf3dcaef5cce3c234356a4ece57351d5db4cdd882c3597387353f",
+          "mode": 49590,
+          "size": 2615181,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-8c6c214d1242e5b744c0076e8bd88bd770",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": null,
+          "type": "lambda",
+          "path": "api/reports.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/b9dd14390bfbf3dcaef5cce3c234356a4ece57351d5db4cdd882c3597387353f",
+          "mode": 49590,
+          "size": 2615181,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-8c6c214d1242e5b744c0076e8bd88bd770",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "_global-error",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "_global-error.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "_global-error.segments/__PAGE__.segment.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "_global-error.segments/_full.segment.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "_global-error.segments/_head.segment.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "_global-error.segments/_index.segment.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "_global-error.segments/_tree.segment.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "_not-found",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "_not-found.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "_not-found.segments/_full.segment.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "_not-found.segments/_head.segment.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "_not-found.segments/_index.segment.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "_not-found.segments/_not-found/__PAGE__.segment.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "_not-found.segments/_not-found.segment.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "_not-found.segments/_tree.segment.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "customers",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "customers.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "customers.segments/_full.segment.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "customers.segments/_head.segment.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "customers.segments/_index.segment.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "customers.segments/_tree.segment.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "customers.segments/customers/__PAGE__.segment.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "customers.segments/customers.segment.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "data-sources",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "data-sources.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "data-sources.segments/_full.segment.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "data-sources.segments/_head.segment.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "data-sources.segments/_index.segment.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "data-sources.segments/_tree.segment.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "data-sources.segments/data-sources/__PAGE__.segment.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "data-sources.segments/data-sources.segment.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "fees",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "fees.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "fees.segments/_full.segment.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "fees.segments/_head.segment.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "fees.segments/_index.segment.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "fees.segments/_tree.segment.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "fees.segments/fees/__PAGE__.segment.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "fees.segments/fees.segment.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "operations",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "operations.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "operations.segments/_full.segment.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "operations.segments/_head.segment.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "operations.segments/_index.segment.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "operations.segments/_tree.segment.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "operations.segments/operations/__PAGE__.segment.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "operations.segments/operations.segment.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "orders",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "orders.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "orders.segments/_full.segment.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "orders.segments/_head.segment.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "orders.segments/_index.segment.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "orders.segments/_tree.segment.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "orders.segments/orders/__PAGE__.segment.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "orders.segments/orders.segment.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "overview",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "overview.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "overview.segments/_full.segment.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "overview.segments/_head.segment.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "overview.segments/_index.segment.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "overview.segments/_tree.segment.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "overview.segments/overview/__PAGE__.segment.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "overview.segments/overview.segment.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "index",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "index.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "index.segments/__PAGE__.segment.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "index.segments/_full.segment.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "index.segments/_head.segment.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "index.segments/_index.segment.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "index.segments/_tree.segment.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "products",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "products.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "products.segments/_full.segment.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "products.segments/_head.segment.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "products.segments/_index.segment.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "products.segments/_tree.segment.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "products.segments/products/__PAGE__.segment.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "products.segments/products.segment.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "revenue",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "revenue.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "revenue.segments/_full.segment.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "revenue.segments/_head.segment.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "revenue.segments/_index.segment.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "revenue.segments/_tree.segment.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "revenue.segments/revenue/__PAGE__.segment.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "revenue.segments/revenue.segment.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "risk",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "risk.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "risk.segments/_full.segment.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "risk.segments/_head.segment.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "risk.segments/_index.segment.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "risk.segments/_tree.segment.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "risk.segments/risk/__PAGE__.segment.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "risk.segments/risk.segment.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "index.segments/_full.segment.rsc",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        },
+        {
+          "prerender": {},
+          "type": "lambda",
+          "path": "index",
+          "digest": "prj_02vlbDPdjtJfqKOQ1fR5WgsEInHp/dc6c9e0a114b600fd6b11624b257fdb41faa3848fc9a6aed94400089d8309af9",
+          "mode": 49590,
+          "size": 1068599,
+          "lambda": {
+            "functionName": "team_VCQDwyFQdcm5D7nmgRcz2wrA-7d87c888a9c91900988a1e9afaa0cc0aa8",
+            "deployedTo": [
+              "iad1"
+            ],
+            "runtime": "nodejs24.x",
+            "memorySize": 2048,
+            "timeout": 300
+          },
+          "edge": null
+        }
+      ],
+      "fingerprint": null
+    }
+  ],
+  "contextName": "pham-thangs-projects-2cad050f"
+}

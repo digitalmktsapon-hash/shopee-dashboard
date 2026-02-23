@@ -15,24 +15,27 @@ import {
     Users,
     AlertTriangle,
     BarChart3,
+    Layers,
+    CreditCard,
+    Activity,
 } from 'lucide-react';
 
 const NAV_ITEMS = [
-    { name: 'Đa kênh', href: '/overview', icon: BarChart3 },
+    { name: 'Đa kênh', href: '/overview', icon: Layers },
     { name: 'Tổng quan', href: '/', icon: LayoutDashboard },
-    { name: 'Doanh thu', href: '/revenue', icon: TrendingUp },
     { name: 'Sản phẩm', href: '/products', icon: Package },
-    { name: 'Đơn hàng', href: '/orders', icon: ShoppingCart },
-    { name: 'Phí & Trợ giá', href: '/fees', icon: Receipt },
-    { name: 'Vận hành', href: '/operations', icon: Truck },
+    { name: 'Đơn hàng', href: '/orders', icon: ShoppingBag },
+    { name: 'Doanh thu', href: '/revenue', icon: TrendingUp },
+    { name: 'Phí & Trợ giá', href: '/fees', icon: CreditCard },
     { name: 'Khách hàng', href: '/customers', icon: Users },
+    { name: 'Vận hành', href: '/operations', icon: Activity },
     { name: 'Rủi ro', href: '/risk', icon: AlertTriangle },
     { name: 'Nguồn dữ liệu', href: '/data-sources', icon: Database },
 ];
 
 
 export const LoadingSkeleton = ({ className }: { className?: string }) => (
-    <div className={clsx("animate-pulse bg-slate-800/50 rounded-lg", className)}></div>
+    <div className={clsx("animate-pulse bg-muted rounded-lg", className)}></div>
 );
 
 import { LogOut } from 'lucide-react';
@@ -43,11 +46,11 @@ export function Sidebar() {
     const { logout } = useAuth();
 
     return (
-        <div className="flex flex-col w-72 h-screen bg-card/80 backdrop-blur-lg text-foreground fixed left-0 top-0 overflow-y-auto shadow-2xl z-50 border-r border-border">
+        <div className="flex flex-col w-72 h-screen glass-panel text-foreground fixed left-0 top-0 overflow-y-auto z-50 border-r border-border/40 text-sharp">
             {/* Logo */}
-            <div className="flex items-center h-24 px-6 border-b border-border gap-3">
+            <div className="flex items-center h-24 px-8 border-b border-border/40 gap-4">
                 {/* PhamThang Agency Logo */}
-                <div className="shrink-0 w-12 h-12 rounded-xl overflow-hidden bg-white flex items-center justify-center shadow-md">
+                <div className="shrink-0 w-12 h-12 rounded-2xl overflow-hidden bg-white flex items-center justify-center shadow-2xl ring-4 ring-primary/5">
                     <img
                         src="/pts-logo.jpg"
                         alt="PhamThang PTS Logo"
@@ -55,30 +58,31 @@ export function Sidebar() {
                     />
                 </div>
                 {/* Brand Name */}
-                <div>
-                    <h1 className="text-foreground leading-none" style={{
-                        fontFamily: "'Helvetica Neue', 'Arial', 'Segoe UI', sans-serif",
-                        fontWeight: 900,
-                        fontSize: '16px',
-                        letterSpacing: '0.06em',
-                        fontStyle: 'normal',
+                <div className="flex flex-col mt-1">
+                    <h1 className="leading-none tracking-tight flex items-baseline gap-1" style={{
+                        fontWeight: 800,
+                        fontSize: '18px',
+                        letterSpacing: '-0.01em',
                         textTransform: 'uppercase',
                     }}>
-                        <span style={{ color: 'hsl(var(--primary))' }}>Pham</span><span>Thang</span>
-                        {' '}
-                        <span style={{ color: 'hsl(var(--primary))' }}>PTS</span>
+                        <span className="text-foreground">
+                            PhamThang
+                        </span>
+                        <span className="text-primary text-[19px]">PTS</span>
                     </h1>
-                    <p className="text-muted-foreground font-bold mt-1" style={{
-                        fontSize: '8.5px',
-                        letterSpacing: '0.22em',
-                        textTransform: 'uppercase',
-                        fontFamily: "'Helvetica Neue', 'Arial', sans-serif",
-                    }}>Analytics Dashboard v1.0.0</p>
+                    <div className="flex flex-col mt-1.5 opacity-60">
+                        <p className="text-[9px] text-muted-foreground font-medium tracking-[0.1em] uppercase">
+                            Analytics Dashboard
+                        </p>
+                        <span className="text-[9px] text-primary/80 mt-0.5 leading-none">
+                            v1.0.0
+                        </span>
+                    </div>
                 </div>
             </div>
 
 
-            <nav className="flex-1 px-4 py-8 space-y-2">
+            <nav className="flex-1 px-4 py-8 space-y-1.5">
                 {NAV_ITEMS.map((item) => {
                     const isActive = pathname === item.href;
                     return (
@@ -86,29 +90,29 @@ export function Sidebar() {
                             key={item.name}
                             href={item.href}
                             className={clsx(
-                                "flex items-center px-4 py-3.5 rounded-xl transition-all duration-200 group relative overflow-hidden",
+                                "flex items-center px-4 py-3 rounded-xl transition-all duration-300 group relative",
                                 isActive
-                                    ? "bg-primary/10 text-foreground shadow-lg shadow-primary/10 ring-1 ring-primary/20"
-                                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                                    ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25 ring-1 ring-primary/20"
+                                    : "text-foreground/75 hover:bg-primary/10 hover:text-primary"
                             )}
                         >
+                            <item.icon className={clsx("w-5 h-5 mr-3 transition-transform duration-300 group-hover:scale-110", isActive ? "text-primary-foreground" : "text-foreground/55 group-hover:text-primary")} />
+                            <span className="font-medium tracking-normal text-sm">{item.name}</span>
                             {isActive && (
-                                <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary rounded-r-full" />
+                                <div className="absolute right-3 w-1.5 h-1.5 rounded-full bg-primary-foreground animate-pulse" />
                             )}
-                            <item.icon className={clsx("w-5 h-5 mr-3 transition-colors", isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground")} />
-                            <span className="font-medium tracking-wide text-sm">{item.name}</span>
                         </Link>
                     );
                 })}
             </nav>
 
-            <div className="p-4 mt-auto border-t border-border">
+            <div className="p-4 mt-auto border-t border-border/40">
                 <button
                     onClick={logout}
-                    className="flex items-center w-full px-4 py-3 text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10 rounded-xl transition-all duration-200 group"
+                    className="flex items-center w-full px-4 py-3.5 text-muted-foreground/60 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl transition-all duration-300 group"
                 >
-                    <LogOut className="w-5 h-5 mr-3" />
-                    <span className="font-medium tracking-wide text-sm">Đăng xuất</span>
+                    <LogOut className="w-4 h-4 mr-3 transition-transform group-hover:-translate-x-1" />
+                    <span className="font-normal text-sm">Đăng xuất</span>
                 </button>
             </div>
         </div>

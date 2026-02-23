@@ -446,6 +446,7 @@ export interface MetricResult {
 
   // Optional/Legacy
   operationAnalysis?: OperationAnalysis[];
+  dailyShippingMetrics?: { date: string; avgShipTime: number; orderCount: number; }[];
   realizedPerformance?: {
     totalOrders: number;
     cancelledOrders: number;
@@ -460,7 +461,7 @@ export interface MetricResult {
   riskAlerts?: any[]; // legacy
 }
 
-export type Platform = 'shopee' | 'tiki' | 'lazada' | 'tiktok' | 'thuocsi' | 'other';
+export type Platform = 'shopee' | 'shopee_north' | 'shopee_south' | 'tiki' | 'lazada' | 'tiktok' | 'thuocsi' | 'other';
 
 export interface ReportFile {
   id: string;

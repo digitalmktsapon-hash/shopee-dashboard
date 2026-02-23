@@ -94,8 +94,22 @@ export const calculateMetrics = (orders: ShopeeOrder[]): MetricResult => {
     const statusMap: Record<string, { revenue: number, count: number }> = {};
     const customerMap: Record<string, CustomerAnalysis> = {};
     const carrierMap: Record<string, { count: number, shipTimeTotal: number, shipTimeCount: number }> = {};
+    const dailyShippingMap: Record<string, { totalTime: number, orderCount: number }> = {};
     const trends: Record<string, any> = {};
     const dailyMap: Record<string, DailyFinancialMetric> = {};
+    const cancelReasonMap: Record<string, number> = {};
+    const returnCarrierMap: Record<string, { count: number, value: number }> = {};
+    const feeMap: Record<string, number> = {
+        'Phí cố định': 0,
+        'Phí dịch vụ': 0,
+        'Phí thanh toán': 0,
+        'Phí Affiliate': 0,
+        'Phí vận chuyển hoàn': 0
+    };
+    const subsidyMap: Record<string, number> = {
+        'Voucher từ Shop': 0,
+        'Trợ giá từ Shopee': 0
+    };
 
     // 0. Global Deduplication of lines (to handle overlapping reports)
     const uniqueLines: ShopeeOrder[] = [];
@@ -131,6 +145,11 @@ export const calculateMetrics = (orders: ShopeeOrder[]): MetricResult => {
 
         const isRealized = status !== 'Đã hủy' && returnStatus !== 'Đã Chấp Thuận Yêu Cầu';
         const isCancelled = status === 'Đã hủy';
+
+        if (isCancelled) {
+            const reason = firstLine.cancelReason || 'Không rõ lý do';
+            cancelReasonMap[reason] = (cancelReasonMap[reason] || 0) + 1;
+        }
 
         // 1. Order Level Metrics & Retention Logic
         // Calculate retention ratio: items kept vs items originally ordered
@@ -390,6 +409,19 @@ export const calculateMetrics = (orders: ShopeeOrder[]): MetricResult => {
                 });
             }
         }
+
+        // Return Analysis by Carrier
+        if (totalReturnQtyInOrder > 0 || returnStatus === 'Đã Chấp Thuận Yêu Cầu') {
+            const carrier = firstLine.deliveryCarrier || 'Khác';
+            if (!returnCarrierMap[carrier]) returnCarrierMap[carrier] = { count: 0, value: 0 };
+            returnCarrierMap[carrier].count++;
+            const returnValue = orderLines.reduce((sum, l) => {
+                const price = l.dealPrice || l.originalPrice || 0;
+                const rQty = l.returnQuantity || (returnStatus === 'Đã Chấp Thuận Yêu Cầu' ? l.quantity : 0);
+                return sum + (price * (rQty || 0));
+            }, 0);
+            returnCarrierMap[carrier].value += returnValue;
+        }
     });
 
     // 4. Intermediate
@@ -458,6 +490,42 @@ export const calculateMetrics = (orders: ShopeeOrder[]): MetricResult => {
             realizedCOGS += orderCogs;
             realizedFees += orderFee;
             totalListRevenueRealized += orderEffectiveList;
+
+            // Aggregated Fees Analysis
+            feeMap['Phí cố định'] += (first.fixedFee || 0);
+            feeMap['Phí dịch vụ'] += (first.serviceFee || 0);
+            feeMap['Phí thanh toán'] += (first.paymentFee || 0);
+            feeMap['Phí Affiliate'] += (first.affiliateCommission || 0);
+            feeMap['Phí vận chuyển hoàn'] += (first.returnShippingFee || 0);
+
+            // Aggregated Subsidy Analysis
+            subsidyMap['Voucher từ Shop'] += (first.shopVoucher || 0);
+
+            lines.forEach(line => {
+                subsidyMap['Trợ giá từ Shopee'] += (line.shopeeRebate || 0);
+            });
+
+            // Operations Analysis (Carrier Stats)
+            const carrier = first.deliveryCarrier || 'Khác';
+            if (!carrierMap[carrier]) carrierMap[carrier] = { count: 0, shipTimeTotal: 0, shipTimeCount: 0 };
+            carrierMap[carrier].count++;
+
+            const orderDateStr = first.orderDate || (first as any).orderCreationDate || '';
+            const orderDate = parseShopeeDate(orderDateStr);
+            const deliveryTime = parseShopeeDate(first.shipTime || ''); // Thời gian giao hàng
+
+            if (orderDate && deliveryTime && deliveryTime >= orderDate) {
+                const diffTime = Math.abs(deliveryTime.getTime() - orderDate.getTime());
+                const diffDays = diffTime / (1000 * 60 * 60 * 24);
+                carrierMap[carrier].shipTimeTotal += diffDays;
+                carrierMap[carrier].shipTimeCount++;
+
+                // Track Daily Shipping Time (by Order Date)
+                const dKey = orderDate.toISOString().split('T')[0];
+                if (!dailyShippingMap[dKey]) dailyShippingMap[dKey] = { totalTime: 0, orderCount: 0 };
+                dailyShippingMap[dKey].totalTime += diffDays;
+                dailyShippingMap[dKey].orderCount++;
+            }
 
             // TRACK FOR RISK
             // NOTE: gross revenue inside risk should reflect the effective list revenue 
@@ -923,12 +991,28 @@ export const calculateMetrics = (orders: ShopeeOrder[]): MetricResult => {
             totalReturnImpactRate: riskTotalOrders > 0 ? (riskAnalysis.reduce((sum, r) => sum + r.returnImpactRate, 0) / riskTotalOrders) : 0
         },
 
-        // Empty Stubs
-        operationAnalysis: [],
-        cancelAnalysis: [],
+        operationAnalysis: Object.entries(carrierMap).map(([carrier, data]) => ({
+            carrier,
+            orderCount: data.count,
+            avgShipTime: data.shipTimeCount > 0 ? (data.shipTimeTotal / data.shipTimeCount) : 0
+        })).sort((a, b) => b.orderCount - a.orderCount),
+
+        dailyShippingMetrics: Object.keys(dailyShippingMap).sort().map(date => ({
+            date,
+            avgShipTime: dailyShippingMap[date].orderCount > 0 ? (dailyShippingMap[date].totalTime / dailyShippingMap[date].orderCount) : 0,
+            orderCount: dailyShippingMap[date].orderCount
+        })),
+
+        cancelAnalysis: Object.entries(cancelReasonMap).map(([reason, count]) => ({ reason, count })),
         returnAnalysis: [],
-        feeAnalysis: [],
-        subsidyAnalysis: [],
+        returnByCarrier: Object.entries(returnCarrierMap).map(([reason, data]) => ({
+            reason,
+            count: data.count,
+            value: data.value
+        })),
+        totalFees: realizedFees,
+        feeAnalysis: Object.entries(feeMap).filter(([_, v]) => v > 0).map(([type, value]) => ({ type, value })),
+        subsidyAnalysis: Object.entries(subsidyMap).filter(([_, v]) => v > 0).map(([type, value]) => ({ type, value })),
         riskAlerts: []
     };
 };

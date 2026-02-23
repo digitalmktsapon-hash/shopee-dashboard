@@ -9,7 +9,6 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@vercel/postgres": "^0.10.0",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "dotenv": "^17.3.1",

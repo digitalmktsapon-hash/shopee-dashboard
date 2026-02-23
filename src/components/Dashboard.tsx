@@ -9,7 +9,8 @@ import { DollarSign, ShoppingBag, CreditCard, Activity, ArrowRight, Package, Tre
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, AreaChart, Area, PieChart, Pie, Cell, Legend, ComposedChart } from 'recharts';
 import { useFilter } from '../contexts/FilterContext';
 import { PageSkeleton } from './Skeleton';
-import { formatVND, formatNumber } from '../utils/format';
+import { ChartTooltip } from './ChartTooltip';
+import { formatVND, formatNumber, formatDateVN } from '../utils/format';
 import clsx from 'clsx';
 import { OrderRiskControlCenter } from './OrderRiskControlCenter';
 
@@ -105,16 +106,20 @@ export default function Dashboard() {
 
     // Metric Tile (Small)
     const MetricTile = ({ label, value, subValue, formula, color = "blue", icon: Icon }: any) => (
-        <div className="bg-card/50 backdrop-blur-sm border border-border p-4 rounded-xl flex items-start justify-between hover:bg-card/80 transition-all">
-            <div>
-                <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">
+        <div className="premium-card p-5 flex items-start justify-between">
+            <div className="text-sharp">
+                <p className="text-[10px] text-muted-foreground uppercase font-black tracking-[0.1em] mb-1.5 opacity-80">
                     {label}
-                    {formula && <span className="block text-[10px] normal-case font-normal opacity-70">({formula})</span>}
+                    {formula && <span className="block text-[9px] normal-case font-medium opacity-60">({formula})</span>}
                 </p>
-                <p className={clsx("text-lg font-bold mt-1", color === 'red' ? 'text-rose-400' : color === 'green' ? 'text-emerald-400' : 'text-foreground')}>{value}</p>
-                {subValue && <p className="text-xs text-muted-foreground mt-0.5">{subValue}</p>}
+                <p className={clsx("text-xl font-extrabold tracking-tight", color === 'red' ? 'text-rose-500' : color === 'green' ? 'text-emerald-500' : 'text-foreground')}>{value}</p>
+                {subValue && <p className="text-[11px] text-muted-foreground/80 mt-1 font-medium">{subValue}</p>}
             </div>
-            {Icon && <Icon className={clsx("w-5 h-5 opacity-50", color === 'red' ? 'text-rose-400' : color === 'green' ? 'text-emerald-400' : 'text-blue-400')} />}
+            {Icon && (
+                <div className={clsx("p-2.5 rounded-xl bg-opacity-10", color === 'red' ? 'bg-rose-500 text-rose-500' : color === 'green' ? 'bg-emerald-500 text-emerald-500' : 'bg-primary text-primary')}>
+                    <Icon className="w-4 h-4" />
+                </div>
+            )}
         </div>
     );
 
@@ -177,182 +182,127 @@ export default function Dashboard() {
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500 pb-20">
-            {/* 1. Financial Snapshot */}
-            <div className="w-full">
-                <div className="flex items-center gap-2 mb-6">
-                    <DollarSign className="w-6 h-6 text-indigo-500" />
-                    <h2 className="text-2xl font-bold text-foreground">
-                        FINANCIAL DASHBOARD – FINANCIAL SNAPSHOT (BỨC TRANH TÀI CHÍNH)
-                        <span className="text-xs font-normal text-muted-foreground ml-4 bg-muted/40 px-2 py-1 rounded border border-border">
-                            Lưu ý: Không tính đơn Hủy & Hoàn trả (Realized Orders Only)
-                        </span>
-                    </h2>
+            {/* 1. KPI Cards Row - 6 Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-6 gap-4">
+                <KPICard
+                    title="DOANH THU NET"
+                    value={formatVND(metrics?.totalNetRevenue || 0)}
+                    icon={Activity}
+                    subValue={prevMetrics ? formatVND(prevMetrics.totalNetRevenue) : undefined}
+                    trend={metrics && prevMetrics ? (metrics.totalNetRevenue > prevMetrics.totalNetRevenue ? 'up' : 'down') : 'neutral'}
+                    className="text-sharp transition-all duration-300"
+                    color="blue"
+                />
+                <KPICard
+                    title="LỢI NHUẬN GỘP"
+                    value={formatVND(metrics?.totalGrossProfit || 0)}
+                    icon={Percent}
+                    subValue={metrics ? `${formatNumber(metrics.netMargin, 1)}%` : undefined}
+                    trend={metrics && prevMetrics ? (metrics.netMargin > prevMetrics.netMargin ? 'up' : 'down') : 'neutral'}
+                    className="text-sharp transition-all duration-300"
+                    color="emerald"
+                />
+                <KPICard
+                    title="ĐƠN THÀNH CÔNG"
+                    value={formatNumber(metrics?.successfulOrders || 0)}
+                    icon={ShoppingBag}
+                    subValue={metrics ? `${formatNumber(metrics.totalOrders)} đơn` : undefined}
+                    trend={metrics && prevMetrics ? (metrics.successfulOrders > prevMetrics.successfulOrders ? 'up' : 'down') : 'neutral'}
+                    className="text-sharp transition-all duration-300"
+                    color="violet"
+                />
+                <KPICard
+                    title="PHÍ SÀN"
+                    value={formatVND(metrics?.totalSurcharges || 0)}
+                    icon={CreditCard}
+                    subValue={metrics ? `${formatNumber((metrics.totalSurcharges / (metrics.totalNetRevenue || 1)) * 100, 1)}%` : undefined}
+                    trend={metrics && prevMetrics ? (metrics.totalSurcharges < prevMetrics.totalSurcharges ? 'up' : 'down') : 'neutral'}
+                    className="text-sharp transition-all duration-300"
+                    color="rose"
+                />
+                <KPICard
+                    title="AOV"
+                    value={formatVND(metrics?.avgOrderValue || 0)}
+                    icon={Ticket}
+                    subValue={prevMetrics ? formatVND(prevMetrics.avgOrderValue) : undefined}
+                    trend={metrics && prevMetrics ? (metrics.avgOrderValue > prevMetrics.avgOrderValue ? 'up' : 'down') : 'neutral'}
+                    className="text-sharp transition-all duration-300"
+                    color="amber"
+                />
+                <KPICard
+                    title="TỶ LỆ HOÀN"
+                    value={`${formatNumber(metrics?.orderReturnRate || 0, 2)}%`}
+                    icon={RefreshCcw}
+                    subValue={metrics ? `Hủy: ${formatNumber(metrics.totalOrders - metrics.successfulOrders)} đơn` : undefined}
+                    trend={metrics && prevMetrics ? (metrics.orderReturnRate < prevMetrics.orderReturnRate ? 'up' : 'down') : 'neutral'}
+                    className="text-sharp transition-all duration-300"
+                    color="indigo"
+                />
+            </div>
+
+            {/* 2. Charts Row */}
+            <div className="grid grid-cols-1 xl:grid-cols-[400px_1fr] gap-6">
+                <div className="bg-card/50 backdrop-blur-md p-6 rounded-2xl border border-border shadow-xl">
+                    <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-6">PHÂN BỔ DOANH THU</h3>
+                    <div className="h-[300px] w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                                <Pie
+                                    data={chartData}
+                                    cx="50%"
+                                    cy="50%"
+                                    innerRadius={70}
+                                    outerRadius={100}
+                                    paddingAngle={5}
+                                    dataKey="value"
+                                >
+                                    {chartData.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={entry.color} />
+                                    ))}
+                                </Pie>
+                                <Tooltip content={<ChartTooltip formatter={(v: any) => formatVND(Number(v))} hideLabel />} />
+                                <Legend verticalAlign="bottom" height={36} />
+                            </PieChart>
+                        </ResponsiveContainer>
+                    </div>
+                    {/* Compact stats below donut */}
+                    <div className="mt-4 space-y-2">
+                        {chartData.map((item, idx) => (
+                            <div key={idx} className="flex items-center justify-between text-xs">
+                                <span className="flex items-center gap-2">
+                                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }}></div>
+                                    <span className="text-muted-foreground font-medium">{item.name}</span>
+                                </span>
+                                <span className="font-bold">{formatVND(item.value)}</span>
+                            </div>
+                        ))}
+                    </div>
                 </div>
 
-                <div className="flex flex-col xl:flex-row gap-6 items-stretch">
-                    <section className="min-w-fit">
-                        <div className="grid grid-cols-1 md:grid-cols-[max-content_max-content] gap-4 w-fit">
-                            {/* Headers */}
-                            <div className="pb-1">
-                                <h3 className="text-lg font-bold text-blue-500">I. Doanh thu (Revenue)</h3>
-                            </div>
-                            <div className="pb-1 hidden md:block">
-                                <h3 className="text-lg font-bold text-red-500">II. Chi phí (Cost)</h3>
-                            </div>
-
-                            {/* Row 1: Gross Listing Revenue & CTKM */}
-                            <div className="bg-card border border-border p-4 rounded-xl shadow-sm">
-                                <p className="text-base font-bold text-foreground">1. Doanh thu niêm yết (Gross List Revenue)</p>
-                                <p className="text-xs text-muted-foreground mt-0.5">= (Giá gốc) x (Số lượng - SL hoàn trả)</p>
-                                <div className="flex items-baseline gap-2 mt-2 flex-wrap">
-                                    <h3 className="text-2xl font-bold text-blue-600">{formatVND(metrics?.totalListRevenue || 0)}</h3>
-                                    <span className="text-sm text-muted-foreground">(100%)</span>
-                                    {prevMetrics && <PoPIndicator current={metrics?.totalListRevenue || 0} prev={prevMetrics.totalListRevenue || 0} />}
-                                </div>
-                            </div>
-                            {/* CTKM (Moved here) */}
-                            <div className="bg-card border border-border p-4 rounded-xl shadow-sm">
-                                <p className="text-base font-bold text-foreground">4. Voucher Shop (Seller Rebate)</p>
-                                <p className="text-xs text-muted-foreground mt-0.5">= Tổng các khoản Người bán trợ giá</p>
-                                <div className="flex items-baseline gap-2 mt-2 flex-wrap">
-                                    <h3 className="text-2xl font-bold text-orange-500">{formatVND(metrics?.totalDiscount || 0)}</h3>
-                                    <span className="text-sm text-muted-foreground">
-                                        ({metrics?.totalListRevenue ? formatNumber((metrics.totalDiscount / metrics.totalListRevenue) * 100, 2) : 0}%)
-                                    </span>
-                                    {prevMetrics && <PoPIndicator current={metrics?.totalDiscount || 0} prev={prevMetrics.totalDiscount || 0} isInverse={true} />}
-                                </div>
-                            </div>
-
-                            {/* Row 2: Net Selling Revenue & Surcharges */}
-                            {/* Net Selling Revenue */}
-                            <div className="bg-card border border-border p-4 rounded-xl shadow-sm">
-                                <p className="text-base font-bold text-foreground">2. Doanh thu NET (Net Revenue)</p>
-                                <p className="text-xs text-muted-foreground mt-0.5">= (1) - (4)</p>
-                                <div className="flex items-baseline gap-2 mt-2 flex-wrap">
-                                    <h3 className="text-2xl font-bold text-blue-500">{formatVND(metrics?.totalNetRevenue || 0)}</h3>
-                                    <span className="text-sm text-muted-foreground">
-                                        ({metrics?.totalListRevenue ? formatNumber((metrics.totalNetRevenue / metrics.totalListRevenue) * 100, 2) : 0}%)
-                                    </span>
-                                    {prevMetrics && <PoPIndicator current={metrics?.totalNetRevenue || 0} prev={prevMetrics.totalNetRevenue || 0} />}
-                                </div>
-                            </div>
-                            {/* Surcharges (Moved here) */}
-                            <div className="bg-card border border-border p-4 rounded-xl shadow-sm">
-                                <p className="text-base font-bold text-foreground">5. Phí sàn (Platform Fees)</p>
-                                <p className="text-xs text-muted-foreground mt-0.5">= (Cố định) + (Dịch vụ) + (Thanh toán) + (VC trả hàng)</p>
-                                <div className="flex items-baseline gap-2 mt-2 flex-wrap">
-                                    <h3 className="text-2xl font-bold text-red-500">{formatVND(metrics?.totalSurcharges || 0)}</h3>
-                                    <span className="text-sm text-muted-foreground">
-                                        ({metrics?.totalListRevenue ? formatNumber((metrics.totalSurcharges / metrics.totalListRevenue) * 100, 2) : 0}%)
-                                    </span>
-                                    {prevMetrics && <PoPIndicator current={metrics?.totalSurcharges || 0} prev={prevMetrics.totalSurcharges || 0} isInverse={true} />}
-                                </div>
-                            </div>
-
-                            {/* Row 3: Estimated Order Revenue & COGS */}
-                            {/* Estimated Order Revenue (Col 1) */}
-                            <div className="bg-card border border-border p-4 rounded-xl shadow-sm">
-                                <p className="text-base font-bold text-foreground">3. Doanh thu sau phí sàn (Gross Revenue)</p>
-                                <p className="text-xs text-muted-foreground mt-0.5">= (2) - (5)</p>
-                                <div className="flex items-baseline gap-2 mt-2 flex-wrap">
-                                    <h3 className="text-2xl font-bold text-indigo-500">{formatVND(metrics?.totalGrossRevenue || 0)}</h3>
-                                    <span className="text-sm text-muted-foreground">
-                                        ({metrics?.totalListRevenue ? formatNumber((metrics.totalGrossRevenue / metrics.totalListRevenue) * 100, 2) : 0}%)
-                                    </span>
-                                    {prevMetrics && <PoPIndicator current={metrics?.totalGrossRevenue || 0} prev={prevMetrics.totalGrossRevenue || 0} />}
-                                </div>
-                            </div>
-                            {/* COGS (Moved here) */}
-                            <div className="bg-card border border-border p-4 rounded-xl shadow-sm">
-                                <p className="text-base font-bold text-foreground">6. Giá vốn (COGS)</p>
-                                <p className="text-xs text-muted-foreground mt-0.5">= (40%) x (1)</p>
-                                <div className="flex items-baseline gap-2 mt-2 flex-wrap">
-                                    <h3 className="text-2xl font-bold text-amber-600">{formatVND(metrics?.totalCOGS || 0)}</h3>
-                                    <span className="text-sm text-muted-foreground">
-                                        ({metrics?.totalListRevenue ? formatNumber((metrics.totalCOGS / metrics.totalListRevenue) * 100, 2) : 0}%)
-                                    </span>
-                                    {prevMetrics && <PoPIndicator current={metrics?.totalCOGS || 0} prev={prevMetrics.totalCOGS || 0} isInverse={true} />}
-                                </div>
-                            </div>
-
-                            {/* Profit Header */}
-                            <div className="col-span-1 md:col-span-2 pb-1 mt-6 border-b border-border/50 mb-2">
-                                <h3 className="text-lg font-bold text-emerald-500">III. Lợi nhuận (Profit)</h3>
-                            </div>
-
-                            {/* Row 6: Gross Profit & Margin */}
-                            {/* Gross Profit */}
-                            <div className="bg-card border border-border p-4 rounded-xl shadow-sm">
-                                <p className="text-base font-bold text-foreground">7. Lợi nhuận gộp (Gross Profit)</p>
-                                <p className="text-xs text-muted-foreground mt-0.5">= (3) - (6)</p>
-                                <div className="flex items-baseline gap-2 mt-2 flex-wrap">
-                                    <h3 className="text-2xl font-bold text-emerald-600">{formatVND(metrics?.totalGrossProfit || 0)}</h3>
-                                    <span className="text-sm text-muted-foreground">
-                                        ({metrics?.totalListRevenue ? formatNumber((metrics.totalGrossProfit / metrics.totalListRevenue) * 100, 2) : 0}%)
-                                    </span>
-                                    {prevMetrics && <PoPIndicator current={metrics?.totalGrossProfit || 0} prev={prevMetrics.totalGrossProfit || 0} />}
-                                </div>
-                            </div>
-                            {/* Margin */}
-                            <div className="bg-card border border-border p-4 rounded-xl shadow-sm">
-                                <p className="text-base font-bold text-foreground">8. Biên lợi nhuận (Margin %)</p>
-                                <p className="text-xs text-muted-foreground mt-0.5">= (7) / (1)</p>
-                                <div className="flex flex-wrap items-baseline gap-2 mt-2">
-                                    <h3 className={clsx("text-2xl font-bold", (metrics?.netMargin || 0) > 0 ? "text-emerald-500" : "text-rose-500")}>
-                                        {formatNumber(metrics?.netMargin || 0, 2)}%
-                                    </h3>
-                                    {prevMetrics && <PoPIndicator current={metrics?.netMargin || 0} prev={prevMetrics.netMargin || 0} />}
-                                </div>
-                            </div>
-
-                            {/* Row 7: Profit per Unit */}
-                            <div className="bg-card border border-border p-4 rounded-xl shadow-sm">
-                                <p className="text-base font-bold text-foreground">9. Lãi / đơn (Profit / Order)</p>
-                                <p className="text-xs text-muted-foreground mt-0.5">= (7) / (Số lượng bán)</p>
-                                <div className="flex flex-wrap items-baseline gap-2 mt-2">
-                                    <h3 className={clsx("text-2xl font-bold", (metrics?.profitPerSoldUnit || 0) > 0 ? "text-emerald-500" : "text-rose-500")}>
-                                        {formatVND(metrics?.profitPerSoldUnit || 0)}
-                                    </h3>
-                                    {prevMetrics && <PoPIndicator current={metrics?.profitPerSoldUnit || 0} prev={prevMetrics.profitPerSoldUnit || 0} />}
-                                </div>
-                            </div>
-                            <div className="hidden md:block"></div>
-                        </div>
-                    </section>
-
-                    {/* Right: Pie Chart */}
-                    <section className="flex-1 w-full flex flex-col gap-4">
-                        <div className="pb-1">
-                            <h3 className="text-lg font-bold text-foreground pl-1">IV. Phân bổ Doanh thu (Revenue Breakdown)</h3>
-                        </div>
-
-                        <div className="bg-card border border-border p-6 rounded-xl shadow-sm w-full flex-1 flex flex-col">
-                            <div className="flex-1 min-h-[400px] w-full">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <PieChart>
-                                        <Pie
-                                            data={chartData}
-                                            cx="40%"
-                                            cy="50%"
-                                            innerRadius={90}
-                                            outerRadius={135}
-                                            paddingAngle={2}
-                                            dataKey="value"
-                                            label={({ name, percent }) => `${name} (${((percent || 0) * 100).toFixed(2)}%)`}
-                                            labelLine={{ stroke: 'hsl(var(--muted-foreground))', strokeWidth: 1 }}
-                                        >
-                                            {chartData.map((entry, index) => (
-                                                <Cell key={`cell-${index}`} fill={entry.color} />
-                                            ))}
-                                        </Pie>
-                                        <Legend wrapperStyle={{ paddingTop: '20px' }} />
-                                    </PieChart>
-                                </ResponsiveContainer>
-                            </div>
-                        </div>
-                    </section>
+                <div className="bg-card/50 backdrop-blur-md p-6 rounded-2xl border border-border shadow-xl">
+                    <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-6">XU HƯỚNG DOANH THU & LỢI NHUẬN</h3>
+                    <div className="h-[350px] w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={metrics?.revenueTrend || []}>
+                                <defs>
+                                    <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                                        <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
+                                <XAxis dataKey="date" tickFormatter={(v) => v.split('-').slice(1).reverse().join('/')} stroke="#666" fontSize={10} />
+                                <YAxis stroke="#666" fontSize={10} tickFormatter={(v) => `${(v / 1000000).toFixed(0)}M`} />
+                                <Tooltip content={<ChartTooltip formatter={(v: any) => formatVND(Number(v))} />} />
+                                <Legend />
+                                <Area type="monotone" dataKey="revenue" name="Doanh thu NET" stroke="#10b981" fill="url(#colorRev)" strokeWidth={2} />
+                                <Area type="monotone" dataKey="netProfit" name="Lợi nhuận" stroke="#8b5cf6" fill="transparent" strokeWidth={2} />
+                            </AreaChart>
+                        </ResponsiveContainer>
+                    </div>
                 </div>
             </div>
+
 
             {/* 2. Order Performance */}
             <section className="w-full mb-12">
@@ -477,6 +427,22 @@ export default function Dashboard() {
                         </div>
                         <p className="text-xs text-muted-foreground mt-1">COGS (40%) trung bình</p>
                     </div>
+
+                    {/* 8. Lợi nhuận / Đơn */}
+                    <div className="bg-card/50 p-4 rounded-xl border border-border">
+                        <div className="flex justify-between items-start mb-2">
+                            <div>
+                                <p className="text-sm font-medium text-muted-foreground">Lợi nhuận / Đơn (Profit / Order)</p>
+                                <p className="text-xs text-muted-foreground mt-0.5">= Lợi nhuận gộp / Đơn thành công</p>
+                            </div>
+                            <Activity className="w-4 h-4 text-emerald-500" />
+                        </div>
+                        <div className="flex flex-wrap items-baseline gap-2 mt-2">
+                            <p className="text-2xl font-bold text-emerald-500">{formatVND(metrics?.profitPerOrder || 0)}</p>
+                            {prevMetrics && <PoPIndicator current={metrics?.profitPerOrder || 0} prev={prevMetrics.profitPerOrder || 0} />}
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">Lợi nhuận thực tế trên mỗi đơn</p>
+                    </div>
                 </div>
             </section>
 
@@ -503,7 +469,7 @@ export default function Dashboard() {
                                     <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
                                     <XAxis dataKey="date" tickFormatter={(v) => new Date(v).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })} stroke="#666" fontSize={11} />
                                     <YAxis stroke="#666" fontSize={11} tickFormatter={(v) => `${(v / 1000000).toFixed(1)}M`} />
-                                    <Tooltip contentStyle={{ backgroundColor: '#1e1e2e', borderColor: '#333' }} formatter={(v: any) => formatVND(Number(v))} labelFormatter={(l) => new Date(l).toLocaleDateString('vi-VN')} />
+                                    <Tooltip content={<ChartTooltip formatter={(v: any) => formatVND(Number(v))} />} />
                                     <Legend />
                                     <Area type="monotone" dataKey="revenue1" name="Doanh thu niêm yết sau hoàn (Gross List Revenue)" stroke="#818cf8" fill="url(#colorRev1)" strokeWidth={1} strokeDasharray="5 5" />
                                     <Area type="monotone" dataKey="revenue2" name="Doanh thu NET (Net Revenue)" stroke="#3b82f6" fill="url(#colorRev2)" strokeWidth={2} />
@@ -522,7 +488,7 @@ export default function Dashboard() {
                                     <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
                                     <XAxis dataKey="date" tickFormatter={(v) => new Date(v).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })} stroke="#666" fontSize={11} />
                                     <YAxis stroke="#666" fontSize={11} tickFormatter={(v) => `${(v / 1000000).toFixed(1)}M`} />
-                                    <Tooltip cursor={{ fill: 'transparent' }} contentStyle={{ backgroundColor: '#1e1e2e', borderColor: '#333' }} formatter={(v: any) => formatVND(Number(v))} labelFormatter={(l) => new Date(l).toLocaleDateString('vi-VN')} />
+                                    <Tooltip cursor={{ fill: 'transparent' }} content={<ChartTooltip formatter={(v: any) => formatVND(Number(v))} />} />
                                     <Legend />
                                     <Bar dataKey="fees" name="Phí sàn (Platform Fee)" stackId="a" fill="#f43f5e" />
                                     <Bar dataKey="cogs" name="Giá vốn (COGS)" stackId="a" fill="#d97706" />
@@ -541,7 +507,7 @@ export default function Dashboard() {
                                     <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
                                     <XAxis dataKey="date" tickFormatter={(v) => new Date(v).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })} stroke="#666" fontSize={11} />
                                     <YAxis stroke="#666" fontSize={11} unit="%" />
-                                    <Tooltip contentStyle={{ backgroundColor: '#1e1e2e', borderColor: '#333' }} formatter={(v: any) => `${Number(v).toFixed(2)}%`} labelFormatter={(l) => new Date(l).toLocaleDateString('vi-VN')} />
+                                    <Tooltip content={<ChartTooltip formatter={(v: any) => `${Number(v).toFixed(2)}%`} />} />
                                     <Legend />
                                     <Line type="monotone" dataKey="margin" name="Biên lợi nhuận (Margin %)" stroke="#8b5cf6" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} />
                                 </LineChart>
@@ -558,7 +524,7 @@ export default function Dashboard() {
                                     <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
                                     <XAxis dataKey="date" tickFormatter={(v) => new Date(v).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })} stroke="#666" fontSize={11} />
                                     <YAxis yAxisId="left" stroke="#666" fontSize={11} unit="%" label={{ value: 'Tỷ lệ %', angle: -90, position: 'insideLeft' }} />
-                                    <Tooltip contentStyle={{ backgroundColor: '#1e1e2e', borderColor: '#333' }} labelFormatter={(l) => new Date(l).toLocaleDateString('vi-VN')} formatter={(value: any, name: any) => [`${Number(value).toFixed(2)}%`, name]} />
+                                    <Tooltip content={<ChartTooltip formatter={(value: any, name: any) => `${Number(value).toFixed(2)}%`} />} />
                                     <Legend />
                                     <Bar yAxisId="left" dataKey="promotionBurnRate" name="Tỷ lệ đốt KM (Promo Burn Rate %)" fill="#a855f7" barSize={20} />
                                     <Line yAxisId="left" type="monotone" dataKey="highRiskOrderPercent" name="% Đơn Rủi Ro (>50%) (High Risk Order %)" stroke="#ef4444" strokeWidth={2} dot={{ r: 2 }} />

@@ -108,13 +108,13 @@ export default function OverviewPage() {
                 platform: ch.platform,
                 shopName: ch.shopName,
                 label: ch.shopName ? `${PLATFORM_LABEL[ch.platform]} – ${ch.shopName}` : PLATFORM_LABEL[ch.platform],
-                orders: m.realizedPerformance?.successfulOrders || m.totalOrders,
+                orders: m.totalOrders,
                 revenue: m.totalListRevenue,
                 netRevenue: m.totalNetRevenue,
                 fees: m.totalSurcharges,
                 profit: m.totalGrossProfit,
                 margin: m.netMargin,
-                returnRate: m.realizedPerformance?.returnRate || 0,
+                returnRate: m.orderReturnRate,
             };
         }).sort((a, b) => b.netRevenue - a.netRevenue);
     }, [filteredReports]);
@@ -139,12 +139,12 @@ export default function OverviewPage() {
     }
 
     return (
-        <div className="space-y-6 max-w-6xl mx-auto">
+        <div className="space-y-6 max-w-[1600px] mx-auto pb-10">
             {/* Header */}
             <div>
                 <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
                     <BarChart3 className="w-7 h-7 text-primary" />
-                    Tổng quan đa kênh
+                    Tổng quan Miền Bắc / Miền Nam
                 </h1>
                 <p className="text-muted-foreground mt-1 font-medium">
                     So sánh hiệu quả kinh doanh theo sàn & shop
@@ -190,13 +190,13 @@ export default function OverviewPage() {
                         <table className="w-full text-left">
                             <thead className="bg-muted/50 text-muted-foreground font-bold text-xs uppercase tracking-widest">
                                 <tr>
-                                    <th className="px-6 py-4">Kênh / Shop</th>
-                                    <th className="px-6 py-4 text-right">Đơn thành công</th>
-                                    <th className="px-6 py-4 text-right">Doanh thu gộp</th>
-                                    <th className="px-6 py-4 text-right">Doanh thu thực nhận</th>
-                                    <th className="px-6 py-4 text-right">Phí sàn</th>
-                                    <th className="px-6 py-4 text-right">Lợi nhuận</th>
-                                    <th className="px-6 py-4 text-center">Margin</th>
+                                    <th className="px-4 py-4 whitespace-nowrap">Kênh / Shop</th>
+                                    <th className="px-4 py-4 text-right whitespace-nowrap">Đơn thành công</th>
+                                    <th className="px-4 py-4 text-right whitespace-nowrap">Doanh thu gộp</th>
+                                    <th className="px-4 py-4 text-right whitespace-nowrap">Doanh thu thực nhận</th>
+                                    <th className="px-4 py-4 text-right whitespace-nowrap">Phí sàn</th>
+                                    <th className="px-4 py-4 text-right whitespace-nowrap">Lợi nhuận</th>
+                                    <th className="px-4 py-4 text-center whitespace-nowrap">Margin</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-border text-sm">
@@ -212,35 +212,35 @@ export default function OverviewPage() {
                                             }}
                                             title={`Xem chi tiết: ${ch.label}`}
                                         >
-                                            <td className="px-6 py-4">
-                                                <div className="flex items-center gap-2.5">
-                                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wide border ${PLATFORM_BADGE_STYLE[ch.platform]}`}>
+                                            <td className="px-4 py-4">
+                                                <div className="flex items-center gap-2.5 whitespace-nowrap">
+                                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wide border flex-shrink-0 ${PLATFORM_BADGE_STYLE[ch.platform]}`}>
                                                         {PLATFORM_LABEL[ch.platform]}
                                                     </span>
                                                     {ch.shopName && (
-                                                        <span className="font-semibold text-foreground text-sm">{ch.shopName}</span>
+                                                        <span className="font-bold text-foreground text-sm truncate max-w-[200px]">{ch.shopName}</span>
                                                     )}
                                                     <ExternalLink className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity ml-auto" />
                                                 </div>
                                             </td>
-                                            <td className="px-6 py-4 text-right font-bold text-foreground font-mono">
+                                            <td className="px-4 py-4 text-right font-bold text-foreground">
                                                 {ch.orders.toLocaleString('vi-VN')}
                                             </td>
-                                            <td className="px-6 py-4 text-right text-muted-foreground font-mono">
+                                            <td className="px-4 py-4 text-right text-muted-foreground">
                                                 {formatVND(ch.revenue)}
                                             </td>
-                                            <td className="px-6 py-4 text-right font-bold text-foreground font-mono">
+                                            <td className="px-4 py-4 text-right font-bold text-foreground">
                                                 {formatVND(ch.netRevenue)}
                                             </td>
-                                            <td className="px-6 py-4 text-right text-rose-400/80 font-mono">
+                                            <td className="px-4 py-4 text-right text-rose-400/80">
                                                 {formatVND(ch.fees)}
                                             </td>
-                                            <td className="px-6 py-4 text-right font-bold font-mono">
+                                            <td className="px-4 py-4 text-right font-bold">
                                                 <span className={ch.profit >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
                                                     {formatVND(ch.profit)}
                                                 </span>
                                             </td>
-                                            <td className="px-6 py-4 text-center">
+                                            <td className="px-4 py-4 text-center">
                                                 <MarginBadge margin={ch.margin} />
                                             </td>
                                         </tr>
@@ -248,17 +248,17 @@ export default function OverviewPage() {
                                 })}
                                 {/* Total Row */}
                                 <tr className="bg-primary/5 border-t-2 border-primary/20 font-black">
-                                    <td className="px-6 py-4 text-foreground uppercase text-xs tracking-widest">TỔNG CỘNG</td>
-                                    <td className="px-6 py-4 text-right font-black text-foreground font-mono">{totals.orders.toLocaleString('vi-VN')}</td>
-                                    <td className="px-6 py-4 text-right text-muted-foreground font-mono font-bold">{formatVND(totals.revenue)}</td>
-                                    <td className="px-6 py-4 text-right font-black text-foreground font-mono">{formatVND(totals.netRevenue)}</td>
-                                    <td className="px-6 py-4 text-right text-rose-400 font-bold font-mono">{formatVND(totals.fees)}</td>
-                                    <td className="px-6 py-4 text-right font-black font-mono">
+                                    <td className="px-4 py-4 text-foreground uppercase text-xs tracking-widest">TỔNG CỘNG</td>
+                                    <td className="px-4 py-4 text-right font-black text-foreground">{totals.orders.toLocaleString('vi-VN')}</td>
+                                    <td className="px-4 py-4 text-right text-muted-foreground font-bold">{formatVND(totals.revenue)}</td>
+                                    <td className="px-4 py-4 text-right font-black text-foreground">{formatVND(totals.netRevenue)}</td>
+                                    <td className="px-4 py-4 text-right text-rose-400 font-bold">{formatVND(totals.fees)}</td>
+                                    <td className="px-4 py-4 text-right font-black">
                                         <span className={totals.profit >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
                                             {formatVND(totals.profit)}
                                         </span>
                                     </td>
-                                    <td className="px-6 py-4 text-center">
+                                    <td className="px-4 py-4 text-center">
                                         <MarginBadge margin={totalMargin} />
                                     </td>
                                 </tr>
@@ -278,6 +278,8 @@ export default function OverviewPage() {
                             const plt = ch.platform;
                             const barColors: Record<Platform, string> = {
                                 shopee: 'bg-orange-500',
+                                shopee_north: 'bg-orange-600',
+                                shopee_south: 'bg-orange-400',
                                 tiki: 'bg-blue-500',
                                 lazada: 'bg-purple-500',
                                 tiktok: 'bg-pink-500',
@@ -286,12 +288,12 @@ export default function OverviewPage() {
                             };
                             return (
                                 <div key={i} className="flex items-center gap-4">
-                                    <div className="w-32 shrink-0">
-                                        <div className="flex items-center gap-1.5">
-                                            <span className={`inline-flex px-1.5 py-0.5 rounded text-[9px] font-black border ${PLATFORM_BADGE_STYLE[plt]}`}>
+                                    <div className="w-64 shrink-0">
+                                        <div className="flex items-center gap-2">
+                                            <span className={`inline-flex px-1.5 py-0.5 rounded text-[9px] font-black border shrink-0 ${PLATFORM_BADGE_STYLE[plt]}`}>
                                                 {PLATFORM_LABEL[plt]}
                                             </span>
-                                            {ch.shopName && <span className="text-xs text-muted-foreground font-medium truncate">{ch.shopName}</span>}
+                                            {ch.shopName && <span className="text-sm text-foreground font-medium truncate">{ch.shopName}</span>}
                                         </div>
                                     </div>
                                     <div className="flex-1 bg-muted/50 rounded-full h-3 overflow-hidden">
@@ -301,7 +303,7 @@ export default function OverviewPage() {
                                         />
                                     </div>
                                     <div className="w-28 text-right shrink-0">
-                                        <span className="font-bold text-foreground text-sm font-mono">{pct.toFixed(1)}%</span>
+                                        <span className="font-bold text-foreground text-sm">{pct.toFixed(1)}%</span>
                                         <span className="text-xs text-muted-foreground ml-2">({formatVND(ch.netRevenue)})</span>
                                     </div>
                                 </div>

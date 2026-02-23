@@ -25,14 +25,14 @@ export const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) 
         <ThemeProvider>
             <FilterProvider>
                 <ToastProvider>
-                    <div className="flex min-h-screen bg-background text-foreground transition-colors duration-300">
+                    <div className="min-h-screen bg-background text-foreground transition-colors duration-300 w-full overflow-x-hidden">
                         <Sidebar />
-                        <main className="flex-1 ml-72 flex flex-col">
+                        <main className="ml-72 flex flex-col min-h-screen min-w-0 overflow-x-hidden">
                             <Header />
-                            <div className="p-8 overflow-x-hidden flex-1">
+                            <div className="p-4 md:p-8 flex-1 w-full max-w-full overflow-x-hidden flex flex-col">
                                 {children}
                             </div>
-                            <div className="py-6 text-center text-[10px] text-muted-foreground/30 font-medium tracking-widest uppercase select-none">
+                            <div className="py-6 text-center text-[10px] text-muted-foreground/30 font-medium tracking-widest uppercase select-none w-full">
                                 © 2026 Bản quyền thuộc về PhamThang PTS. Cấm sao chép dưới mọi hình thức nếu không có sự chấp thuận bằng văn bản.
                             </div>
                         </main>

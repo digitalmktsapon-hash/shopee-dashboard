@@ -327,7 +327,7 @@ export default function CustomersPage() {
                                                 onClick={() => setExpandedOrderId(expandedOrderId === h.orderId ? null : h.orderId)}
                                             >
                                                 <td className="px-6 py-3">{h.date}</td>
-                                                <td className="px-6 py-3 font-mono text-xs text-primary underline decoration-dotted underline-offset-2">
+                                                <td className="px-6 py-3 text-xs text-primary underline decoration-dotted underline-offset-2">
                                                     {h.orderId}
                                                 </td>
                                                 <td className="px-6 py-3 text-right">{formatVND(h.value)}</td>

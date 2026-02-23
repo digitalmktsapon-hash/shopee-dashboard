@@ -4,26 +4,29 @@ import React from 'react';
 import { UploadCloud } from 'lucide-react';
 
 interface UploadZoneProps {
-    onFileUpload: (file: File) => void;
+    onFilesUpload: (files: File[]) => void;
 }
 
-export const UploadZone: React.FC<UploadZoneProps> = ({ onFileUpload }) => {
+export const UploadZone: React.FC<UploadZoneProps> = ({ onFilesUpload }) => {
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files[0]) {
-            onFileUpload(e.target.files[0]);
+        if (e.target.files && e.target.files.length > 0) {
+            onFilesUpload(Array.from(e.target.files));
         }
     };
 
     return (
-        <div className="flex flex-col items-center justify-center w-full h-64 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 relative">
+        <div className="flex flex-col items-center justify-center w-full h-64 border-2 border-primary/20 border-dashed rounded-2xl cursor-pointer bg-muted/20 hover:bg-muted/40 transition-all relative group">
             <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                <UploadCloud className="w-10 h-10 mb-3 text-gray-400" />
-                <p className="mb-2 text-sm text-gray-500"><span className="font-semibold">Nhấn để chọn file</span> hoặc kéo thả vào đây</p>
-                <p className="text-xs text-gray-500">XLSX hoặc XLS (Báo cáo Shopee)</p>
+                <div className="p-4 bg-primary/10 rounded-full mb-4 group-hover:scale-110 transition-transform duration-300">
+                    <UploadCloud className="w-10 h-10 text-primary" />
+                </div>
+                <p className="mb-2 text-sm text-foreground"><span className="font-bold">Nhấn để chọn file</span> hoặc kéo thả vào đây</p>
+                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">XLSX, XLS (Báo cáo Đơn hàng)</p>
             </div>
             <input
                 id="dropzone-file"
                 type="file"
+                multiple
                 className="hidden"
                 accept=".xlsx, .xls"
                 onChange={handleFileChange}
