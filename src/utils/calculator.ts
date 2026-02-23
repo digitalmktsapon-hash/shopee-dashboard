@@ -1049,7 +1049,7 @@ export const calculateMetrics = (orders: ShopeeOrder[]): MetricResult => {
             successfulOrders: successfulOrdersRealized,
             strictAov: successfulOrdersRealized > 0 ? strictAOVNumerator / successfulOrdersRealized : 0,
             returnRate: orderReturnRateVal,
-            aov: successfulOrdersRealized > 0 ? realizedRevenue / successfulOrdersRealized : 0,
+            aov: successfulOrdersRealized > 0 ? strictAOVNumerator / successfulOrdersRealized : 0,
             feePerOrder: successfulOrdersRealized > 0 ? realizedFees / successfulOrdersRealized : 0,
             cogsPerOrder: successfulOrdersRealized > 0 ? realizedCOGS / successfulOrdersRealized : 0,
         },
@@ -1066,8 +1066,8 @@ export const calculateMetrics = (orders: ShopeeOrder[]): MetricResult => {
         netProfitAfterTax: netProfitAfterTax, // NEW: Profit after 8% tax
         netMargin: netMargin,             // 7- Margin (REALIZED ONLY)
         profitPerSoldUnit: totalNetQty > 0 ? ((realizedRevenue - realizedCOGS - realizedFees) / totalNetQty) : 0,
-        profitPerOrder: 0,
-        avgOrderValue: successfulOrdersRealized > 0 ? realizedRevenue / successfulOrdersRealized : 0,
+        profitPerOrder: successfulOrdersRealized > 0 ? totalGrossProfit / successfulOrdersRealized : 0,
+        avgOrderValue: successfulOrdersRealized > 0 ? strictAOVNumerator / successfulOrdersRealized : 0,
         daysWithNegativeProfit: 0,
 
         totalRevenue: totalListRevenue,
