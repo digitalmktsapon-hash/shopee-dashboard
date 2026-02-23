@@ -637,10 +637,6 @@ export const calculateMetrics = (orders: ShopeeOrder[]): MetricResult => {
             // Aggregated Subsidy Analysis
             subsidyMap['Voucher từ Shop'] += (first.shopVoucher || 0);
 
-            lines.forEach(line => {
-                subsidyMap['Trợ giá từ Shopee'] += (line.shopeeRebate || 0);
-            });
-
             // Operations Analysis (Carrier Stats)
             const carrier = first.deliveryCarrier || 'Khác';
             if (!carrierMap[carrier]) carrierMap[carrier] = { count: 0, shipTimeTotal: 0, shipTimeCount: 0 };

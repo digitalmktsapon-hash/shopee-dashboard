@@ -185,7 +185,7 @@ export default function FeesPage() {
                                 </h3>
                                 {prevMetrics && <PoPIndicator current={subsidyData.reduce((a, b) => a + b.value, 0)} prev={prevSubsidies} />}
                             </div>
-                            <p className="text-sm text-muted-foreground mt-1">Voucher Shopee & Shop</p>
+                            <p className="text-sm text-muted-foreground mt-1">Voucher Shop</p>
                         </div>
                         <div className="p-3 bg-emerald-500/10 rounded-xl">
                             <Tag className="w-8 h-8 text-emerald-500" />
