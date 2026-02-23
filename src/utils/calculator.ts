@@ -178,9 +178,16 @@ export const calculateMetrics = (orders: ShopeeOrder[]): MetricResult => {
         }
 
         // 1. Core Base Metrics (Revenue, COGS) - Tied strictly to Order Date
+        // 1️⃣ Doanh thu gộp (Giá gốc * Số lượng)
         let baseGrossRevenue = 0;
         let baseCOGS = 0;
+
+        // 2️⃣ Tổng giảm giá Shop chịu (Mã giảm giá của Shop + Số tiền Người bán trợ giá)
         let baseMarketingCost = 0;
+
+        // 3️⃣ Tổng trợ giá Shopee (Voucher Shopee + Xu Shopee + Trợ giá vận chuyển Shopee) -> KHÔNG ĐƯA VÀO PROFIT
+        let baseShopeeSubsidies = 0;
+
         orderLines.forEach(line => {
             const qty = line.quantity || 0;
             const originalPrice = line.originalPrice || 0;
@@ -190,26 +197,34 @@ export const calculateMetrics = (orders: ShopeeOrder[]): MetricResult => {
                 baseGrossRevenue += lineGross;
                 baseCOGS += lineGross * 0.4;
                 baseMarketingCost += (line.sellerRebate || 0);
+                baseShopeeSubsidies += (line.shopeeRebate || 0);
             }
         });
         if (!isCancelled) {
             baseMarketingCost += (firstLine.shopVoucher || 0);
         }
 
+        // 4️⃣ Doanh thu sau giảm giá Shop
+        const baseNetRevenue = baseGrossRevenue - baseMarketingCost;
+
+        // 5️⃣ Tổng phí sàn = Phí cố định + Phí dịch vụ + Phí thanh toán
         const orderFixedFee = (firstLine.fixedFee || 0);
         const orderServiceFee = (firstLine.serviceFee || 0);
         const orderPaymentFee = (firstLine.paymentFee || 0);
         const basePlatformFees = orderFixedFee + orderServiceFee + orderPaymentFee;
         const totalOrderFees = basePlatformFees; // Used for proportional allocation
-        const baseAffiliateFee = (firstLine.affiliateCommission || 0);
+        const baseAffiliateFee = (firstLine.affiliateCommission || 0); // Isolated track
 
         // 2. Return Impact Metrics - Tied strictly to Update Time
+        // Return metrics only calculate the portion of items physically marked as returned
         let returnGrossRevenueLoss = 0;
         let returnCOGSRecovery = 0;
         let returnMarketingCostRecovery = 0;
+        let returnShopeeSubsidiesRecovery = 0;
         let returnPlatformFeeRecovery = 0;
         let returnAffiliateFeeRecovery = 0;
-        const returnShippingCost = firstLine.returnShippingFee || 0;
+        // 6️⃣ Phí vận chuyển trả hàng
+        const returnShippingCost = (hasReturn && !isCancelled) ? (firstLine.returnShippingFee || 0) : 0;
 
         if (hasReturn && !isCancelled) {
             const returnedRatio = (totalQtyBeforeReturn > 0) ? (totalReturnQtyInOrder / totalQtyBeforeReturn) : 0;
@@ -266,15 +281,17 @@ export const calculateMetrics = (orders: ShopeeOrder[]): MetricResult => {
         const orderNetRevenue = effectiveGrossRevenue - effectiveMarketingCost - returnShippingCost;
 
         // Global Accumulators (We preserve the existing holistic aggregation for now, 
-        // but daily metrics will be strictly separated by Event Date)
+        // 7️⃣ Số tiền Shop Thực Nhận = Doanh thu sau giảm giá - Phí Sàn 
+        // 8️⃣ Lợi Nhuận Gộp = Thực nhận - Giá Vốn
+
         totalOrders++;
         if (status === 'Hoàn thành') totalSuccessfulOrders++;
 
         if (!isCancelled) {
             totalSurcharges += effectivePlatformFees;
             totalSubsidies += effectiveMarketingCost;
-            totalNetRevenue += orderNetRevenue;
-            totalListRevenue += effectiveGrossRevenue;
+            totalNetRevenue += orderNetRevenue; // This matches Doanh Thu Sau Giảm Giá
+            totalListRevenue += effectiveGrossRevenue; // Matches Doanh Thu Gộp
             totalProductQty += qtyKept;
         }
 
@@ -390,8 +407,9 @@ export const calculateMetrics = (orders: ShopeeOrder[]): MetricResult => {
 
         if (!isCancelled) {
             // BASE (Hits Order Date)
-            const baseNetRevenue = baseGrossRevenue - baseMarketingCost;
-            const baseNetProfit = baseNetRevenue - basePlatformFees - baseAffiliateFee - baseCOGS;
+            // 7️⃣ Thực nhận = Doanh thu sau giảm giá - Phí Sàn 
+            // 8️⃣ Lợi Nhuận Gộp = Thực nhận - COGS
+            const baseNetProfit = baseNetRevenue - basePlatformFees - baseCOGS; // Excluded Affiliate as per exact user formula
 
             daily.revenue2 += baseNetRevenue;
             daily.fees += basePlatformFees;
@@ -407,8 +425,8 @@ export const calculateMetrics = (orders: ShopeeOrder[]): MetricResult => {
 
             // RETURNS (Hits Update Date)
             if (hasReturn) {
-                const returnNetRevenueLoss = returnGrossRevenueLoss - returnMarketingCostRecovery - returnShippingCost;
-                const returnNetProfitLoss = returnNetRevenueLoss - returnPlatformFeeRecovery - returnAffiliateFeeRecovery - returnCOGSRecovery;
+                const returnNetRevenueLoss = returnGrossRevenueLoss - returnMarketingCostRecovery;
+                const returnNetProfitLoss = returnNetRevenueLoss - returnPlatformFeeRecovery - returnCOGSRecovery + returnShippingCost;
 
                 updateDaily.revenue2 -= returnNetRevenueLoss;
                 updateDaily.fees -= returnPlatformFeeRecovery;
@@ -424,15 +442,19 @@ export const calculateMetrics = (orders: ShopeeOrder[]): MetricResult => {
             }
 
             // Location (Uses Order Date)
+            // Lợi nhuận gộp theo khu vực
+            const locationRevenue = effectiveGrossRevenue - effectiveMarketingCost;
+            const locationProfit = locationRevenue - effectivePlatformFees - effectiveCOGS - returnShippingCost;
+
             const province = firstLine.province || 'Khác';
             if (!locationMap[province]) locationMap[province] = { revenue: 0, count: 0, profit: 0 };
-            locationMap[province].revenue += effectiveGrossRevenue - effectiveMarketingCost - returnShippingCost;
-            locationMap[province].profit += (effectiveGrossRevenue - effectiveMarketingCost - returnShippingCost) - effectivePlatformFees - effectiveAffiliateFee - effectiveCOGS;
+            locationMap[province].revenue += locationRevenue;
+            locationMap[province].profit += locationProfit;
             locationMap[province].count += 1;
 
             // Status (Uses Order Date)
             if (!statusMap[status]) statusMap[status] = { revenue: 0, count: 0 };
-            statusMap[status].revenue += effectiveGrossRevenue - effectiveMarketingCost - returnShippingCost;
+            statusMap[status].revenue += locationRevenue;
             statusMap[status].count += 1;
         }
 
@@ -997,7 +1019,8 @@ export const calculateMetrics = (orders: ShopeeOrder[]): MetricResult => {
     // 4. Finalize
     const cancelRateVal = totalOrders > 0 ? (cancelledOrdersCount / totalOrders) * 100 : 0;
     const orderReturnRateVal = totalOrders > 0 ? (returnOrderCount / totalOrders) * 100 : 0;
-    const totalGrossProfit = realizedRevenue - realizedCOGS - realizedFees - totalAffiliateFees;
+    const totalGrossProfit = realizedRevenue - realizedCOGS - realizedFees; // Explicitly excluded Affiliate here as requested
+    const netProfitAfterTax = totalGrossProfit / 1.08;
     const netMargin = realizedRevenue > 0 ? (totalGrossProfit / realizedRevenue) * 100 : 0;
 
     // Risk Profile Generation (Products)
@@ -1033,6 +1056,7 @@ export const calculateMetrics = (orders: ShopeeOrder[]): MetricResult => {
         totalGrossRevenue: realizedRevenue - realizedFees,     // 4- Rev 3 (Proceeds)
         totalCOGS: realizedCOGS,             // 5- COGS (REALIZED ONLY)
         totalGrossProfit: totalGrossProfit,      // 6- Profit (REALIZED ONLY)
+        netProfitAfterTax: netProfitAfterTax, // NEW: Profit after 8% tax
         netMargin: netMargin,             // 7- Margin (REALIZED ONLY)
         profitPerSoldUnit: totalNetQty > 0 ? ((realizedRevenue - realizedCOGS - realizedFees) / totalNetQty) : 0,
         profitPerOrder: 0,

@@ -210,11 +210,11 @@ export default function Dashboard() {
                     color="blue"
                 />
                 <KPICard
-                    title="LỢI NHUẬN GỘP"
-                    value={formatVND(metrics?.totalGrossProfit || 0)}
+                    title="LỢI NHUẬN SAU THUẾ"
+                    value={formatVND(metrics?.netProfitAfterTax || 0)}
                     icon={Percent}
-                    subValue={metrics && prevMetrics ? getChangePct(metrics.totalGrossProfit, prevMetrics.totalGrossProfit) : undefined}
-                    trend={metrics && prevMetrics ? (metrics.totalGrossProfit > prevMetrics.totalGrossProfit ? 'up' : 'down') : 'neutral'}
+                    subValue={metrics && prevMetrics ? getChangePct(metrics.netProfitAfterTax, prevMetrics.netProfitAfterTax) : undefined}
+                    trend={metrics && prevMetrics ? (metrics.netProfitAfterTax > prevMetrics.netProfitAfterTax ? 'up' : 'down') : 'neutral'}
                     className="text-sharp transition-all duration-300"
                     color="emerald"
                 />

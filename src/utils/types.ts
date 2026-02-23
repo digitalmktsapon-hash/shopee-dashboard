@@ -398,6 +398,7 @@ export interface MetricResult {
   totalGrossRevenue: number; // Net Proceeds
   totalCOGS: number;
   totalGrossProfit: number;
+  netProfitAfterTax: number;
   netMargin: number;
   avgOrderValue: number;
   profitPerOrder: number;
