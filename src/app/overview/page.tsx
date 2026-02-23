@@ -5,9 +5,15 @@ import { useRouter } from 'next/navigation';
 import { Platform, ReportFile, ShopeeOrder } from '@/utils/types';
 import { calculateMetrics } from '@/utils/calculator';
 import { PLATFORM_BADGE_STYLE, PLATFORM_LABEL } from '@/app/data-sources/page';
-import { TrendingUp, TrendingDown, Minus, BarChart3, RefreshCw, Store, ExternalLink } from 'lucide-react';
-import { formatVND } from '@/utils/format';
+import { formatVND, formatDateVN } from '@/utils/format';
 import { useFilter } from '@/contexts/FilterContext';
+import {
+    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+    LineChart, Line, AreaChart, Area, ComposedChart, Legend, Cell
+} from 'recharts';
+import { ChartTooltip } from '@/components/ChartTooltip';
+import { Activity, ShoppingBag, DollarSign, Percent, CreditCard, Ticket, TrendingUp, TrendingDown, Minus, BarChart3, RefreshCw, Store, ExternalLink } from 'lucide-react';
+import clsx from 'clsx';
 
 interface ChannelSummary {
     platform: Platform;
@@ -49,6 +55,16 @@ export default function OverviewPage() {
     const [loading, setLoading] = useState(true);
     const { startDate, endDate, setChannelKey } = useFilter();
     const router = useRouter();
+
+    // Interactive Chart State
+    const [activeMetrics, setActiveMetrics] = useState({
+        orders: true,
+        grossRevenue: true,
+        promoCost: false,
+        platformFees: false,
+        netRevenue: true,
+        aov: false
+    });
 
     useEffect(() => {
         const fetchAll = async () => {
@@ -136,6 +152,14 @@ export default function OverviewPage() {
         profit: acc.profit + c.profit,
     }), { orders: 0, revenue: 0, netRevenue: 0, netRevenueAfterTax: 0, promoCost: 0, strictAovNumerator: 0, fees: 0, profit: 0 }), [channels]);
 
+    // Compute Global Daily Trends across all channels
+    const globalTrends = useMemo(() => {
+        const allOrders = filteredReports.flatMap(r => r.orders || []);
+        if (allOrders.length === 0) return [];
+        const m = calculateMetrics(allOrders);
+        return m.revenueTrend || [];
+    }, [filteredReports]);
+
     const totalMargin = totals.netRevenue > 0 ? (totals.profit / totals.netRevenue) * 100 : 0;
 
     if (loading) {
@@ -183,6 +207,156 @@ export default function OverviewPage() {
                         <p className="text-xs text-muted-foreground mt-1">{card.sub}</p>
                     </div>
                 ))}
+            </div>
+
+            {/* Daily Trends Chart - Global */}
+            <div className="bg-card/40 backdrop-blur-md rounded-2xl shadow-xl border border-border p-6">
+                <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-8">
+                    <div>
+                        <h2 className="text-xl font-black text-foreground flex items-center gap-2">
+                            <Activity className="w-5 h-5 text-primary" />
+                            Biến động 6 chỉ số theo ngày
+                        </h2>
+                        <p className="text-xs text-muted-foreground mt-1 font-medium italic">
+                            Dữ liệu tổng hợp từ tất cả {channels.length} kênh bán hàng đang được lọc
+                        </p>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                        {[
+                            { id: 'orders', label: 'Đơn hàng', icon: ShoppingBag, color: 'emerald' },
+                            { id: 'grossRevenue', label: 'Doanh thu gộp', icon: DollarSign, color: 'blue' },
+                            { id: 'promoCost', label: 'Chi phí KM', icon: Ticket, color: 'orange' },
+                            { id: 'platformFees', label: 'Phí sàn', icon: CreditCard, color: 'rose' },
+                            { id: 'netRevenue', label: 'Doanh thu thuần', icon: Activity, color: 'indigo' },
+                            { id: 'aov', label: 'AOV', icon: Percent, color: 'amber' },
+                        ].map((m) => (
+                            <button
+                                key={m.id}
+                                onClick={() => setActiveMetrics(prev => ({ ...prev, [m.id]: !prev[m.id as keyof typeof activeMetrics] }))}
+                                className={clsx(
+                                    "flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border transition-all duration-300",
+                                    activeMetrics[m.id as keyof typeof activeMetrics]
+                                        ? `bg-${m.color}-500/20 border-${m.color}-500/50 text-${m.color}-400 shadow-[0_0_15px_rgba(0,0,0,0.2)]`
+                                        : "bg-muted/10 border-border/50 text-muted-foreground hover:bg-muted/20"
+                                )}
+                            >
+                                <m.icon className="w-3 h-3" />
+                                {m.label}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                <div className="h-[400px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <ComposedChart data={globalTrends} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
+                            <defs>
+                                <linearGradient id="colorNet" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
+                                    <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                                </linearGradient>
+                                <linearGradient id="colorGross" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.1} />
+                                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                                </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                            <XAxis
+                                dataKey="date"
+                                tickFormatter={(str) => {
+                                    const d = new Date(str);
+                                    return isNaN(d.getTime()) ? str : `${d.getDate()}/${d.getMonth() + 1}`;
+                                }}
+                                axisLine={false}
+                                tickLine={false}
+                                tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 10, fontWeight: 700 }}
+                                dy={10}
+                            />
+                            <YAxis
+                                yAxisId="left"
+                                orientation="left"
+                                axisLine={false}
+                                tickLine={false}
+                                tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 10, fontWeight: 700 }}
+                                tickFormatter={(val) => val >= 1000000 ? `${(val / 1000000).toFixed(1)}M` : val.toLocaleString()}
+                            />
+                            <YAxis
+                                yAxisId="right"
+                                orientation="right"
+                                axisLine={false}
+                                tickLine={false}
+                                tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 10, fontWeight: 700 }}
+                                hide={!activeMetrics.orders && !activeMetrics.aov}
+                            />
+                            <Tooltip content={<ChartTooltip formatter={(val, name) =>
+                                name.includes('Đơn') ? val.toLocaleString() : formatVND(val)
+                            } />} />
+
+                            {/* Area: Net Revenue After Tax */}
+                            {activeMetrics.netRevenue && (
+                                <Area
+                                    yAxisId="left"
+                                    type="monotone"
+                                    dataKey="netRevenueAfterTax"
+                                    name="Doanh thu thuần"
+                                    stroke="#6366f1"
+                                    strokeWidth={3}
+                                    fillOpacity={1}
+                                    fill="url(#colorNet)"
+                                />
+                            )}
+
+                            {/* Area: Gross Revenue */}
+                            {activeMetrics.grossRevenue && (
+                                <Area
+                                    yAxisId="left"
+                                    type="monotone"
+                                    dataKey="grossRevenue"
+                                    name="Doanh thu gộp"
+                                    stroke="#3b82f6"
+                                    strokeWidth={2}
+                                    strokeDasharray="5 5"
+                                    fillOpacity={1}
+                                    fill="url(#colorGross)"
+                                />
+                            )}
+
+                            {/* Bars: Promo & Fees */}
+                            {activeMetrics.promoCost && (
+                                <Bar yAxisId="left" dataKey="promoCost" name="Chi phí KM" fill="#f97316" radius={[4, 4, 0, 0]} opacity={0.6} barSize={20} />
+                            )}
+                            {activeMetrics.platformFees && (
+                                <Bar yAxisId="left" dataKey="platformFees" name="Phí sàn" fill="#ef4444" radius={[4, 4, 0, 0]} opacity={0.6} barSize={20} />
+                            )}
+
+                            {/* Lines: Orders & AOV */}
+                            {activeMetrics.orders && (
+                                <Line
+                                    yAxisId="right"
+                                    type="stepAfter"
+                                    dataKey="successfulOrders"
+                                    name="Đơn hàng"
+                                    stroke="#10b981"
+                                    strokeWidth={2}
+                                    dot={{ r: 3, fill: '#10b981', strokeWidth: 0 }}
+                                    activeDot={{ r: 5, strokeWidth: 0 }}
+                                />
+                            )}
+                            {activeMetrics.aov && (
+                                <Line
+                                    yAxisId="left"
+                                    type="monotone"
+                                    dataKey="aov"
+                                    name="AOV"
+                                    stroke="#f59e0b"
+                                    strokeWidth={2}
+                                    dot={{ r: 2, fill: '#f59e0b' }}
+                                />
+                            )}
+                        </ComposedChart>
+                    </ResponsiveContainer>
+                </div>
             </div>
 
             {/* Channel Comparison Table */}

@@ -397,12 +397,12 @@ export const calculateMetrics = (orders: ShopeeOrder[]): MetricResult => {
             totalItems: 0, returnItems: 0, highRiskCount: 0, controlRatioSum: 0, promoSum: 0, grossMarginBeforePromoSum: 0
         };
         const updateDaily = dailyMap[updateKey];
-        if (!trends[dateKey]) trends[dateKey] = { date: dateKey, revenue: 0, netRevenue: 0, cost: 0, profit: 0, orders: 0 };
-        if (!trends[updateKey]) trends[updateKey] = { date: updateKey, revenue: 0, netRevenue: 0, cost: 0, profit: 0, orders: 0 };
+        if (!trends[dateKey]) trends[dateKey] = { date: dateKey, revenue: 0, netRevenue: 0, cost: 0, profit: 0, orders: 0, grossRevenue: 0, promoCost: 0, platformFees: 0, strictAovNumerator: 0, returnShipping: 0 };
+        if (!trends[updateKey]) trends[updateKey] = { date: updateKey, revenue: 0, netRevenue: 0, cost: 0, profit: 0, orders: 0, grossRevenue: 0, promoCost: 0, platformFees: 0, strictAovNumerator: 0, returnShipping: 0 };
 
-        if (status === 'Hoàn thành') {
-            daily.successfulOrders++;
+        if (!isCancelled && returnStatus !== 'Đã Chấp Thuận Yêu Cầu') {
             trends[dateKey].orders += 1;
+            trends[dateKey].strictAovNumerator += (firstLine.orderTotalAmount || 0) - (firstLine.shopVoucher || 0);
         }
 
         if (!isCancelled) {
@@ -420,6 +420,9 @@ export const calculateMetrics = (orders: ShopeeOrder[]): MetricResult => {
             trends[dateKey].revenue += baseNetRevenue;
             trends[dateKey].cost += baseCOGS;
             trends[dateKey].profit += baseNetProfit;
+            trends[dateKey].grossRevenue += baseGrossRevenue;
+            trends[dateKey].promoCost += baseMarketingCost;
+            trends[dateKey].platformFees += basePlatformFees;
             if (!(trends[dateKey] as any).fees) (trends[dateKey] as any).fees = 0;
             (trends[dateKey] as any).fees += basePlatformFees;
 
@@ -437,6 +440,10 @@ export const calculateMetrics = (orders: ShopeeOrder[]): MetricResult => {
                 trends[updateKey].revenue -= returnNetRevenueLoss;
                 trends[updateKey].cost -= returnCOGSRecovery;
                 trends[updateKey].profit -= returnNetProfitLoss;
+                trends[updateKey].grossRevenue -= returnGrossRevenueLoss;
+                trends[updateKey].promoCost -= returnMarketingCostRecovery;
+                trends[updateKey].platformFees -= returnPlatformFeeRecovery;
+                trends[updateKey].returnShipping += returnShippingCost;
                 if (!(trends[updateKey] as any).fees) (trends[updateKey] as any).fees = 0;
                 (trends[updateKey] as any).fees -= returnPlatformFeeRecovery;
             }
@@ -1093,7 +1100,14 @@ export const calculateMetrics = (orders: ShopeeOrder[]): MetricResult => {
             grossProfit: t.revenue - t.cost, // Approx placeholder
             netProfit: t.profit,
             profitMargin: t.revenue > 0 ? (t.profit / t.revenue) * 100 : 0,
-            orders: t.orders
+            orders: t.orders,
+            // 6 Explicit Standard KPIs
+            successfulOrders: t.orders,
+            grossRevenue: t.grossRevenue,
+            promoCost: t.promoCost,
+            platformFees: t.platformFees,
+            netRevenueAfterTax: (t.revenue - t.platformFees - (t.returnShipping || 0)) / 1.08,
+            aov: t.orders > 0 ? (t.strictAovNumerator / t.orders) : 0
         })),
 
         productPerformance: finalizedProducts,
