@@ -87,7 +87,7 @@ export const KPICard: React.FC<KPICardProps> = ({ title, value, icon: Icon, subV
             </div>
             {subValue && (
                 <div className="px-5 py-3.5 bg-muted/10 border-t border-border/30 flex items-center justify-between text-sharp transition-colors group-hover:bg-muted/15">
-                    <span className="text-[9px] font-black text-muted-foreground/50 uppercase tracking-[0.15em]">Metric Lần Trước</span>
+                    <span className="text-[9px] font-black text-muted-foreground/50 uppercase tracking-[0.15em]">so với kỳ trước</span>
                     <span className={cn(
                         "text-[10px] font-extrabold px-2 py-0.5 rounded-md flex items-center gap-1 shadow-sm",
                         trend === 'up' ? "bg-emerald-500/10 text-emerald-500" :

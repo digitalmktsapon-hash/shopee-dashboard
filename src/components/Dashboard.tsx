@@ -180,6 +180,13 @@ export default function Dashboard() {
         );
     };
 
+    const getChangePct = (curr: number, prev?: number) => {
+        if (!prev || prev === 0) return undefined;
+        const diff = curr - prev;
+        const pct = (Math.abs(diff) / prev) * 100;
+        return `${pct.toFixed(2)}%`;
+    };
+
     return (
         <div className="space-y-8 animate-in fade-in duration-500 pb-20">
             {/* 1. KPI Cards Row - 6 Cards */}
@@ -188,7 +195,7 @@ export default function Dashboard() {
                     title="DOANH THU NET"
                     value={formatVND(metrics?.totalNetRevenue || 0)}
                     icon={Activity}
-                    subValue={prevMetrics ? formatVND(prevMetrics.totalNetRevenue) : undefined}
+                    subValue={metrics && prevMetrics ? getChangePct(metrics.totalNetRevenue, prevMetrics.totalNetRevenue) : undefined}
                     trend={metrics && prevMetrics ? (metrics.totalNetRevenue > prevMetrics.totalNetRevenue ? 'up' : 'down') : 'neutral'}
                     className="text-sharp transition-all duration-300"
                     color="blue"
@@ -197,8 +204,8 @@ export default function Dashboard() {
                     title="LỢI NHUẬN GỘP"
                     value={formatVND(metrics?.totalGrossProfit || 0)}
                     icon={Percent}
-                    subValue={metrics ? `${formatNumber(metrics.netMargin, 1)}%` : undefined}
-                    trend={metrics && prevMetrics ? (metrics.netMargin > prevMetrics.netMargin ? 'up' : 'down') : 'neutral'}
+                    subValue={metrics && prevMetrics ? getChangePct(metrics.totalGrossProfit, prevMetrics.totalGrossProfit) : undefined}
+                    trend={metrics && prevMetrics ? (metrics.totalGrossProfit > prevMetrics.totalGrossProfit ? 'up' : 'down') : 'neutral'}
                     className="text-sharp transition-all duration-300"
                     color="emerald"
                 />
@@ -206,7 +213,7 @@ export default function Dashboard() {
                     title="ĐƠN THÀNH CÔNG"
                     value={formatNumber(metrics?.successfulOrders || 0)}
                     icon={ShoppingBag}
-                    subValue={metrics ? `${formatNumber(metrics.totalOrders)} đơn` : undefined}
+                    subValue={metrics && prevMetrics ? getChangePct(metrics.successfulOrders, prevMetrics.successfulOrders) : undefined}
                     trend={metrics && prevMetrics ? (metrics.successfulOrders > prevMetrics.successfulOrders ? 'up' : 'down') : 'neutral'}
                     className="text-sharp transition-all duration-300"
                     color="violet"
@@ -215,8 +222,8 @@ export default function Dashboard() {
                     title="PHÍ SÀN"
                     value={formatVND(metrics?.totalSurcharges || 0)}
                     icon={CreditCard}
-                    subValue={metrics ? `${formatNumber((metrics.totalSurcharges / (metrics.totalNetRevenue || 1)) * 100, 1)}%` : undefined}
-                    trend={metrics && prevMetrics ? (metrics.totalSurcharges < prevMetrics.totalSurcharges ? 'up' : 'down') : 'neutral'}
+                    subValue={metrics && prevMetrics ? getChangePct(metrics.totalSurcharges, prevMetrics.totalSurcharges) : undefined}
+                    trend={metrics && prevMetrics ? (metrics.totalSurcharges > prevMetrics.totalSurcharges ? 'up' : 'down') : 'neutral'}
                     className="text-sharp transition-all duration-300"
                     color="rose"
                 />
@@ -224,7 +231,7 @@ export default function Dashboard() {
                     title="AOV"
                     value={formatVND(metrics?.avgOrderValue || 0)}
                     icon={Ticket}
-                    subValue={prevMetrics ? formatVND(prevMetrics.avgOrderValue) : undefined}
+                    subValue={metrics && prevMetrics ? getChangePct(metrics.avgOrderValue, prevMetrics.avgOrderValue) : undefined}
                     trend={metrics && prevMetrics ? (metrics.avgOrderValue > prevMetrics.avgOrderValue ? 'up' : 'down') : 'neutral'}
                     className="text-sharp transition-all duration-300"
                     color="amber"
@@ -233,8 +240,8 @@ export default function Dashboard() {
                     title="TỶ LỆ HOÀN"
                     value={`${formatNumber(metrics?.orderReturnRate || 0, 2)}%`}
                     icon={RefreshCcw}
-                    subValue={metrics ? `Hủy: ${formatNumber(metrics.totalOrders - metrics.successfulOrders)} đơn` : undefined}
-                    trend={metrics && prevMetrics ? (metrics.orderReturnRate < prevMetrics.orderReturnRate ? 'up' : 'down') : 'neutral'}
+                    subValue={metrics && prevMetrics ? getChangePct(metrics.orderReturnRate, prevMetrics.orderReturnRate) : undefined}
+                    trend={metrics && prevMetrics ? (metrics.orderReturnRate > prevMetrics.orderReturnRate ? 'up' : 'down') : 'neutral'}
                     className="text-sharp transition-all duration-300"
                     color="indigo"
                 />
