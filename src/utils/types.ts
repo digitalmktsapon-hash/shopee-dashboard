@@ -47,9 +47,10 @@ export interface ShopeeOrder {
   paymentMethod?: string; // Phương thức thanh toán
 
   // Dates
-  payoutDate?: string; // Thời gian đơn hàng được thanh toán
-  completeDate?: string; // Thời gian hoàn thành đơn hàng
   shipTime?: string; // Thời gian giao hàng
+  completeDate?: string; // Thời gian hoàn thành đơn hàng
+  updateTime?: string; // Thời gian Cập nhật
+  payoutDate?: string; // Thời gian đơn hàng được thanh toán
   // Location
   warehouseName?: string; // Tên kho hàng
 

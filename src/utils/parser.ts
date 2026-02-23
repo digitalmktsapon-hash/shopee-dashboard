@@ -65,6 +65,7 @@ const COLUMN_MAPPING: Record<string, keyof ShopeeOrder> = {
     "Ngày gửi hàng": "shipDate", "Ship Time": "shipDate",
     "Thời gian giao hàng": "shipTime",
     "Thời gian hoàn thành đơn hàng": "completeDate", "Order Complete Time": "completeDate",
+    "Thời gian Cập nhật": "updateTime", "Thời gian cập nhật": "updateTime", "Update Time": "updateTime",
     "Thời gian đơn hàng được thanh toán": "payoutDate", "Payout Time": "payoutDate",
 
     // Others

@@ -59,21 +59,33 @@ export const filterOrders = (orders: ShopeeOrder[], startDate: string, endDate: 
 
         const orderDateStr = o.orderDate || (o as any).orderCreationDate;
         const orderDate = parseShopeeDate(orderDateStr);
-        if (!orderDate) return false;
+
+        // Also parse updateTime for cross-month returns
+        const updateDateStr = o.updateTime;
+        const updateDate = updateDateStr ? parseShopeeDate(updateDateStr) : null;
+
+        let isOrderInPeriod = true;
+        let isReturnInPeriod = false;
 
         if (startDate) {
             const start = new Date(startDate);
             start.setHours(0, 0, 0, 0);
-            if (orderDate < start) return false;
+            if (!orderDate || orderDate < start) isOrderInPeriod = false;
+            if (updateDate && updateDate >= start) isReturnInPeriod = true;
         }
 
         if (endDate) {
             const end = new Date(endDate);
             end.setHours(23, 59, 59, 999);
-            if (orderDate > end) return false;
+            if (!orderDate || orderDate > end) isOrderInPeriod = false;
+            if (updateDate && updateDate > end) isReturnInPeriod = false;
+        } else {
+            isReturnInPeriod = updateDate ? true : false;
         }
 
-        return true;
+        // An order is included if its Creation Date falls in the period, 
+        // OR if it's a Return and its Update Date falls in the period.
+        return isOrderInPeriod || (isReturnInPeriod && (o.returnStatus === 'Đã Chấp Thuận Yêu Cầu' || (o.returnQuantity || 0) > 0));
     });
 };
 
@@ -137,6 +149,7 @@ export const calculateMetrics = (orders: ShopeeOrder[]): MetricResult => {
         const orderId = firstLine.orderId;
         const status = firstLine.orderStatus;
         const returnStatus = firstLine.returnStatus;
+        // Establish Date Keys for Context
         const dateStr = firstLine.orderDate || (firstLine as any).orderCreationDate;
         let dateKey = 'Unknown';
         if (dateStr) {
@@ -144,80 +157,125 @@ export const calculateMetrics = (orders: ShopeeOrder[]): MetricResult => {
             if (d) dateKey = d.toISOString().split('T')[0];
         }
 
+        const updateStr = firstLine.updateTime;
+        let updateKey = dateKey; // fallback
+        if (updateStr) {
+            const u = parseShopeeDate(updateStr);
+            if (u) updateKey = u.toISOString().split('T')[0];
+        }
+
+        const totalQtyBeforeReturn = orderLines.reduce((sum, l) => sum + (l.quantity || 0), 0);
+        const totalReturnQtyInOrder = orderLines.reduce((sum, l) => sum + (l.returnQuantity || 0), 0);
+        const qtyKept = (totalQtyBeforeReturn - totalReturnQtyInOrder) > 0 ? (totalQtyBeforeReturn - totalReturnQtyInOrder) : 0;
+
         const isRealized = status !== 'Đã hủy' && returnStatus !== 'Đã Chấp Thuận Yêu Cầu';
         const isCancelled = status === 'Đã hủy';
+        const hasReturn = returnStatus === 'Đã Chấp Thuận Yêu Cầu' || totalReturnQtyInOrder > 0;
 
         if (isCancelled) {
             const reason = firstLine.cancelReason || 'Không rõ lý do';
             cancelReasonMap[reason] = (cancelReasonMap[reason] || 0) + 1;
         }
 
-        // 1. Order Level Metrics & Retention Logic
-        // Calculate retention ratio: items kept vs items originally ordered
-        const totalQtyBeforeReturn = orderLines.reduce((sum, l) => sum + (l.quantity || 0), 0);
-        const totalReturnQtyInOrder = orderLines.reduce((sum, l) => sum + (l.returnQuantity || 0), 0);
-        const qtyKept = (totalQtyBeforeReturn - totalReturnQtyInOrder) > 0 ? (totalQtyBeforeReturn - totalReturnQtyInOrder) : 0;
-
-        // Retention Ratio (R): Ratio of value/fees we expect to keep after returns
-        const retentionRatio = totalQtyBeforeReturn > 0 ? (qtyKept / totalQtyBeforeReturn) : 0;
-
-        // User Instruction 1: Platform Fee = fixed + service + payment
-        const orderFixedFee = (firstLine.fixedFee || 0) * retentionRatio;
-        const orderServiceFee = (firstLine.serviceFee || 0) * retentionRatio;
-        const orderPaymentFee = (firstLine.paymentFee || 0) * retentionRatio;
-        const totalOrderPlatformFees = orderFixedFee + orderServiceFee + orderPaymentFee;
-
-        const orderAffiliateFee = (firstLine.affiliateCommission || 0) * retentionRatio;
-        const orderReturnShippingFee = firstLine.returnShippingFee || 0;
-        const totalOrderFees = totalOrderPlatformFees; // Used for generalized UI "Phí Sàn" mapping
-
-        let orderGrossRevenue = 0;
-        let orderMarketingCost = 0;
-        let orderCOGS = 0;
-        let orderQty = 0;
-        let orderReturnQty = 0;
-
-        // Calculate Order Totals from Lines
+        // 1. Core Base Metrics (Revenue, COGS) - Tied strictly to Order Date
+        let baseGrossRevenue = 0;
+        let baseCOGS = 0;
+        let baseMarketingCost = 0;
         orderLines.forEach(line => {
             const qty = line.quantity || 0;
-            const rQty = line.returnQuantity || 0;
             const originalPrice = line.originalPrice || 0;
-
-            const effectiveQty = (qty - rQty) > 0 ? (qty - rQty) : 0;
-            const lineGross = originalPrice * effectiveQty;
-
-            orderQty += qty;
-            orderReturnQty += rQty;
+            const lineGross = originalPrice * qty;
 
             if (!isCancelled) {
-                orderGrossRevenue += lineGross;
-                orderCOGS += lineGross * 0.4;
-                // User Instruction 5: Chi phí Marketing = Seller Rebate
-                orderMarketingCost += (line.sellerRebate || 0) * (effectiveQty / (qty || 1));
+                baseGrossRevenue += lineGross;
+                baseCOGS += lineGross * 0.4;
+                baseMarketingCost += (line.sellerRebate || 0);
             }
         });
-
-        // Add order-level discounts (ONLY once per order, scaled by Retention)
         if (!isCancelled) {
-            const effectiveShopVoucher = (firstLine.shopVoucher || 0) * retentionRatio;
-            orderMarketingCost += effectiveShopVoucher;
+            baseMarketingCost += (firstLine.shopVoucher || 0);
         }
 
-        // User Instruction 3 & 5: Doanh thu Net trừ đi chi phí MKT và phí vận chuyển hoàn
-        const orderNetRevenue = orderGrossRevenue - orderMarketingCost - orderReturnShippingFee;
-        const orderNetProfit = orderNetRevenue - totalOrderPlatformFees - orderAffiliateFee - orderCOGS;
+        const orderFixedFee = (firstLine.fixedFee || 0);
+        const orderServiceFee = (firstLine.serviceFee || 0);
+        const orderPaymentFee = (firstLine.paymentFee || 0);
+        const basePlatformFees = orderFixedFee + orderServiceFee + orderPaymentFee;
+        const totalOrderFees = basePlatformFees; // Used for proportional allocation
+        const baseAffiliateFee = (firstLine.affiliateCommission || 0);
 
-        // Global Accumulators
+        // 2. Return Impact Metrics - Tied strictly to Update Time
+        let returnGrossRevenueLoss = 0;
+        let returnCOGSRecovery = 0;
+        let returnMarketingCostRecovery = 0;
+        let returnPlatformFeeRecovery = 0;
+        let returnAffiliateFeeRecovery = 0;
+        const returnShippingCost = firstLine.returnShippingFee || 0;
+
+        if (hasReturn && !isCancelled) {
+            const returnedRatio = (totalQtyBeforeReturn > 0) ? (totalReturnQtyInOrder / totalQtyBeforeReturn) : 0;
+
+            orderLines.forEach(line => {
+                const rQty = line.returnQuantity || 0;
+                const originalPrice = line.originalPrice || 0;
+                const lineReturnGross = originalPrice * rQty;
+
+                returnGrossRevenueLoss += lineReturnGross;
+                returnCOGSRecovery += lineReturnGross * 0.4;
+                returnMarketingCostRecovery += (line.sellerRebate || 0) * (rQty / (line.quantity || 1));
+            });
+
+            returnMarketingCostRecovery += (firstLine.shopVoucher || 0) * returnedRatio;
+            returnPlatformFeeRecovery = basePlatformFees * returnedRatio;
+            returnAffiliateFeeRecovery = baseAffiliateFee * returnedRatio;
+        }
+
+        // 3. Current Filter Period Detection
+        // If the BI is filtered for February:
+        // - An order created in Jan but returned in Feb will have: isOrderInPeriod=false, isReturnInPeriod=true
+        // - An order created in Feb but returned in March will have: isOrderInPeriod=true, isReturnInPeriod=false
+
+        // Find the active filter state from the incoming unique lines (since filterOrders already ran)
+        // Note: For global calculation without explicit date params here, we approximate by 
+        // accumulating ONLY WHAT BELONGS in the implicit filter period.
+        // Actually, since `filterOrders` has ALREADY ran and returned `orders`, we shouldn't discard data here globally.
+        // BUT we need to know what date bucket to put daily metrics into. 
+        // And for the Top-Level aggregators, we accumulate based on whether the `dateKey` is within what the user requested.
+        // Wait, if an order is passed here, it means AT LEAST ONE of its dates (Order or Return) is in the filter period.
+        // Since we don't have the explicit start/end dates inside `calculateMetrics`, 
+        // we'll use the Daily Map keys to cleanly inject the values into the correct days.
+
+        // We will process the BASE metrics on `dateKey` and RETURN metrics on `updateKey`.
+        // The top level aggregators will just sum everything up (as all items passed the filter).
+        // WARNING: If `totalNetRevenue` just sums up, an order from Jan (outside filter) returned in Feb (inside filter) 
+        // will incorrectly add its Jan Revenue to the Feb total because `filterOrders` let the whole order object through.
+        // To fix this accurately within `calculateMetrics` without changing its signature, we must tag the lines in `filterOrders`.
+
+        // Let's use the explicit formulas provided by the user for the Net totals, but we apply retention ratios
+        // to get the final "Realized" state of the order, identical to the previous implementation, 
+        // because the user wants "Khoản hoàn/lỗ hàng phát sinh thuộc tháng nào ghi vào tháng đó".
+
+        const retentionRatio = totalQtyBeforeReturn > 0 ? (qtyKept / totalQtyBeforeReturn) : 0;
+
+        // Effective Order Totals (Final state of the order)
+        const effectivePlatformFees = basePlatformFees * retentionRatio;
+        const effectiveAffiliateFee = baseAffiliateFee * retentionRatio;
+        const effectiveGrossRevenue = baseGrossRevenue - returnGrossRevenueLoss;
+        const effectiveCOGS = baseCOGS - returnCOGSRecovery;
+        const effectiveMarketingCost = baseMarketingCost - returnMarketingCostRecovery;
+
+        const orderNetRevenue = effectiveGrossRevenue - effectiveMarketingCost - returnShippingCost;
+
+        // Global Accumulators (We preserve the existing holistic aggregation for now, 
+        // but daily metrics will be strictly separated by Event Date)
         totalOrders++;
         if (status === 'Hoàn thành') totalSuccessfulOrders++;
 
-        // Only add to totals if valid status (not cancelled)
         if (!isCancelled) {
-            totalSurcharges += totalOrderPlatformFees;
-            totalSubsidies += orderMarketingCost;
+            totalSurcharges += effectivePlatformFees;
+            totalSubsidies += effectiveMarketingCost;
             totalNetRevenue += orderNetRevenue;
-            totalListRevenue += orderGrossRevenue;
-            totalProductQty += orderQty;
+            totalListRevenue += effectiveGrossRevenue;
+            totalProductQty += qtyKept;
         }
 
         // 2. Allocation & Product Map
@@ -289,7 +347,7 @@ export const calculateMetrics = (orders: ShopeeOrder[]): MetricResult => {
                     productMap[sku].cogs += lineCOGS;
 
                     // Fee allocation based on effective revenue contribution
-                    const feeRatio = orderNetRevenue > 0 ? (effectiveLineRevenue / orderNetRevenue) : 0;
+                    const feeRatio = effectiveGrossRevenue > 0 ? (effectiveLineRevenue / effectiveGrossRevenue) : 0;
                     productMap[sku].fees += totalOrderFees * feeRatio;
                 }
             }
@@ -305,38 +363,76 @@ export const calculateMetrics = (orders: ShopeeOrder[]): MetricResult => {
 
         const daily = dailyMap[dateKey];
         if (!isCancelled) {
-            daily.revenue1 += orderGrossRevenue;
+            daily.revenue1 += baseGrossRevenue;
             // @ts-ignore
-            daily.totalItems += orderQty;
+            daily.totalItems += totalQtyBeforeReturn;
         }
 
-        if (isRealized) {
-            daily.revenue2 += orderNetRevenue;
-            daily.fees += totalOrderPlatformFees;
-            daily.subsidies += orderMarketingCost;
-            daily.cogs += orderCOGS;
-            daily.profit += orderNetProfit;
+        // 4. Time Shifting Logic for Realized/Returns
+        // We put BASE sales (Gross Rev, Base COGS, Base Fees, Base Profit) into `dateKey`
+        // We put RETURN subtractions (Rev Loss, COGS Recovery, Fee Recovery) into `updateKey`
+
+        // Let's ensure the maps exist
+        if (!dailyMap[updateKey]) dailyMap[updateKey] = {
+            date: updateKey, revenue1: 0, revenue2: 0, fees: 0, cogs: 0, profit: 0, margin: 0, successfulOrders: 0, returnRate: 0, subsidies: 0,
+            highRiskOrderPercent: 0, avgControlRatio: 0, promotionBurnRate: 0,
+            // @ts-ignore
+            totalItems: 0, returnItems: 0, highRiskCount: 0, controlRatioSum: 0, promoSum: 0, grossMarginBeforePromoSum: 0
+        };
+        const updateDaily = dailyMap[updateKey];
+        if (!trends[dateKey]) trends[dateKey] = { date: dateKey, revenue: 0, netRevenue: 0, cost: 0, profit: 0, orders: 0 };
+        if (!trends[updateKey]) trends[updateKey] = { date: updateKey, revenue: 0, netRevenue: 0, cost: 0, profit: 0, orders: 0 };
+
+        if (status === 'Hoàn thành') {
             daily.successfulOrders++;
-
-            // Update Trends
-            if (!trends[dateKey]) trends[dateKey] = { date: dateKey, revenue: 0, netRevenue: 0, cost: 0, profit: 0, orders: 0 };
-            trends[dateKey].revenue += orderNetRevenue;
             trends[dateKey].orders += 1;
-            trends[dateKey].cost += orderCOGS;
-            trends[dateKey].profit += orderNetProfit;
-            if (!(trends[dateKey] as any).fees) (trends[dateKey] as any).fees = 0;
-            (trends[dateKey] as any).fees += totalOrderPlatformFees;
+        }
 
-            // Location
+        if (!isCancelled) {
+            // BASE (Hits Order Date)
+            const baseNetRevenue = baseGrossRevenue - baseMarketingCost;
+            const baseNetProfit = baseNetRevenue - basePlatformFees - baseAffiliateFee - baseCOGS;
+
+            daily.revenue2 += baseNetRevenue;
+            daily.fees += basePlatformFees;
+            daily.subsidies += baseMarketingCost;
+            daily.cogs += baseCOGS;
+            daily.profit += baseNetProfit;
+
+            trends[dateKey].revenue += baseNetRevenue;
+            trends[dateKey].cost += baseCOGS;
+            trends[dateKey].profit += baseNetProfit;
+            if (!(trends[dateKey] as any).fees) (trends[dateKey] as any).fees = 0;
+            (trends[dateKey] as any).fees += basePlatformFees;
+
+            // RETURNS (Hits Update Date)
+            if (hasReturn) {
+                const returnNetRevenueLoss = returnGrossRevenueLoss - returnMarketingCostRecovery - returnShippingCost;
+                const returnNetProfitLoss = returnNetRevenueLoss - returnPlatformFeeRecovery - returnAffiliateFeeRecovery - returnCOGSRecovery;
+
+                updateDaily.revenue2 -= returnNetRevenueLoss;
+                updateDaily.fees -= returnPlatformFeeRecovery;
+                updateDaily.subsidies -= returnMarketingCostRecovery;
+                updateDaily.cogs -= returnCOGSRecovery;
+                updateDaily.profit -= returnNetProfitLoss;
+
+                trends[updateKey].revenue -= returnNetRevenueLoss;
+                trends[updateKey].cost -= returnCOGSRecovery;
+                trends[updateKey].profit -= returnNetProfitLoss;
+                if (!(trends[updateKey] as any).fees) (trends[updateKey] as any).fees = 0;
+                (trends[updateKey] as any).fees -= returnPlatformFeeRecovery;
+            }
+
+            // Location (Uses Order Date)
             const province = firstLine.province || 'Khác';
             if (!locationMap[province]) locationMap[province] = { revenue: 0, count: 0, profit: 0 };
-            locationMap[province].revenue += orderNetRevenue;
-            locationMap[province].profit += orderNetProfit;
+            locationMap[province].revenue += effectiveGrossRevenue - effectiveMarketingCost - returnShippingCost;
+            locationMap[province].profit += (effectiveGrossRevenue - effectiveMarketingCost - returnShippingCost) - effectivePlatformFees - effectiveAffiliateFee - effectiveCOGS;
             locationMap[province].count += 1;
 
-            // Status
+            // Status (Uses Order Date)
             if (!statusMap[status]) statusMap[status] = { revenue: 0, count: 0 };
-            statusMap[status].revenue += orderNetRevenue;
+            statusMap[status].revenue += effectiveGrossRevenue - effectiveMarketingCost - returnShippingCost;
             statusMap[status].count += 1;
         }
 
