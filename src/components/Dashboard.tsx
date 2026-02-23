@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { KPICard } from './KPICard';
 import { calculateMetrics, filterOrders } from '../utils/calculator';
 import { MetricResult, ShopeeOrder, DailyFinancialMetric, ProductRiskProfile } from '../utils/types';
-import { DollarSign, ShoppingBag, CreditCard, Activity, ArrowRight, Package, TrendingUp, AlertTriangle, Truck, Percent, CheckCircle2, XCircle, RefreshCcw, Ticket } from 'lucide-react';
+import { Activity, CalendarDays, DollarSign, Package, TrendingUp, AlertCircle, ShoppingBag, XCircle, CheckCircle2, RefreshCcw, Ticket, ChevronRight, Download, Eye, Table as TableIcon, LayoutDashboard, X, ArrowRight, Percent, CreditCard, AlertTriangle, Truck } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, AreaChart, Area, PieChart, Pie, Cell, Legend, ComposedChart } from 'recharts';
 import { useFilter } from '../contexts/FilterContext';
 import { PageSkeleton } from './Skeleton';
@@ -20,6 +20,8 @@ export default function Dashboard() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [selectedRiskItem, setSelectedRiskItem] = useState<ProductRiskProfile | null>(null);
+    const [isMounted, setIsMounted] = useState(false);
+    const [isReturnModalOpen, setIsReturnModalOpen] = useState(false);
     const { startDate, endDate, warehouse, channelKey } = useFilter();
 
     const chartData = useMemo(() => {
@@ -237,7 +239,7 @@ export default function Dashboard() {
                     color="amber"
                 />
                 <KPICard
-                    title="TỶ LỆ HOÀN"
+                    title="ĐƠN HOÀN"
                     value={`${formatNumber(metrics?.orderReturnRate || 0, 2)}%`}
                     icon={RefreshCcw}
                     subValue={metrics && prevMetrics ? getChangePct(metrics.orderReturnRate, prevMetrics.orderReturnRate) : undefined}
@@ -371,20 +373,31 @@ export default function Dashboard() {
                         <p className="text-xs text-muted-foreground mt-1">Đã hoàn thành & không hoàn</p>
                     </div>
 
-                    {/* 4. Tỷ lệ hoàn */}
-                    <div className="bg-card/50 p-4 rounded-xl border border-border">
+                    {/* 4. Tỷ lệ hoàn -> Đơn Hoàn */}
+                    <div
+                        className="bg-card/50 p-4 rounded-xl border border-border cursor-pointer hover:border-orange-500/50 hover:bg-orange-500/5 transition-all group relative"
+                        onClick={() => setIsReturnModalOpen(true)}
+                    >
+                        <div className="absolute top-4 right-4 text-orange-500/0 group-hover:text-orange-500 transition-colors">
+                            <Eye className="w-4 h-4" />
+                        </div>
                         <div className="flex justify-between items-start mb-2">
                             <div>
-                                <p className="text-sm font-medium text-muted-foreground">Tỷ Lệ Hoàn (Return Rate)</p>
-                                <p className="text-xs text-muted-foreground mt-0.5">= Đơn hoàn / Tổng đơn</p>
+                                <p className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">Đơn Hoàn (Returned Orders)</p>
+                                <p className="text-xs text-muted-foreground mt-0.5">= Số đơn bị hoàn</p>
                             </div>
                             <RefreshCcw className="w-4 h-4 text-orange-500" />
                         </div>
-                        <div className="flex flex-wrap items-baseline gap-2 mt-2">
-                            <p className="text-2xl font-bold text-orange-500">{formatNumber(metrics?.realizedPerformance?.returnRate || 0, 2)}%</p>
-                            {prevMetrics && <PoPIndicator current={metrics?.realizedPerformance?.returnRate || 0} prev={prevMetrics.realizedPerformance?.returnRate || 0} isInverse={true} />}
+                        <div className="flex items-baseline gap-2 mt-2">
+                            <p className="text-2xl font-bold text-orange-500">{metrics?.returnOrderCount || 0}</p>
+                            <span className="text-[13px] font-bold text-muted-foreground bg-muted/30 px-2 py-0.5 rounded-md">
+                                {formatNumber(metrics?.realizedPerformance?.returnRate || 0, 2)}%
+                            </span>
                         </div>
-                        <p className="text-xs text-muted-foreground mt-1">Trên tổng đơn</p>
+                        <div className="flex justify-between items-center mt-2">
+                            <p className="text-[11px] text-muted-foreground font-medium">Click xem chi tiết mã đơn</p>
+                            {prevMetrics && <PoPIndicator current={metrics?.returnOrderCount || 0} prev={prevMetrics.returnOrderCount || 0} isInverse={true} />}
+                        </div>
                     </div>
 
                     {/* 5. AOV */}
@@ -543,7 +556,76 @@ export default function Dashboard() {
                 </div>
             </section >
 
-
-        </div >
+            {/* Return Orders Modal */}
+            {isReturnModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+                    <div className="bg-background border border-border shadow-2xl rounded-2xl w-full max-w-4xl max-h-[85vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="px-6 py-4 border-b border-border flex justify-between items-center bg-muted/10">
+                            <div>
+                                <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
+                                    <RefreshCcw className="w-5 h-5 text-orange-500" />
+                                    Chi Tiết Đơn Hoàn
+                                </h3>
+                                <p className="text-[13px] text-muted-foreground mt-1 tracking-tight">Danh sách chi tiết các đơn hàng gửi hoàn & lý do</p>
+                            </div>
+                            <button onClick={() => setIsReturnModalOpen(false)} className="p-2 bg-muted/30 hover:bg-muted text-muted-foreground hover:text-foreground rounded-full transition-colors">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        <div className="p-0 overflow-y-auto flex-1 custom-scrollbar">
+                            {metrics?.returnedOrders?.length ? (
+                                <table className="w-full text-sm">
+                                    <thead className="bg-muted/30 text-muted-foreground text-left sticky top-0 backdrop-blur-md z-10 shadow-sm">
+                                        <tr>
+                                            <th className="py-3 px-6 font-semibold text-[11px] tracking-wider uppercase">Mã Đơn & Ngày</th>
+                                            <th className="py-3 px-6 font-semibold text-[11px] tracking-wider uppercase">Sản Phẩm Hoàn</th>
+                                            <th className="py-3 px-6 font-semibold text-[11px] tracking-wider uppercase text-right">Giá Trị</th>
+                                            <th className="py-3 px-6 font-semibold text-[11px] tracking-wider uppercase">Lý Do Đề Xuất Hoàn</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-border/50">
+                                        {metrics.returnedOrders.map((ro, i) => (
+                                            <tr key={i} className="hover:bg-muted/10 transition-colors group">
+                                                <td className="py-4 px-6 align-top">
+                                                    <div className="font-bold text-foreground tracking-tight">{ro.orderId}</div>
+                                                    <div className="text-[12px] text-muted-foreground mt-1">{ro.date}</div>
+                                                </td>
+                                                <td className="py-4 px-6 align-top">
+                                                    <div className="space-y-2">
+                                                        {ro.products.map((p, idx) => (
+                                                            <div key={idx} className="flex gap-2 text-[13px] leading-tight text-foreground/80 group-hover:text-foreground transition-colors">
+                                                                <span className="font-extrabold text-orange-500 shrink-0">x{p.quantity}</span>
+                                                                <span className="line-clamp-2">{p.name}</span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </td>
+                                                <td className="py-4 px-6 text-right align-top">
+                                                    <span className="font-bold text-orange-500">
+                                                        {formatVND(ro.value)}
+                                                    </span>
+                                                </td>
+                                                <td className="py-4 px-6 align-top max-w-[200px]">
+                                                    <span className="inline-flex text-[12px] font-medium text-muted-foreground">
+                                                        {ro.reason}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            ) : (
+                                <div className="text-center py-20">
+                                    <div className="w-16 h-16 bg-muted/30 flex items-center justify-center rounded-full mx-auto mb-4">
+                                        <RefreshCcw className="w-8 h-8 text-muted-foreground/50" />
+                                    </div>
+                                    <p className="text-muted-foreground font-medium">Chưa có dữ liệu đơn hoàn nào trong kỳ</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
     );
 }

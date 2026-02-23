@@ -5,6 +5,7 @@ export interface ShopeeOrder {
   orderStatus: string; // Trạng Thái Đơn Hàng
   cancelReason?: string; // Lý do hủy
   returnStatus?: string; // Trạng thái Trả hàng/Hoàn tiền
+  returnReason?: string; // Lý do trả hàng (nếu có)
 
   skuReferenceNo: string; // SKU phân loại hàng (Use this for variation SKU)
   productName: string; // Tên sản phẩm
@@ -181,6 +182,15 @@ export interface ReturnAnalysis {
   reason: string;
   count: number;
   value: number;
+}
+
+export interface ReturnedOrder {
+  orderId: string;
+  date: string;
+  reason: string;
+  status: string;
+  value: number;
+  products: { name: string, quantity: number }[];
 }
 
 export interface FeeAnalysis {
@@ -423,6 +433,7 @@ export interface MetricResult {
   // Legacy or Empty
   cancelAnalysis: any[];
   returnAnalysis: any[];
+  returnedOrders: ReturnedOrder[]; // List of explicitly returned orders
   returnByCarrier?: any[];
   feeAnalysis: any[];
   totalFees?: number;

@@ -428,6 +428,7 @@ export const calculateMetrics = (orders: ShopeeOrder[]): MetricResult => {
     let successfulOrdersRealized = 0;
     let cancelledOrdersCount = 0;
     let returnOrderCount = 0;
+    const returnedOrdersList: import('./types').ReturnedOrder[] = [];
 
     // Captured Risky Orders (High Fee + Promo > 50%)
     const riskyOrderItems: ProductRiskProfile[] = [];
@@ -445,6 +446,20 @@ export const calculateMetrics = (orders: ShopeeOrder[]): MetricResult => {
         const totalReturnQtyInOrder = lines.reduce((sum, l) => sum + (l.returnQuantity || 0), 0);
         if (returnStatus === 'Đã Chấp Thuận Yêu Cầu' || totalReturnQtyInOrder > 0) {
             returnOrderCount++;
+
+            // Build the returned order record
+            const totalValue = lines.reduce((sum, l) => sum + ((l.dealPrice || l.originalPrice || 0) * (l.quantity || 0)), 0);
+            returnedOrdersList.push({
+                orderId: orderId,
+                date: (first.orderDate || (first as any).orderCreationDate) || '',
+                reason: first.returnReason || 'Khách yêu cầu trả hàng/hoàn tiền',
+                status: returnStatus || 'Hoàn một phần',
+                value: totalValue,
+                products: lines.filter(l => (l.returnQuantity || 0) > 0 || returnStatus === 'Đã Chấp Thuận Yêu Cầu').map(l => ({
+                    name: l.productName,
+                    quantity: l.returnQuantity || l.quantity
+                }))
+            });
         }
 
         if (status !== 'Đã hủy' && returnStatus !== 'Đã Chấp Thuận Yêu Cầu') {
@@ -1010,6 +1025,7 @@ export const calculateMetrics = (orders: ShopeeOrder[]): MetricResult => {
 
         cancelAnalysis: Object.entries(cancelReasonMap).map(([reason, count]) => ({ reason, count })),
         returnAnalysis: [],
+        returnedOrders: returnedOrdersList,
         returnByCarrier: Object.entries(returnCarrierMap).map(([reason, data]) => ({
             reason,
             count: data.count,
