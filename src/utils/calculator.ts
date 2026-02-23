@@ -1085,6 +1085,7 @@ export const calculateMetrics = (orders: ShopeeOrder[]): MetricResult => {
         dailyFinancials: Object.values(dailyMap).map((d: any) => ({
             ...d,
             margin: d.revenue1 > 0 ? (d.profit / d.revenue1) * 100 : 0,
+            aov: d.successfulOrders > 0 ? (d.revenue2 / d.successfulOrders) : 0,
             highRiskOrderPercent: d.successfulOrders > 0 ? (d.highRiskCount / d.successfulOrders) * 100 : 0,
             avgControlRatio: d.successfulOrders > 0 ? (d.controlRatioSum / d.successfulOrders) : 0,
             promotionBurnRate: d.grossMarginBeforePromoSum > 0 ? (d.promoSum / d.grossMarginBeforePromoSum) * 100 : (d.promoSum > 0 ? 100 : 0)

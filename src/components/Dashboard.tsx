@@ -22,6 +22,13 @@ export default function Dashboard() {
     const [selectedRiskItem, setSelectedRiskItem] = useState<ProductRiskProfile | null>(null);
     const [isMounted, setIsMounted] = useState(false);
     const [isReturnModalOpen, setIsReturnModalOpen] = useState(false);
+
+    // Interactive Chart State
+    const [activeComboMetrics, setActiveComboMetrics] = useState({
+        orders: true,
+        netRevenue: true,
+        aov: true
+    });
     const { startDate, endDate, warehouse, channelKey } = useFilter();
 
     const chartData = useMemo(() => {
@@ -473,7 +480,122 @@ export default function Dashboard() {
                     <h2 className="text-2xl font-bold text-foreground">BIỂU ĐỒ NGÀY (Daily View)</h2>
                 </div>
 
-                {/* 4 Groups of Charts */}
+                {/* Overarching Interactive Combo Chart */}
+                <div className="bg-card/40 p-5 rounded-xl border border-border mb-6">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                        <div>
+                            <h3 className="text-base font-semibold text-foreground flex items-center gap-2">
+                                <Activity className="w-4 h-4 text-emerald-500" />
+                                Tương quan Doanh thu & Đơn hàng
+                            </h3>
+                            <p className="text-xs text-muted-foreground mt-1">Biến động Net Revenue, Tổng đơn thành công và AOV theo ngày</p>
+                        </div>
+
+                        <div className="flex flex-wrap gap-2">
+                            <button
+                                onClick={() => setActiveComboMetrics(prev => ({ ...prev, netRevenue: !prev.netRevenue }))}
+                                className={`px-3 py-1.5 rounded-md text-xs font-medium border transition-colors flex items-center gap-1.5 ${activeComboMetrics.netRevenue ? 'bg-blue-500/10 border-blue-500/50 text-blue-500' : 'bg-transparent border-border text-muted-foreground hover:bg-muted'}`}
+                            >
+                                <div className={`w-2 h-2 rounded-full ${activeComboMetrics.netRevenue ? 'bg-blue-500' : 'bg-muted-foreground'}`}></div>
+                                Doanh Thu NET
+                            </button>
+                            <button
+                                onClick={() => setActiveComboMetrics(prev => ({ ...prev, orders: !prev.orders }))}
+                                className={`px-3 py-1.5 rounded-md text-xs font-medium border transition-colors flex items-center gap-1.5 ${activeComboMetrics.orders ? 'bg-orange-500/10 border-orange-500/50 text-orange-500' : 'bg-transparent border-border text-muted-foreground hover:bg-muted'}`}
+                            >
+                                <div className={`w-2 h-2 rounded-full ${activeComboMetrics.orders ? 'bg-orange-500' : 'bg-muted-foreground'}`}></div>
+                                Số Đơn Hàng
+                            </button>
+                            <button
+                                onClick={() => setActiveComboMetrics(prev => ({ ...prev, aov: !prev.aov }))}
+                                className={`px-3 py-1.5 rounded-md text-xs font-medium border transition-colors flex items-center gap-1.5 ${activeComboMetrics.aov ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-500' : 'bg-transparent border-border text-muted-foreground hover:bg-muted'}`}
+                            >
+                                <div className={`w-2 h-2 rounded-full ${activeComboMetrics.aov ? 'bg-emerald-500' : 'bg-muted-foreground'}`}></div>
+                                AOV
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="w-full h-[400px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <ComposedChart data={metrics?.dailyFinancials || []}>
+                                <defs>
+                                    <linearGradient id="colorComboRev" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
+                                <XAxis dataKey="date" tickFormatter={(v) => new Date(v).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })} stroke="#666" fontSize={11} />
+
+                                {/* Left YAxis for Financial Values (Revenue & AOV) */}
+                                <YAxis
+                                    yAxisId="left"
+                                    tickFormatter={(v) => `${(v / 1000000).toFixed(0)}M`}
+                                    stroke="#666"
+                                    fontSize={11}
+                                    orientation="left"
+                                />
+
+                                {/* Right YAxis for Absolute Counts (Orders) */}
+                                <YAxis
+                                    yAxisId="right"
+                                    stroke="#666"
+                                    fontSize={11}
+                                    orientation="right"
+                                />
+
+                                <Tooltip
+                                    content={<ChartTooltip formatter={(v: any, name: any) => {
+                                        if (name === 'Số Đơn Hàng') return `${v} đơn`;
+                                        return formatVND(Number(v));
+                                    }} />}
+                                />
+
+                                {activeComboMetrics.netRevenue && (
+                                    <Area
+                                        yAxisId="left"
+                                        type="monotone"
+                                        dataKey="revenue2"
+                                        name="Doanh thu NET"
+                                        stroke="#3b82f6"
+                                        fill="url(#colorComboRev)"
+                                        strokeWidth={2}
+                                    />
+                                )}
+
+                                {activeComboMetrics.aov && (
+                                    <Line
+                                        yAxisId="left"
+                                        type="monotone"
+                                        dataKey="aov"
+                                        name="AOV"
+                                        stroke="#10b981"
+                                        strokeWidth={2}
+                                        strokeDasharray="4 4"
+                                        dot={{ r: 3 }}
+                                        activeDot={{ r: 5 }}
+                                    />
+                                )}
+
+                                {activeComboMetrics.orders && (
+                                    <Line
+                                        yAxisId="right"
+                                        type="monotone"
+                                        dataKey="successfulOrders"
+                                        name="Số Đơn Hàng"
+                                        stroke="#f97316"
+                                        strokeWidth={3}
+                                        dot={{ r: 4, fill: '#f97316', strokeWidth: 2, stroke: '#1f2937' }}
+                                        activeDot={{ r: 6 }}
+                                    />
+                                )}
+                            </ComposedChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+
+                {/* 4 Groups of Specialized Charts */}
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                     {/* 1. Revenue Layer Chart */}
                     <div className="bg-card/40 p-4 rounded-xl border border-border h-[350px]">
