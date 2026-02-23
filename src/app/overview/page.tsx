@@ -16,6 +16,8 @@ interface ChannelSummary {
     orders: number;
     revenue: number;
     netRevenue: number;
+    netRevenueAfterTax: number;
+    promoCost: number;
     fees: number;
     profit: number;
     margin: number;
@@ -100,7 +102,7 @@ export default function OverviewPage() {
                     platform: ch.platform,
                     shopName: ch.shopName,
                     label: ch.shopName ? `${PLATFORM_LABEL[ch.platform]} – ${ch.shopName}` : PLATFORM_LABEL[ch.platform],
-                    orders: 0, revenue: 0, netRevenue: 0, fees: 0, profit: 0, margin: 0, returnRate: 0,
+                    orders: 0, revenue: 0, netRevenue: 0, netRevenueAfterTax: 0, promoCost: 0, fees: 0, profit: 0, margin: 0, returnRate: 0,
                 };
             }
             const m = calculateMetrics(ch.orders);
@@ -108,9 +110,11 @@ export default function OverviewPage() {
                 platform: ch.platform,
                 shopName: ch.shopName,
                 label: ch.shopName ? `${PLATFORM_LABEL[ch.platform]} – ${ch.shopName}` : PLATFORM_LABEL[ch.platform],
-                orders: m.totalOrders,
+                orders: m.successfulOrders, // Changed to successfulOrders
                 revenue: m.totalListRevenue,
                 netRevenue: m.totalNetRevenue,
+                netRevenueAfterTax: m.netRevenueAfterTax || 0,
+                promoCost: m.totalVoucher || 0,
                 fees: m.totalSurcharges,
                 profit: m.totalGrossProfit,
                 margin: m.netMargin,
@@ -123,9 +127,11 @@ export default function OverviewPage() {
         orders: acc.orders + c.orders,
         revenue: acc.revenue + c.revenue,
         netRevenue: acc.netRevenue + c.netRevenue,
+        netRevenueAfterTax: acc.netRevenueAfterTax + c.netRevenueAfterTax,
+        promoCost: acc.promoCost + c.promoCost,
         fees: acc.fees + c.fees,
         profit: acc.profit + c.profit,
-    }), { orders: 0, revenue: 0, netRevenue: 0, fees: 0, profit: 0 }), [channels]);
+    }), { orders: 0, revenue: 0, netRevenue: 0, netRevenueAfterTax: 0, promoCost: 0, fees: 0, profit: 0 }), [channels]);
 
     const totalMargin = totals.netRevenue > 0 ? (totals.profit / totals.netRevenue) * 100 : 0;
 
@@ -144,7 +150,7 @@ export default function OverviewPage() {
             <div>
                 <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
                     <BarChart3 className="w-7 h-7 text-primary" />
-                    Tổng quan Miền Bắc / Miền Nam
+                    Tổng quan
                 </h1>
                 <p className="text-muted-foreground mt-1 font-medium">
                     So sánh hiệu quả kinh doanh theo sàn & shop
@@ -157,14 +163,15 @@ export default function OverviewPage() {
             </div>
 
             {/* Summary Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                 {[
-                    { label: 'Tổng đơn thành công', value: totals.orders.toLocaleString('vi-VN'), sub: `${channels.length} kênh` },
-                    { label: 'Doanh thu thực nhận', value: formatVND(totals.netRevenue), sub: `Gộp: ${formatVND(totals.revenue)}` },
-                    { label: 'Tổng phí sàn', value: formatVND(totals.fees), sub: `${totals.netRevenue > 0 ? ((totals.fees / totals.netRevenue) * 100).toFixed(1) : 0}% doanh thu` },
-                    { label: 'Lợi nhuận gộp', value: formatVND(totals.profit), sub: `Margin: ${totalMargin.toFixed(1)}%`, highlight: totals.profit >= 0 },
-                ].map(card => (
-                    <div key={card.label} className="bg-card/60 backdrop-blur border border-border rounded-2xl p-5 shadow-lg">
+                    { label: 'Tổng đơn thành công', value: totals.orders.toLocaleString('vi-VN'), sub: `${channels.length} kênh | Đã Giao`, highlight: true },
+                    { label: 'Doanh thu gộp', value: formatVND(totals.revenue), sub: `Giá × SL`, highlight: undefined },
+                    { label: 'Chi phí CTKM', value: formatVND(totals.promoCost), sub: `N.Bán trợ giá + Voucher Shop`, highlight: undefined },
+                    { label: 'Tổng chi phí sàn', value: formatVND(totals.fees), sub: `Cố định + Dịch vụ + Thanh Toán`, highlight: false },
+                    { label: 'Doanh thu thuần', value: formatVND(totals.netRevenueAfterTax), sub: `(DT Gộp - KM - Phí) / 1.08`, highlight: true },
+                ].map((card, i) => (
+                    <div key={card.label + i} className="bg-card/60 backdrop-blur border border-border rounded-2xl p-5 shadow-lg relative overflow-hidden">
                         <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest mb-2">{card.label}</p>
                         <p className={`text-xl font-black ${card.highlight === false ? 'text-rose-400' : card.highlight ? 'text-emerald-400' : 'text-foreground'}`}>
                             {card.value}
