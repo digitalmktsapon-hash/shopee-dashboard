@@ -211,19 +211,20 @@ export default function Dashboard() {
                 />
                 <KPICard
                     title="DOANH THU GỘP"
-                    value={formatVND(metrics?.totalListRevenue || 0)}
+                    value={formatVND(metrics?.totalGrossRevenue || 0)}
                     icon={DollarSign}
-                    subValue={metrics && prevMetrics ? getChangePct(metrics.totalListRevenue, prevMetrics.totalListRevenue) : undefined}
-                    trend={metrics && prevMetrics ? (metrics.totalListRevenue > prevMetrics.totalListRevenue ? 'up' : 'down') : 'neutral'}
+                    subValue={metrics && prevMetrics ? getChangePct(metrics.totalGrossRevenue, prevMetrics.totalGrossRevenue) : undefined}
+                    trend={metrics && prevMetrics ? (metrics.totalGrossRevenue > prevMetrics.totalGrossRevenue ? 'up' : 'down') : 'neutral'}
                     className="text-sharp transition-all duration-300"
                     color="blue"
+                    formula="Thực nhận: (Giá gốc - CTKM - Phí sàn)"
                 />
                 <KPICard
                     title="CHI PHÍ CTKM"
-                    value={formatVND(metrics?.totalDiscount || 0)}
+                    value={formatVND(metrics?.totalSubsidies || 0)}
                     icon={Ticket}
-                    subValue={metrics && prevMetrics ? getChangePct(metrics.totalDiscount, prevMetrics.totalDiscount) : undefined}
-                    trend={metrics && prevMetrics ? (metrics.totalDiscount > prevMetrics.totalDiscount ? 'up' : 'down') : 'neutral'}
+                    subValue={metrics && prevMetrics ? getChangePct(metrics.totalSubsidies, prevMetrics.totalSubsidies) : undefined}
+                    trend={metrics && prevMetrics ? (metrics.totalSubsidies > prevMetrics.totalSubsidies ? 'up' : 'down') : 'neutral'}
                     className="text-sharp transition-all duration-300"
                     color="amber"
                 />

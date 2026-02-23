@@ -230,7 +230,7 @@ export default function RevenuePage() {
                     <div className="absolute inset-0 bg-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                     <div className="flex justify-between items-start mb-4 relative z-10">
                         <div>
-                            <p className="text-sm font-medium text-muted-foreground/80 uppercase tracking-wider">Doanh thu thuần</p>
+                            <p className="text-sm font-medium text-muted-foreground/80 uppercase tracking-wider">Doanh thu gộp</p>
                         </div>
                         <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center">
                             <DollarSign className="w-5 h-5 text-blue-400" />
