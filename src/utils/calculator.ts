@@ -168,9 +168,9 @@ export const calculateMetrics = (orders: ShopeeOrder[]): MetricResult => {
         const totalReturnQtyInOrder = orderLines.reduce((sum, l) => sum + (l.returnQuantity || 0), 0);
         const qtyKept = (totalQtyBeforeReturn - totalReturnQtyInOrder) > 0 ? (totalQtyBeforeReturn - totalReturnQtyInOrder) : 0;
 
-        const isRealized = status !== 'Đã hủy' && returnStatus !== 'Đã Chấp Thuận Yêu Cầu';
         const isCancelled = status === 'Đã hủy';
-        const hasReturn = returnStatus === 'Đã Chấp Thuận Yêu Cầu' || totalReturnQtyInOrder > 0;
+        const hasReturn = returnStatus === 'Đã Chấp Thuận Yêu Cầu' || (totalReturnQtyInOrder || 0) > 0;
+        const isRealized = !isCancelled && !hasReturn;
 
         if (isCancelled) {
             const reason = firstLine.cancelReason || 'Không rõ lý do';
@@ -285,7 +285,7 @@ export const calculateMetrics = (orders: ShopeeOrder[]): MetricResult => {
         // 8️⃣ Lợi Nhuận Gộp = Thực nhận - Giá Vốn
 
         totalOrders++;
-        if (status === 'Hoàn thành') totalSuccessfulOrders++;
+        if (isRealized) totalSuccessfulOrders++;
 
         if (!isCancelled) {
             totalSurcharges += effectivePlatformFees;
@@ -400,7 +400,7 @@ export const calculateMetrics = (orders: ShopeeOrder[]): MetricResult => {
         if (!trends[dateKey]) trends[dateKey] = { date: dateKey, revenue: 0, netRevenue: 0, cost: 0, profit: 0, orders: 0, grossRevenue: 0, promoCost: 0, platformFees: 0, strictAovNumerator: 0, returnShipping: 0 };
         if (!trends[updateKey]) trends[updateKey] = { date: updateKey, revenue: 0, netRevenue: 0, cost: 0, profit: 0, orders: 0, grossRevenue: 0, promoCost: 0, platformFees: 0, strictAovNumerator: 0, returnShipping: 0 };
 
-        if (!isCancelled && returnStatus !== 'Đã Chấp Thuận Yêu Cầu') {
+        if (isRealized) {
             trends[dateKey].orders += 1;
             trends[dateKey].strictAovNumerator += (firstLine.orderTotalAmount || 0) - (firstLine.shopVoucher || 0);
         }
@@ -587,8 +587,9 @@ export const calculateMetrics = (orders: ShopeeOrder[]): MetricResult => {
                 }))
             });
         }
+        const hasReturnInGroup = returnStatus === 'Đã Chấp Thuận Yêu Cầu' || totalReturnQtyInOrder > 0;
 
-        if (status !== 'Đã hủy' && returnStatus !== 'Đã Chấp Thuận Yêu Cầu') {
+        if (status !== 'Đã hủy' && !hasReturnInGroup) {
             successfulOrdersRealized++;
 
             // User explicit logic: (Tổng giá trị đơn hàng - Mã giảm giá của Shop)
