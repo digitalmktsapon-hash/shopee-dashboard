@@ -89,6 +89,11 @@ export interface RevenueTrend {
   netProfit: number;
   profitMargin: number;
   orders: number;
+  grossRevenue: number;
+  promoCost: number;
+  platformFees: number;
+  netRevenueAfterTax: number;
+  aov: number;
 }
 
 export interface ProductPerformance {
@@ -127,13 +132,15 @@ export interface SkuEconomics {
   skuType: SkuType;
   quantity: number;
   listPrice: number;        // originalPrice (giá niêm yết)
-  allocatedRevenue: number; // Revenue after combo attribution
+  allocatedRevenue: number; // Revenue before fees
+  proceeds: number;         // Doanh thu gộp (after fees)
+  netRevenueAfterTax: number; // Doanh thu thuần (proceeds / 1.08)
   cogs: number;             // 40% × listPrice × quantity
   fees: number;
   subsidy: number;
-  profit: number;           // allocatedRevenue - cogs - fees + subsidy
-  contributionMargin: number; // profit (extensible for ads cost deduction)
-  margin: number;           // profit / allocatedRevenue (%)
+  profit: number;           // proceeds - cogs
+  contributionMargin: number;
+  margin: number;           // profit / proceeds (%)
   returnRate: number;       // %
   badge: SkuBadge;
 }
@@ -142,8 +149,10 @@ export interface OrderEconomics {
   orderId: string;
   orderDate: string;
   lineCount: number;
-  totalListPrice: number;    // Sum of originalPrice × qty
-  totalActualPrice: number;  // Sum of dealPrice × qty (or buyerPaid)
+  totalListPrice: number;
+  totalActualPrice: number;
+  proceeds: number;          // Doanh thu gộp
+  netRevenueAfterTax: number; // Doanh thu thuần
   discountPct: number;       // (listPrice - actualPrice) / listPrice × 100
   guardrailBreached: boolean;// discountPct > 40%
   totalCogs: number;         // 40% × totalListPrice

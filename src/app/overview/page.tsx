@@ -120,7 +120,7 @@ export default function OverviewPage() {
                     platform: ch.platform,
                     shopName: ch.shopName,
                     label: ch.shopName ? `${PLATFORM_LABEL[ch.platform]} – ${ch.shopName}` : PLATFORM_LABEL[ch.platform],
-                    orders: 0, revenue: 0, netRevenue: 0, netRevenueAfterTax: 0, promoCost: 0, strictAovNumerator: 0, fees: 0, profit: 0, margin: 0, returnRate: 0,
+                    orders: 0, revenue: 0, totalGrossRevenue: 0, netRevenue: 0, netRevenueAfterTax: 0, promoCost: 0, strictAovNumerator: 0, fees: 0, profit: 0, margin: 0, returnRate: 0,
                 };
             }
             const m = calculateMetrics(ch.orders);

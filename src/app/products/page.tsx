@@ -168,8 +168,11 @@ export default function ProductsPage() {
                                         <th className="px-4 py-3 text-right text-xs font-bold text-muted-foreground uppercase cursor-pointer hover:text-foreground" onClick={() => handleSkuSort('listPrice')}>
                                             <div className="flex items-center justify-end">Niêm Yết <SortIcon<SkuEconomics> k="listPrice" cfg={skuSort} /></div>
                                         </th>
-                                        <th className="px-4 py-3 text-right text-xs font-bold text-muted-foreground uppercase cursor-pointer hover:text-foreground" onClick={() => handleSkuSort('allocatedRevenue')}>
-                                            <div className="flex items-center justify-end">DT Phân Bổ <SortIcon<SkuEconomics> k="allocatedRevenue" cfg={skuSort} /></div>
+                                        <th className="px-4 py-3 text-right text-xs font-bold text-muted-foreground uppercase cursor-pointer hover:text-foreground" onClick={() => handleSkuSort('proceeds')}>
+                                            <div className="flex items-center justify-end">Doanh thu gộp <SortIcon<SkuEconomics> k="proceeds" cfg={skuSort} /></div>
+                                        </th>
+                                        <th className="px-4 py-3 text-right text-xs font-bold text-muted-foreground uppercase cursor-pointer hover:text-foreground" onClick={() => handleSkuSort('netRevenueAfterTax')}>
+                                            <div className="flex items-center justify-end">Doanh thu thuần <SortIcon<SkuEconomics> k="netRevenueAfterTax" cfg={skuSort} /></div>
                                         </th>
                                         <th className="px-4 py-3 text-right text-xs font-bold text-muted-foreground uppercase cursor-pointer hover:text-foreground" onClick={() => handleSkuSort('cogs')}>
                                             <div className="flex items-center justify-end">Giá Vốn <SortIcon<SkuEconomics> k="cogs" cfg={skuSort} /></div>
@@ -208,7 +211,8 @@ export default function ProductsPage() {
                                             </td>
                                             <td className="px-4 py-3 text-right text-foreground">{formatNumber(p.quantity)}</td>
                                             <td className="px-4 py-3 text-right text-muted-foreground">{formatVND(p.listPrice)}</td>
-                                            <td className="px-4 py-3 text-right font-medium text-foreground">{formatVND(p.allocatedRevenue)}</td>
+                                            <td className="px-4 py-3 text-right font-medium text-foreground">{formatVND(p.proceeds)}</td>
+                                            <td className="px-4 py-3 text-right text-foreground">{formatVND(p.netRevenueAfterTax)}</td>
                                             <td className="px-4 py-3 text-right text-muted-foreground">{formatVND(p.cogs)}</td>
                                             <td className="px-4 py-3 text-right text-orange-400">{formatVND(p.fees)}</td>
                                             <td className="px-4 py-3 text-right text-emerald-400">{formatVND(p.subsidy)}</td>
@@ -279,8 +283,11 @@ export default function ProductsPage() {
                                         <th className="px-4 py-3 text-right text-xs font-bold text-muted-foreground uppercase cursor-pointer hover:text-foreground" onClick={() => handleOrderSort('totalListPrice')}>
                                             <div className="flex items-center justify-end">Tổng Niêm Yết <SortIcon<OrderEconomics> k="totalListPrice" cfg={orderSort} /></div>
                                         </th>
-                                        <th className="px-4 py-3 text-right text-xs font-bold text-muted-foreground uppercase cursor-pointer hover:text-foreground" onClick={() => handleOrderSort('totalActualPrice')}>
-                                            <div className="flex items-center justify-end">Doanh thu thuần <SortIcon<OrderEconomics> k="totalActualPrice" cfg={orderSort} /></div>
+                                        <th className="px-4 py-3 text-right text-xs font-bold text-muted-foreground uppercase cursor-pointer hover:text-foreground" onClick={() => handleOrderSort('proceeds')}>
+                                            <div className="flex items-center justify-end">Doanh thu gộp <SortIcon<OrderEconomics> k="proceeds" cfg={orderSort} /></div>
+                                        </th>
+                                        <th className="px-4 py-3 text-right text-xs font-bold text-muted-foreground uppercase cursor-pointer hover:text-foreground" onClick={() => handleOrderSort('netRevenueAfterTax')}>
+                                            <div className="flex items-center justify-end">Doanh thu thuần <SortIcon<OrderEconomics> k="netRevenueAfterTax" cfg={orderSort} /></div>
                                         </th>
                                         <th className="px-4 py-3 text-right text-xs font-bold text-muted-foreground uppercase cursor-pointer hover:text-foreground" onClick={() => handleOrderSort('discountPct')}>
                                             <div className="flex items-center justify-end">% Giảm <SortIcon<OrderEconomics> k="discountPct" cfg={orderSort} /></div>
@@ -311,7 +318,8 @@ export default function ProductsPage() {
                                                 <div className="text-[10px] text-muted-foreground">{o.orderDate?.split(' ')[0]} · {o.lineCount} dòng</div>
                                             </td>
                                             <td className="px-4 py-3 text-right text-muted-foreground">{formatVND(o.totalListPrice)}</td>
-                                            <td className="px-4 py-3 text-right font-medium text-foreground">{formatVND(o.totalActualPrice)}</td>
+                                            <td className="px-4 py-3 text-right text-foreground">{formatVND(o.proceeds)}</td>
+                                            <td className="px-4 py-3 text-right text-foreground font-medium">{formatVND(o.netRevenueAfterTax)}</td>
                                             <td className={clsx('px-4 py-3 text-right font-bold', o.guardrailBreached ? 'text-rose-400' : 'text-muted-foreground')}>
                                                 {o.discountPct.toFixed(1)}%
                                             </td>

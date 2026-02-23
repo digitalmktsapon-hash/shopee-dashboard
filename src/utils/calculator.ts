@@ -1348,10 +1348,12 @@ export function calculateProductEconomics(orders: ShopeeOrder[]): ProductEconomi
         const totalFees = lines.reduce((s, l) => s + ((l.fixedFee || 0) + (l.serviceFee || 0) + (l.paymentFee || 0) + (l.affiliateCommission || 0)), 0);
         const totalSubsidy = lines.reduce((s, l) => s + ((l.sellerRebate || 0) + (l.shopeeRebate || 0) + (l.sellerSubsidy || 0)), 0);
         const totalCogs = totalListPrice * COGS_RATE;
-        const orderProfit = totalActualPrice - totalCogs - totalFees + totalSubsidy;
-        const orderMargin = totalActualPrice > 0 ? (orderProfit / totalActualPrice) * 100 : 0;
         const discountPct = totalListPrice > 0 ? ((totalListPrice - totalActualPrice) / totalListPrice) * 100 : 0;
         const guardrailBreached = discountPct > GUARDRAIL_DISCOUNT;
+
+        const orderProceeds = totalActualPrice - totalFees;
+        const orderNetRevenueAfterTax = orderProceeds / 1.08;
+        const orderProfit = orderProceeds - totalCogs + totalSubsidy;
 
         const firstLine = lines[0];
         orderEconomics.push({
@@ -1360,13 +1362,15 @@ export function calculateProductEconomics(orders: ShopeeOrder[]): ProductEconomi
             lineCount: lines.length,
             totalListPrice,
             totalActualPrice,
+            proceeds: orderProceeds,
+            netRevenueAfterTax: orderNetRevenueAfterTax,
             discountPct,
             guardrailBreached,
             totalCogs,
             totalFees,
             totalSubsidy,
             orderProfit,
-            orderMargin,
+            orderMargin: orderProceeds > 0 ? (orderProfit / orderProceeds) * 100 : 0,
         });
 
         // ── Smart group allocation: discounted vs. non-discounted ──
@@ -1430,10 +1434,12 @@ export function calculateProductEconomics(orders: ShopeeOrder[]): ProductEconomi
 
     const skuEconomics: SkuEconomics[] = Object.entries(skuAccMap).map(([sku, acc]) => {
         const cogs = acc.listPriceSum * COGS_RATE;
-        const profit = acc.allocatedRev - cogs - acc.fees + acc.subsidy;
-        // contributionMargin = profit (no ads data yet — field is ready for ads integration)
+        const proceeds = acc.allocatedRev - acc.fees;
+        const netRevenueAfterTax = proceeds / 1.08;
+        const profit = proceeds - cogs + acc.subsidy;
+
         const contributionMargin = profit;
-        const margin = acc.allocatedRev > 0 ? (profit / acc.allocatedRev) * 100 : 0;
+        const margin = proceeds > 0 ? (profit / proceeds) * 100 : 0;
         const returnRate = acc.totalSoldQty > 0 ? (acc.returnQty / acc.totalSoldQty) * 100 : 0;
         const listPrice = acc.qty > 0 ? acc.listPriceSum / acc.qty : 0;
 
@@ -1456,8 +1462,8 @@ export function calculateProductEconomics(orders: ShopeeOrder[]): ProductEconomi
         if (acc.allocatedRev === 0) skuType = 'Gift';
         else if (badge === '🔵 Traffic Driver') skuType = 'Traffic';
 
-        return { sku, name: acc.name, skuType, quantity: acc.qty, listPrice, allocatedRevenue: acc.allocatedRev, cogs, fees: acc.fees, subsidy: acc.subsidy, profit, contributionMargin, margin, returnRate, badge };
-    }).sort((a, b) => b.allocatedRevenue - a.allocatedRevenue);
+        return { sku, name: acc.name, skuType, quantity: acc.qty, listPrice, allocatedRevenue: acc.allocatedRev, proceeds, netRevenueAfterTax, cogs, fees: acc.fees, subsidy: acc.subsidy, profit, contributionMargin, margin, returnRate, badge };
+    }).sort((a, b) => b.proceeds - a.proceeds);
 
     // ── Portfolio Summary ─────────────────────────────────────────
     const totalProfit = skuEconomics.reduce((s, p) => s + p.profit, 0);

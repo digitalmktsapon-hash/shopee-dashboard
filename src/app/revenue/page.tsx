@@ -85,8 +85,8 @@ interface RevenueDashboardMetrics {
 
 const mapToRevenueMetrics = (result: MetricResult): RevenueDashboardMetrics => {
     return {
-        currentNetRevenue: result.totalNetRevenue,
-        currentProfit: result.totalGrossProfit,
+        currentNetRevenue: result.totalGrossRevenue, // Proceeds (39.7M)
+        currentProfit: result.netProfitAfterTax,   // Net Profit (36.8M)
         currentMargin: result.netMargin,
         currentAOV: result.avgOrderValue,
         statusData: result.statusAnalysis.map(s => ({
@@ -97,8 +97,8 @@ const mapToRevenueMetrics = (result: MetricResult): RevenueDashboardMetrics => {
         })),
         dailyTrends: result.revenueTrend.map(t => ({
             date: t.date,
-            netRevenue: t.netRevenue,
-            profit: t.netProfit,
+            netRevenue: t.grossRevenue, // Sync with 39.7M definition
+            profit: t.netRevenueAfterTax, // Sync with 36.8M definition
             margin: t.profitMargin
         })),
         topSKUs: result.topProducts.map(p => ({
