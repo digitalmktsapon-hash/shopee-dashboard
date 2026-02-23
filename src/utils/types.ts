@@ -466,6 +466,7 @@ export interface MetricResult {
     totalOrders: number;
     cancelledOrders: number;
     successfulOrders: number;
+    strictAov: number;
     returnRate: number;
     aov: number;
     feePerOrder: number;

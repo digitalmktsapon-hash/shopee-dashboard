@@ -543,6 +543,7 @@ export const calculateMetrics = (orders: ShopeeOrder[]): MetricResult => {
     let realizedRevenue = 0;
     let realizedCOGS = 0;
     let realizedFees = 0;
+    let strictAOVNumerator = 0; // NEW: Strict AOV
     let successfulOrdersRealized = 0;
     let cancelledOrdersCount = 0;
     let returnOrderCount = 0;
@@ -582,6 +583,10 @@ export const calculateMetrics = (orders: ShopeeOrder[]): MetricResult => {
 
         if (status !== 'Đã hủy' && returnStatus !== 'Đã Chấp Thuận Yêu Cầu') {
             successfulOrdersRealized++;
+
+            // User explicit logic: (Tổng giá trị đơn hàng - Mã giảm giá của Shop)
+            strictAOVNumerator += (first.orderTotalAmount || 0) - (first.shopVoucher || 0);
+
             // Calculate Order Totals
             let orderGrossRev = 0;
             let orderCogs = 0;
@@ -1042,6 +1047,7 @@ export const calculateMetrics = (orders: ShopeeOrder[]): MetricResult => {
             totalOrders: totalOrders,
             cancelledOrders: cancelledOrdersCount,
             successfulOrders: successfulOrdersRealized,
+            strictAov: successfulOrdersRealized > 0 ? strictAOVNumerator / successfulOrdersRealized : 0,
             returnRate: orderReturnRateVal,
             aov: successfulOrdersRealized > 0 ? realizedRevenue / successfulOrdersRealized : 0,
             feePerOrder: successfulOrdersRealized > 0 ? realizedFees / successfulOrdersRealized : 0,

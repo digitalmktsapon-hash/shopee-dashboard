@@ -18,6 +18,7 @@ interface ChannelSummary {
     netRevenue: number;
     netRevenueAfterTax: number;
     promoCost: number;
+    strictAovNumerator: number; // For global averaging
     fees: number;
     profit: number;
     margin: number;
@@ -102,7 +103,7 @@ export default function OverviewPage() {
                     platform: ch.platform,
                     shopName: ch.shopName,
                     label: ch.shopName ? `${PLATFORM_LABEL[ch.platform]} – ${ch.shopName}` : PLATFORM_LABEL[ch.platform],
-                    orders: 0, revenue: 0, netRevenue: 0, netRevenueAfterTax: 0, promoCost: 0, fees: 0, profit: 0, margin: 0, returnRate: 0,
+                    orders: 0, revenue: 0, netRevenue: 0, netRevenueAfterTax: 0, promoCost: 0, strictAovNumerator: 0, fees: 0, profit: 0, margin: 0, returnRate: 0,
                 };
             }
             const m = calculateMetrics(ch.orders);
@@ -115,6 +116,7 @@ export default function OverviewPage() {
                 netRevenue: m.totalNetRevenue,
                 netRevenueAfterTax: m.netRevenueAfterTax || 0,
                 promoCost: m.totalVoucher || 0,
+                strictAovNumerator: (m.realizedPerformance?.strictAov || 0) * m.successfulOrders,
                 fees: m.totalSurcharges,
                 profit: m.totalGrossProfit,
                 margin: m.netMargin,
@@ -129,9 +131,10 @@ export default function OverviewPage() {
         netRevenue: acc.netRevenue + c.netRevenue,
         netRevenueAfterTax: acc.netRevenueAfterTax + c.netRevenueAfterTax,
         promoCost: acc.promoCost + c.promoCost,
+        strictAovNumerator: acc.strictAovNumerator + c.strictAovNumerator,
         fees: acc.fees + c.fees,
         profit: acc.profit + c.profit,
-    }), { orders: 0, revenue: 0, netRevenue: 0, netRevenueAfterTax: 0, promoCost: 0, fees: 0, profit: 0 }), [channels]);
+    }), { orders: 0, revenue: 0, netRevenue: 0, netRevenueAfterTax: 0, promoCost: 0, strictAovNumerator: 0, fees: 0, profit: 0 }), [channels]);
 
     const totalMargin = totals.netRevenue > 0 ? (totals.profit / totals.netRevenue) * 100 : 0;
 
@@ -163,13 +166,14 @@ export default function OverviewPage() {
             </div>
 
             {/* Summary Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
                 {[
                     { label: 'Tổng đơn thành công', value: totals.orders.toLocaleString('vi-VN'), sub: `${channels.length} kênh | Đã Giao`, highlight: true },
                     { label: 'Doanh thu gộp', value: formatVND(totals.revenue), sub: `Giá × SL`, highlight: undefined },
                     { label: 'Chi phí CTKM', value: formatVND(totals.promoCost), sub: `N.Bán trợ giá + Voucher Shop`, highlight: undefined },
                     { label: 'Tổng chi phí sàn', value: formatVND(totals.fees), sub: `Cố định + Dịch vụ + Thanh Toán`, highlight: false },
                     { label: 'Doanh thu thuần', value: formatVND(totals.netRevenueAfterTax), sub: `(DT Gộp - KM - Phí) / 1.08`, highlight: true },
+                    { label: 'AOV', value: formatVND(totals.orders > 0 ? totals.strictAovNumerator / totals.orders : 0), sub: `(Chỉ tính đơn thành công)`, highlight: undefined },
                 ].map((card, i) => (
                     <div key={card.label + i} className="bg-card/60 backdrop-blur border border-border rounded-2xl p-5 shadow-lg relative overflow-hidden">
                         <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest mb-2">{card.label}</p>
