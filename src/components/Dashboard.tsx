@@ -211,10 +211,10 @@ export default function Dashboard() {
                 />
                 <KPICard
                     title="DOANH THU GỘP"
-                    value={formatVND(metrics?.totalGrossRevenue || 0)}
+                    value={formatVND(metrics?.totalListRevenue || 0)}
                     icon={DollarSign}
-                    subValue={metrics && prevMetrics ? getChangePct(metrics.totalGrossRevenue, prevMetrics.totalGrossRevenue) : undefined}
-                    trend={metrics && prevMetrics ? (metrics.totalGrossRevenue > prevMetrics.totalGrossRevenue ? 'up' : 'down') : 'neutral'}
+                    subValue={metrics && prevMetrics ? getChangePct(metrics.totalListRevenue, prevMetrics.totalListRevenue) : undefined}
+                    trend={metrics && prevMetrics ? (metrics.totalListRevenue > prevMetrics.totalListRevenue ? 'up' : 'down') : 'neutral'}
                     className="text-sharp transition-all duration-300"
                     color="blue"
                 />
