@@ -386,6 +386,7 @@ export interface MetricResult {
 
   // 2. Doanh thu 2 (Giá ưu đãi sau trợ giá)
   totalNetRevenue: number;
+  netRevenueAfterTax: number;
 
   // New: CTKM (Doanh thu 1 - Doanh thu 2)
   totalDiscount: number;

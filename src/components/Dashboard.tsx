@@ -201,11 +201,11 @@ export default function Dashboard() {
             {/* 1. KPI Cards Row - 6 Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-6 gap-4">
                 <KPICard
-                    title="DOANH THU NET"
-                    value={formatVND(metrics?.totalNetRevenue || 0)}
+                    title="DOANH THU THUẦN"
+                    value={formatVND(metrics?.netRevenueAfterTax || 0)}
                     icon={Activity}
-                    subValue={metrics && prevMetrics ? getChangePct(metrics.totalNetRevenue, prevMetrics.totalNetRevenue) : undefined}
-                    trend={metrics && prevMetrics ? (metrics.totalNetRevenue > prevMetrics.totalNetRevenue ? 'up' : 'down') : 'neutral'}
+                    subValue={metrics && prevMetrics ? getChangePct(metrics.netRevenueAfterTax, prevMetrics.netRevenueAfterTax) : undefined}
+                    trend={metrics && prevMetrics ? (metrics.netRevenueAfterTax > prevMetrics.netRevenueAfterTax ? 'up' : 'down') : 'neutral'}
                     className="text-sharp transition-all duration-300"
                     color="blue"
                 />
@@ -497,7 +497,7 @@ export default function Dashboard() {
                                 className={`px-3 py-1.5 rounded-md text-xs font-medium border transition-colors flex items-center gap-1.5 ${activeComboMetrics.netRevenue ? 'bg-blue-500/10 border-blue-500/50 text-blue-500' : 'bg-transparent border-border text-muted-foreground hover:bg-muted'}`}
                             >
                                 <div className={`w-2 h-2 rounded-full ${activeComboMetrics.netRevenue ? 'bg-blue-500' : 'bg-muted-foreground'}`}></div>
-                                Doanh Thu NET
+                                Doanh Thu Thuần
                             </button>
                             <button
                                 onClick={() => setActiveComboMetrics(prev => ({ ...prev, orders: !prev.orders }))}

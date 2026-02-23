@@ -1019,6 +1019,10 @@ export const calculateMetrics = (orders: ShopeeOrder[]): MetricResult => {
     // 4. Finalize
     const cancelRateVal = totalOrders > 0 ? (cancelledOrdersCount / totalOrders) * 100 : 0;
     const orderReturnRateVal = totalOrders > 0 ? (returnOrderCount / totalOrders) * 100 : 0;
+
+    // As per user rule: Doanh thu thuần = (Gross Revenue - Shop Discount - Platform Fees - Return Shipping) / 1.08
+    const netRevenueAfterTax = (realizedRevenue - realizedFees - allReturnShippingFee) / 1.08;
+
     const totalGrossProfit = realizedRevenue - realizedCOGS - realizedFees; // Explicitly excluded Affiliate here as requested
     const netProfitAfterTax = totalGrossProfit / 1.08;
     const netMargin = realizedRevenue > 0 ? (totalGrossProfit / realizedRevenue) * 100 : 0;
@@ -1050,6 +1054,7 @@ export const calculateMetrics = (orders: ShopeeOrder[]): MetricResult => {
 
         totalListRevenue,      // 1- Rev 1
         totalNetRevenue: realizedRevenue,       // 2- Rev 2 (REALIZED ONLY)
+        netRevenueAfterTax: netRevenueAfterTax, // NEW: Net Revenue after 8% Tax
         totalDiscount: totalListRevenue - realizedRevenue,
         totalVoucher: totalSubsidies,
         totalSurcharges: realizedFees,       // 3- Fees (REALIZED ONLY)
