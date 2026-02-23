@@ -107,9 +107,9 @@ export default function ProductsPage() {
 
     // ── Tab config ────────────────────────────────────────────────────────
     const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
-        { id: 'sku', label: 'SKU Economics', icon: <Package className="w-4 h-4" /> },
-        { id: 'order', label: 'Order Economics', icon: <TrendingUp className="w-4 h-4" /> },
-        { id: 'portfolio', label: 'Portfolio Control', icon: <BarChart3 className="w-4 h-4" /> },
+        { id: 'sku', label: 'Kinh tế SKU', icon: <Package className="w-4 h-4" /> },
+        { id: 'order', label: 'Kinh tế Đơn hàng', icon: <TrendingUp className="w-4 h-4" /> },
+        { id: 'portfolio', label: 'Kiểm soát Danh mục', icon: <BarChart3 className="w-4 h-4" /> },
     ];
 
     return (
@@ -178,7 +178,7 @@ export default function ProductsPage() {
                                             <div className="flex items-center justify-end">Phí Sàn <SortIcon<SkuEconomics> k="fees" cfg={skuSort} /></div>
                                         </th>
                                         <th className="px-4 py-3 text-right text-xs font-bold text-muted-foreground uppercase cursor-pointer hover:text-foreground" onClick={() => handleSkuSort('subsidy')}>
-                                            <div className="flex items-center justify-end">Trợ Giá <SortIcon<SkuEconomics> k="subsidy" cfg={skuSort} /></div>
+                                            <div className="flex items-center justify-end">CTKM <SortIcon<SkuEconomics> k="subsidy" cfg={skuSort} /></div>
                                         </th>
                                         <th className="px-4 py-3 text-right text-xs font-bold text-muted-foreground uppercase cursor-pointer hover:text-foreground" onClick={() => handleSkuSort('profit')}>
                                             <div className="flex items-center justify-end">Lợi Nhuận <SortIcon<SkuEconomics> k="profit" cfg={skuSort} /></div>
@@ -187,9 +187,9 @@ export default function ProductsPage() {
                                             <div className="flex items-center justify-end">Biên % <SortIcon<SkuEconomics> k="margin" cfg={skuSort} /></div>
                                         </th>
                                         <th className="px-4 py-3 text-right text-xs font-bold text-muted-foreground uppercase cursor-pointer hover:text-foreground" onClick={() => handleSkuSort('returnRate')}>
-                                            <div className="flex items-center justify-end">Hoàn % <SortIcon<SkuEconomics> k="returnRate" cfg={skuSort} /></div>
+                                            <div className="flex items-center justify-end">Tỷ lệ Hoàn <SortIcon<SkuEconomics> k="returnRate" cfg={skuSort} /></div>
                                         </th>
-                                        <th className="px-4 py-3 text-center text-xs font-bold text-muted-foreground uppercase">Badge</th>
+                                        <th className="px-4 py-3 text-center text-xs font-bold text-muted-foreground uppercase">Phân loại</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-border">
@@ -249,7 +249,7 @@ export default function ProductsPage() {
                                 <span className="text-muted-foreground text-sm ml-1">vượt ngưỡng giảm giá 40% (dưới 60% niêm yết)</span>
                             </div>
                             <div className="ml-auto text-sm text-muted-foreground">
-                                Tổng LN ảnh hưởng: <span className={clsx('font-bold', portfolio.guardrailBreachImpact >= 0 ? 'text-emerald-400' : 'text-rose-400')}>
+                                Tổng LN bị ảnh hưởng: <span className={clsx('font-bold', portfolio.guardrailBreachImpact >= 0 ? 'text-emerald-400' : 'text-rose-400')}>
                                     {formatVND(portfolio.guardrailBreachImpact)}
                                 </span>
                             </div>
@@ -280,7 +280,7 @@ export default function ProductsPage() {
                                             <div className="flex items-center justify-end">Tổng Niêm Yết <SortIcon<OrderEconomics> k="totalListPrice" cfg={orderSort} /></div>
                                         </th>
                                         <th className="px-4 py-3 text-right text-xs font-bold text-muted-foreground uppercase cursor-pointer hover:text-foreground" onClick={() => handleOrderSort('totalActualPrice')}>
-                                            <div className="flex items-center justify-end">Tổng Bán Thực <SortIcon<OrderEconomics> k="totalActualPrice" cfg={orderSort} /></div>
+                                            <div className="flex items-center justify-end">Doanh thu thuần <SortIcon<OrderEconomics> k="totalActualPrice" cfg={orderSort} /></div>
                                         </th>
                                         <th className="px-4 py-3 text-right text-xs font-bold text-muted-foreground uppercase cursor-pointer hover:text-foreground" onClick={() => handleOrderSort('discountPct')}>
                                             <div className="flex items-center justify-end">% Giảm <SortIcon<OrderEconomics> k="discountPct" cfg={orderSort} /></div>
@@ -292,15 +292,15 @@ export default function ProductsPage() {
                                             <div className="flex items-center justify-end">Phí Sàn <SortIcon<OrderEconomics> k="totalFees" cfg={orderSort} /></div>
                                         </th>
                                         <th className="px-4 py-3 text-right text-xs font-bold text-muted-foreground uppercase cursor-pointer hover:text-foreground" onClick={() => handleOrderSort('totalSubsidy')}>
-                                            <div className="flex items-center justify-end">Trợ Giá <SortIcon<OrderEconomics> k="totalSubsidy" cfg={orderSort} /></div>
+                                            <div className="flex items-center justify-end">CTKM <SortIcon<OrderEconomics> k="totalSubsidy" cfg={orderSort} /></div>
                                         </th>
                                         <th className="px-4 py-3 text-right text-xs font-bold text-muted-foreground uppercase cursor-pointer hover:text-foreground" onClick={() => handleOrderSort('orderProfit')}>
-                                            <div className="flex items-center justify-end">LN Đơn <SortIcon<OrderEconomics> k="orderProfit" cfg={orderSort} /></div>
+                                            <div className="flex items-center justify-end">Lợi nhuận gộp <SortIcon<OrderEconomics> k="orderProfit" cfg={orderSort} /></div>
                                         </th>
                                         <th className="px-4 py-3 text-right text-xs font-bold text-muted-foreground uppercase cursor-pointer hover:text-foreground" onClick={() => handleOrderSort('orderMargin')}>
                                             <div className="flex items-center justify-end">Biên % <SortIcon<OrderEconomics> k="orderMargin" cfg={orderSort} /></div>
                                         </th>
-                                        <th className="px-4 py-3 text-center text-xs font-bold text-muted-foreground uppercase">Guardrail</th>
+                                        <th className="px-4 py-3 text-center text-xs font-bold text-muted-foreground uppercase">Cảnh báo</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-border">
@@ -327,7 +327,7 @@ export default function ProductsPage() {
                                             <td className="px-4 py-3 text-center">
                                                 {o.guardrailBreached
                                                     ? <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/15 text-rose-400 border border-rose-500/30"><AlertTriangle className="w-3 h-3" />Vi phạm</span>
-                                                    : <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"><CheckCircle2 className="w-3 h-3" />OK</span>
+                                                    : <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"><CheckCircle2 className="w-3 h-3" />Ổn</span>
                                                 }
                                             </td>
                                         </tr>
@@ -348,14 +348,14 @@ export default function ProductsPage() {
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         {[
                             { label: 'Tổng Doanh Thu', value: formatVND(portfolio.totalRevenue), color: 'text-foreground' },
-                            { label: 'Tổng Lợi Nhuận', value: formatVND(portfolio.totalProfit), color: portfolio.totalProfit >= 0 ? 'text-emerald-400' : 'text-rose-400' },
-                            { label: 'Biên Tổng %', value: `${portfolio.totalMargin.toFixed(1)}%`, color: portfolio.totalMargin >= 15 ? 'text-emerald-400' : 'text-rose-400' },
-                            { label: '% Đơn Vi Phạm Guardrail', value: `${portfolio.guardrailBreachRate.toFixed(1)}%`, color: portfolio.guardrailBreachRate > 10 ? 'text-rose-400' : 'text-yellow-400' },
+                            { label: 'Tổng Lợi Nhuận Gộp', value: formatVND(portfolio.totalProfit), color: portfolio.totalProfit >= 0 ? 'text-emerald-400' : 'text-rose-400' },
+                            { label: 'Biên Lợi Nhuận %', value: `${portfolio.totalMargin.toFixed(1)}%`, color: portfolio.totalMargin >= 15 ? 'text-emerald-400' : 'text-rose-400' },
+                            { label: '% Đơn Vi Phạm Cảnh Báo', value: `${portfolio.guardrailBreachRate.toFixed(1)}%`, color: portfolio.guardrailBreachRate > 10 ? 'text-rose-400' : 'text-yellow-400' },
                             {
                                 label: 'LN Tiềm Năng Nếu Ép 60% Niêm Yết',
                                 value: portfolio.potentialProfitGain > 0 ? `+${formatVND(portfolio.potentialProfitGain)}` : formatVND(portfolio.potentialProfitGain),
                                 color: portfolio.potentialProfitGain > 0 ? 'text-emerald-400' : 'text-muted-foreground',
-                                subtitle: 'Nếu tất cả đơn vi phạm được bán ở 60% niêm yết'
+                                subtitle: 'Nếu đơn vi phạm được bán ở 60% niêm yết'
                             },
                             { label: 'Top 20% SKU → LN', value: `${portfolio.top20ProfitShare.toFixed(1)}%`, color: 'text-blue-400' },
                             { label: 'SKU Đang Lỗ', value: `${portfolio.lossSKURatio.toFixed(1)}%`, color: portfolio.lossSKURatio > 20 ? 'text-rose-400' : 'text-muted-foreground' },

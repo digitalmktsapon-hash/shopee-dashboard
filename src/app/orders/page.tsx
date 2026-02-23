@@ -87,8 +87,8 @@ export default function OrdersPage() {
     return (
         <div className="space-y-6 max-w-[1600px] mx-auto">
             <div>
-                <h1 className="text-2xl font-bold tracking-tight text-foreground">Vận Hành & Đơn Hàng (Operations & Orders)</h1>
-                <p className="text-muted-foreground mt-1 text-sm">Giám sát tỷ lệ hoàn, hủy và hiệu quả vận chuyển.</p>
+                <h1 className="text-2xl font-bold tracking-tight text-foreground">Vận Hành & Đơn Hàng</h1>
+                <p className="text-muted-foreground mt-1 text-sm">Giám sát hiệu suất xử lý đơn, tỷ lệ hủy và tỷ lệ hoàn trả.</p>
             </div>
 
             {/* KPI Cards */}
@@ -96,7 +96,7 @@ export default function OrdersPage() {
                 <div className="bg-card/50 backdrop-blur-md p-6 rounded-2xl border border-border shadow-sm">
                     <div className="flex justify-between items-start">
                         <div>
-                            <p className="text-muted-foreground font-medium mb-1">Tổng Đơn Hàng (Total Orders)</p>
+                            <p className="text-muted-foreground font-medium mb-1">Tổng đơn hàng</p>
                             <h3 className="text-2xl font-bold text-foreground">{formatNumber(totalOrders)}</h3>
                         </div>
                         <div className="p-2 bg-blue-500/10 rounded-lg">
@@ -108,9 +108,9 @@ export default function OrdersPage() {
                 <div className="bg-card/50 backdrop-blur-md p-6 rounded-2xl border border-border shadow-sm">
                     <div className="flex justify-between items-start">
                         <div>
-                            <p className="text-muted-foreground font-medium mb-1">Tỷ Lệ Thành Công (Success Rate)</p>
+                            <p className="text-muted-foreground font-medium mb-1">Tỷ lệ đơn sạch (Thành công)</p>
                             <h3 className="text-2xl font-bold text-emerald-500">{successRate.toFixed(1)}%</h3>
-                            <p className="text-xs text-muted-foreground mt-1">Đơn hoàn thành</p>
+                            <p className="text-xs text-muted-foreground mt-1">Đã trừ Hủy & Hoàn</p>
                         </div>
                         <div className="p-2 bg-emerald-500/10 rounded-lg">
                             <CheckCircle className="w-5 h-5 text-emerald-500" />
@@ -121,11 +121,11 @@ export default function OrdersPage() {
                 <div className="bg-card/50 backdrop-blur-md p-6 rounded-2xl border border-border shadow-sm">
                     <div className="flex justify-between items-start">
                         <div>
-                            <p className="text-muted-foreground font-medium mb-1">Tỷ Lệ Hủy (Cancel Rate)</p>
+                            <p className="text-muted-foreground font-medium mb-1">Tỷ lệ Hủy</p>
                             <h3 className={clsx("text-2xl font-bold", cancelRate > 5 ? "text-rose-500" : "text-foreground")}>
                                 {cancelRate.toFixed(1)}%
                             </h3>
-                            <p className="text-xs text-muted-foreground mt-1">{formatNumber(totalCancels)} đơn hủy</p>
+                            <p className="text-xs text-muted-foreground mt-1">{formatNumber(totalCancels)} đơn đã hủy</p>
                         </div>
                         <div className="p-2 bg-rose-500/10 rounded-lg">
                             <XCircle className="w-5 h-5 text-rose-500" />
@@ -136,7 +136,7 @@ export default function OrdersPage() {
                 <div className="bg-card/50 backdrop-blur-md p-6 rounded-2xl border border-border shadow-sm">
                     <div className="flex justify-between items-start">
                         <div>
-                            <p className="text-muted-foreground font-medium mb-1">Tỷ Lệ Hoàn (Return Rate)</p>
+                            <p className="text-muted-foreground font-medium mb-1">Tỷ lệ Hoàn</p>
                             <h3 className={clsx("text-2xl font-bold", returnRate > 3 ? "text-amber-500" : "text-foreground")}>
                                 {returnRate.toFixed(1)}%
                             </h3>
@@ -153,7 +153,7 @@ export default function OrdersPage() {
             <div className="bg-card/50 backdrop-blur-md p-6 rounded-2xl border border-border shadow-lg">
                 <h3 className="text-base font-bold text-foreground mb-6 flex items-center gap-2">
                     <TrendingUp className="w-4 h-4 text-primary" />
-                    Xu Hướng Đặt Hàng Theo Ngày (Daily Order Trend)
+                    Biến động đơn hàng theo ngày
                 </h3>
                 <div className="h-[300px] w-full">
                     {trendData.length > 0 ? (
@@ -176,7 +176,7 @@ export default function OrdersPage() {
                                 <Line
                                     type="monotone"
                                     dataKey="orders"
-                                    name="Số lượng đơn (Orders)"
+                                    name="Số lượng đơn"
                                     stroke="#0ea5e9"
                                     strokeWidth={3}
                                     dot={{ r: 4, fill: '#0ea5e9', strokeWidth: 2, stroke: 'var(--background)' }}
@@ -195,7 +195,7 @@ export default function OrdersPage() {
                 <div className="bg-card/50 backdrop-blur-md p-6 rounded-2xl border border-border shadow-lg">
                     <h3 className="text-base font-bold text-foreground mb-6 flex items-center gap-2">
                         <XCircle className="w-4 h-4 text-rose-500" />
-                        Phân Tích Lý Do Hủy (Cancellation Reasons Analysis)
+                        Phân tích lý do hủy đơn
                     </h3>
                     <div className="flex flex-col md:flex-row gap-6">
                         <div className="h-[250px] w-full md:w-1/2">
@@ -242,7 +242,7 @@ export default function OrdersPage() {
                 <div className="bg-card/50 backdrop-blur-md p-6 rounded-2xl border border-border shadow-lg">
                     <h3 className="text-base font-bold text-foreground mb-6 flex items-center gap-2">
                         <Truck className="w-4 h-4 text-blue-500" />
-                        Hoàn Trả Theo ĐVVC (Returns by Carrier)
+                        Tỷ lệ hoàn theo Đơn vị vận chuyển
                     </h3>
                     <div className="h-[250px] w-full">
                         {returnData.length > 0 ? (
@@ -256,7 +256,7 @@ export default function OrdersPage() {
                                     <XAxis type="number" hide />
                                     <YAxis type="category" dataKey="reason" width={100} tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }} axisLine={false} tickLine={false} />
                                     <Tooltip content={(props: any) => <ChartTooltip {...props} />} />
-                                    <Bar dataKey="count" name="Số lượng (Qty)" fill="#f59e0b" radius={[0, 4, 4, 0]} barSize={20} />
+                                    <Bar dataKey="count" name="Số lượng" fill="#f59e0b" radius={[0, 4, 4, 0]} barSize={20} />
                                 </BarChart>
                             </ResponsiveContainer>
                         ) : (

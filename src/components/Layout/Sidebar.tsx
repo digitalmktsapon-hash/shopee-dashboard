@@ -26,7 +26,7 @@ const NAV_ITEMS = [
     { name: 'Sản phẩm', href: '/products', icon: Package },
     { name: 'Đơn hàng', href: '/orders', icon: ShoppingBag },
     { name: 'Doanh thu', href: '/revenue', icon: TrendingUp },
-    { name: 'Phí & Trợ giá', href: '/fees', icon: CreditCard },
+    { name: 'Phí & CTKM', href: '/fees', icon: CreditCard },
     { name: 'Khách hàng', href: '/customers', icon: Users },
     { name: 'Vận hành', href: '/operations', icon: Activity },
     { name: 'Rủi ro', href: '/risk', icon: AlertTriangle },

@@ -135,8 +135,8 @@ export default function FeesPage() {
     return (
         <div className="space-y-6 max-w-[1600px] mx-auto">
             <div>
-                <h1 className="text-2xl font-bold tracking-tight text-foreground">Chi Phí & Trợ Giá (Fees & Subsidies - CFO)</h1>
-                <p className="text-muted-foreground mt-1 text-sm">Kiểm soát các loại phí sàn, voucher và hiệu quả trợ giá.</p>
+                <h1 className="text-2xl font-bold tracking-tight text-foreground">Chi Phí & Chương Trình Khuyến Mãi</h1>
+                <p className="text-muted-foreground mt-1 text-sm">Kiểm soát các loại phí sàn, voucher và hiệu quả chi phí CTKM.</p>
             </div>
 
             {/* Overview Cards */}
@@ -144,7 +144,7 @@ export default function FeesPage() {
                 <div className="bg-card/50 backdrop-blur-md p-6 rounded-2xl border border-border shadow-xl">
                     <div className="flex justify-between items-start">
                         <div>
-                            <p className="text-muted-foreground font-medium mb-1">Tổng Phí Sàn (Total Platform Fees)</p>
+                            <p className="text-muted-foreground font-medium mb-1">Tổng phí sàn</p>
                             <div className="flex items-baseline gap-2 flex-wrap">
                                 <h3 className="text-3xl font-bold text-rose-500">{formatVND(totalFees)}</h3>
                                 {prevMetrics && <PoPIndicator current={totalFees} prev={prevTotalFees} isInverse={true} />}
@@ -160,7 +160,7 @@ export default function FeesPage() {
                 <div className="bg-card/50 backdrop-blur-md p-6 rounded-2xl border border-border shadow-xl">
                     <div className="flex justify-between items-start">
                         <div>
-                            <p className="text-muted-foreground font-medium mb-1">Tỷ Lệ Phí / Doanh Thu (Fee / Revenue Ratio)</p>
+                            <p className="text-muted-foreground font-medium mb-1">Tỷ lệ Phí / Doanh thu</p>
                             <div className="flex items-baseline gap-2 flex-wrap">
                                 <h3 className={clsx("text-3xl font-bold", feeRatio > 15 ? "text-rose-500" : "text-foreground")}>
                                     {feeRatio.toFixed(2)}%
@@ -178,7 +178,7 @@ export default function FeesPage() {
                 <div className="bg-card/50 backdrop-blur-md p-6 rounded-2xl border border-border shadow-xl">
                     <div className="flex justify-between items-start">
                         <div>
-                            <p className="text-muted-foreground font-medium mb-1">Tổng Trợ Giá (Total Subsidies)</p>
+                            <p className="text-muted-foreground font-medium mb-1">Chi phí CTKM (Voucher)</p>
                             <div className="flex items-baseline gap-2 flex-wrap">
                                 <h3 className="text-3xl font-bold text-emerald-500">
                                     {formatVND(subsidyData.reduce((a, b) => a + b.value, 0))}
@@ -199,7 +199,7 @@ export default function FeesPage() {
                 <div className="bg-card/50 backdrop-blur-md p-6 rounded-2xl border border-border shadow-lg">
                     <h3 className="text-base font-bold text-foreground mb-6 flex items-center gap-2">
                         <TrendingDown className="w-4 h-4 text-rose-500" />
-                        Cấu Trúc Chi Phí (Fee Structure)
+                        Cấu trúc chi phí sàn
                     </h3>
                     <div className="flex flex-col md:flex-row gap-6">
                         <div className="h-[250px] w-full md:w-1/2">
@@ -248,7 +248,7 @@ export default function FeesPage() {
                 <div className="bg-card/50 backdrop-blur-md p-6 rounded-2xl border border-border shadow-lg">
                     <h3 className="text-base font-bold text-foreground mb-6 flex items-center gap-2">
                         <Tag className="w-4 h-4 text-emerald-500" />
-                        Phân Bổ Trợ Giá & Voucher (Subsidy & Voucher Allocation)
+                        Phân bổ Chi phí CTKM & Voucher
                     </h3>
                     <div className="h-[250px] w-full">
                         {subsidyData.reduce((a, b) => a + b.value, 0) > 0 ? (
@@ -262,7 +262,7 @@ export default function FeesPage() {
                                     <XAxis type="number" hide />
                                     <YAxis type="category" dataKey="type" width={120} tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }} axisLine={false} tickLine={false} />
                                     <Tooltip content={(props: any) => <ChartTooltip {...props} formatter={(val: number) => formatVND(val)} />} />
-                                    <Bar dataKey="value" name="Giá trị (Value)" fill="#10b981" radius={[0, 4, 4, 0]} barSize={20}>
+                                    <Bar dataKey="value" name="Giá trị" fill="#10b981" radius={[0, 4, 4, 0]} barSize={20}>
                                         {subsidyData.map((entry, index) => (
                                             <Cell key={`cell-${index}`} fill={SUBSIDY_COLORS[index % SUBSIDY_COLORS.length]} />
                                         ))}
@@ -279,16 +279,16 @@ export default function FeesPage() {
             {/* Detailed List */}
             <div className="bg-card/50 backdrop-blur-md rounded-2xl border border-border shadow-xl overflow-hidden">
                 <div className="px-6 py-4 border-b border-border">
-                    <h3 className="font-bold text-foreground">Chi tiết các khoản phí (Fee Details)</h3>
+                    <h3 className="font-bold text-foreground">Chi tiết các khoản phí</h3>
                 </div>
                 <div className="overflow-x-auto">
                     <table className="min-w-full">
                         <thead className="bg-muted/50">
                             <tr>
-                                <th className="px-6 py-3 text-left text-xs font-bold text-muted-foreground uppercase tracking-widest">Loại Phí (Fee Type)</th>
-                                <th className="px-6 py-3 text-right text-xs font-bold text-muted-foreground uppercase tracking-widest">Giá Trị (Value)</th>
-                                <th className="px-6 py-3 text-right text-xs font-bold text-muted-foreground uppercase tracking-widest">Tỷ Lệ / Tổng Phí (% of Total Fees)</th>
-                                <th className="px-6 py-3 text-right text-xs font-bold text-muted-foreground uppercase tracking-widest">Tỷ Lệ / Doanh Thu (% of Revenue)</th>
+                                <th className="px-6 py-3 text-left text-xs font-bold text-muted-foreground uppercase tracking-widest">Loại Phí</th>
+                                <th className="px-6 py-3 text-right text-xs font-bold text-muted-foreground uppercase tracking-widest">Giá Trị</th>
+                                <th className="px-6 py-3 text-right text-xs font-bold text-muted-foreground uppercase tracking-widest">Tỷ Lệ / Tổng Phí</th>
+                                <th className="px-6 py-3 text-right text-xs font-bold text-muted-foreground uppercase tracking-widest">Tỷ Lệ / Doanh Thu</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-border">

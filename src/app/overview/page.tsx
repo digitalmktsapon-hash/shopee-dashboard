@@ -195,7 +195,7 @@ export default function OverviewPage() {
                     { label: 'Tổng đơn thành công', value: totals.orders.toLocaleString('vi-VN'), sub: `${channels.length} kênh | Đã Giao`, highlight: true },
                     { label: 'Doanh thu gộp', value: formatVND(totals.revenue), sub: `Giá × SL`, highlight: undefined },
                     { label: 'Chi phí CTKM', value: formatVND(totals.promoCost), sub: `N.Bán trợ giá + Voucher Shop`, highlight: undefined },
-                    { label: 'Tổng chi phí sàn', value: formatVND(totals.fees), sub: `Cố định + Dịch vụ + Thanh Toán`, highlight: false },
+                    { label: 'Phí sàn', value: formatVND(totals.fees), sub: `Cố định + Dịch vụ + Thanh Toán`, highlight: false },
                     { label: 'Doanh thu thuần', value: formatVND(totals.netRevenueAfterTax), sub: `(DT Gộp - KM - Phí) / 1.08`, highlight: true },
                     { label: 'AOV', value: formatVND(totals.orders > 0 ? totals.strictAovNumerator / totals.orders : 0), sub: `(Chỉ tính đơn thành công)`, highlight: undefined },
                 ].map((card, i) => (
@@ -226,7 +226,7 @@ export default function OverviewPage() {
                         {[
                             { id: 'orders', label: 'Đơn hàng', icon: ShoppingBag, color: 'emerald' },
                             { id: 'grossRevenue', label: 'Doanh thu gộp', icon: DollarSign, color: 'blue' },
-                            { id: 'promoCost', label: 'Chi phí KM', icon: Ticket, color: 'orange' },
+                            { id: 'promoCost', label: 'Chi phí CTKM', icon: Ticket, color: 'orange' },
                             { id: 'platformFees', label: 'Phí sàn', icon: CreditCard, color: 'rose' },
                             { id: 'netRevenue', label: 'Doanh thu thuần', icon: Activity, color: 'indigo' },
                             { id: 'aov', label: 'AOV', icon: Percent, color: 'amber' },

@@ -220,8 +220,8 @@ export default function RevenuePage() {
     return (
         <div className="space-y-6 max-w-[1600px] mx-auto pb-10">
             <div>
-                <h1 className="text-2xl font-bold tracking-tight text-foreground">Phân Tích Doanh Thu & Lợi Nhuận</h1>
-                <p className="text-muted-foreground mt-1 text-sm">Không tính đơn Hủy & Hoàn trả - Trợ giá Shop/Shopee đã trừ - COGS mặc định 40%</p>
+                <h1 className="text-2xl font-bold tracking-tight text-foreground">Phân tích Doanh thu & Lợi nhuận</h1>
+                <p className="text-muted-foreground mt-1 text-sm">Số liệu sạch (Đã trừ đơn Hủy & Hoàn) — COGS mặc định 40%</p>
             </div>
 
             {/* Section II: KPIs Comparison */}
@@ -230,7 +230,7 @@ export default function RevenuePage() {
                     <div className="absolute inset-0 bg-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                     <div className="flex justify-between items-start mb-4 relative z-10">
                         <div>
-                            <p className="text-sm font-medium text-muted-foreground/80 uppercase tracking-wider">Doanh Thu Net</p>
+                            <p className="text-sm font-medium text-muted-foreground/80 uppercase tracking-wider">Doanh thu thuần</p>
                         </div>
                         <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center">
                             <DollarSign className="w-5 h-5 text-blue-400" />
@@ -248,7 +248,7 @@ export default function RevenuePage() {
                     <div className="absolute inset-0 bg-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                     <div className="flex justify-between items-start mb-4 relative z-10">
                         <div>
-                            <p className="text-sm font-medium text-muted-foreground/80 uppercase tracking-wider">Lợi Nhuận</p>
+                            <p className="text-sm font-medium text-muted-foreground/80 uppercase tracking-wider">Lợi nhuận gộp</p>
                         </div>
                         <div className="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center">
                             <Wallet className="w-5 h-5 text-emerald-400" />
@@ -266,7 +266,7 @@ export default function RevenuePage() {
                     <div className="absolute inset-0 bg-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                     <div className="flex justify-between items-start mb-4 relative z-10">
                         <div>
-                            <p className="text-sm font-medium text-muted-foreground/80 uppercase tracking-wider">Biên Lợi Nhuận %</p>
+                            <p className="text-sm font-medium text-muted-foreground/80 uppercase tracking-wider">Biên lợi nhuận</p>
                         </div>
                         <div className="w-10 h-10 rounded-full bg-purple-500/10 flex items-center justify-center">
                             <TrendingUp className="w-5 h-5 text-purple-400" />
@@ -284,7 +284,7 @@ export default function RevenuePage() {
                     <div className="absolute inset-0 bg-amber-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                     <div className="flex justify-between items-start mb-4 relative z-10">
                         <div>
-                            <p className="text-sm font-medium text-muted-foreground/80 uppercase tracking-wider">AOV (Giá trị ĐH M.Bình)</p>
+                            <p className="text-sm font-medium text-muted-foreground/80 uppercase tracking-wider">AOV (Giá trị đơn TB)</p>
                         </div>
                         <div className="w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center">
                             <ShoppingCart className="w-5 h-5 text-amber-400" />
@@ -365,7 +365,7 @@ export default function RevenuePage() {
                                 yAxisId="left"
                                 type="monotone"
                                 dataKey="netRevenue"
-                                name="Doanh Thu Net"
+                                name="Doanh thu thuần"
                                 stroke="#38bdf8"
                                 strokeWidth={3}
                                 dot={{ stroke: '#38bdf8', strokeWidth: 2, r: 4, fill: '#0f172a' }}
@@ -375,7 +375,7 @@ export default function RevenuePage() {
                                 yAxisId="left"
                                 type="monotone"
                                 dataKey="profit"
-                                name="Lợi Nhuận"
+                                name="Lợi nhuận gộp"
                                 stroke="#34d399"
                                 strokeWidth={3}
                                 dot={{ stroke: '#34d399', strokeWidth: 2, r: 4, fill: '#0f172a' }}
@@ -391,7 +391,7 @@ export default function RevenuePage() {
                 <div className="bg-card/50 backdrop-blur-md border border-white/5 bg-gradient-to-b from-card/80 to-card/40 rounded-2xl p-6 shadow-lg flex flex-col xl:col-span-1">
                     <h3 className="text-lg font-semibold mb-6 flex items-center gap-2 text-foreground/90 uppercase tracking-wider">
                         <Package className="w-5 h-5 text-amber-400" />
-                        DOANH THU THEO SKU (Top 10)
+                        Doanh thu theo SKU (Top 10)
                     </h3>
                     {/* Top SKU Chart */}
                     <div className="h-[250px] mb-6">
@@ -451,7 +451,7 @@ export default function RevenuePage() {
                     <div className="bg-card/50 backdrop-blur-md border border-white/5 bg-gradient-to-b from-card/80 to-card/40 rounded-2xl p-6 shadow-lg flex-1 flex flex-col">
                         <h3 className="text-lg font-semibold mb-6 flex items-center gap-2 text-foreground/90 uppercase tracking-wider">
                             <MapPin className="w-5 h-5 text-indigo-400" />
-                            DOANH THU THEO KHU VỰC
+                            Doanh thu theo khu vực
                         </h3>
                         <div className="flex-1 overflow-auto max-h-[300px] pr-2 custom-scrollbar">
                             <table className="w-full text-sm text-left">
@@ -491,7 +491,7 @@ export default function RevenuePage() {
                     <div className="bg-card/50 backdrop-blur-md border border-white/5 bg-gradient-to-b from-card/80 to-card/40 rounded-2xl p-6 shadow-lg">
                         <h3 className="text-lg font-semibold mb-6 flex items-center gap-2 text-foreground/90 uppercase tracking-wider">
                             <CreditCard className="w-5 h-5 text-purple-400" />
-                            DOANH THU THEO TRẠNG THÁI
+                            Doanh thu theo trạng thái
                         </h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
                             <div className="h-[250px]">
