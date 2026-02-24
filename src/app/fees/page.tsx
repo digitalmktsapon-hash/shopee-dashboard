@@ -30,13 +30,13 @@ export default function FeesPage() {
     const [metrics, setMetrics] = useState<MetricResult | null>(null);
     const [prevMetrics, setPrevMetrics] = useState<MetricResult | null>(null);
     const [loading, setLoading] = useState(true);
-    const { startDate, endDate, warehouse, channelKey } = useFilter();
+    const { startDate, endDate, warehouse, channelKeys } = useFilter();
 
     useEffect(() => {
         const fetchData = async () => {
             try {
                 setLoading(true);
-                const res = await fetch('/api/orders?channel=' + channelKey);
+                const res = await fetch('/api/orders?channel=' + channelKeys.join(','));
                 const orders: ShopeeOrder[] = await res.json();
                 // Current Period
                 const filtered = filterOrders(orders, startDate, endDate, warehouse);
@@ -78,7 +78,7 @@ export default function FeesPage() {
             }
         };
         fetchData();
-    }, [startDate, endDate, warehouse, channelKey]);
+    }, [startDate, endDate, warehouse, channelKeys]);
 
     if (loading) return <PageSkeleton />;
 
@@ -103,7 +103,7 @@ export default function FeesPage() {
     const prevTotalRevenue = prevMetrics?.totalRevenue || 0;
     const prevTotalFees = prevMetrics?.totalFees || 0;
     const prevFeeRatio = prevTotalRevenue > 0 ? (prevTotalFees / prevTotalRevenue) * 100 : 0;
-    const prevSubsidies = prevMetrics?.subsidyAnalysis?.reduce((a, b) => a + b.value, 0) || 0;
+    const prevSubsidies = prevMetrics?.subsidyAnalysis?.reduce((a: number, b: { value: number }) => a + b.value, 0) || 0;
 
     const PoPIndicator = ({ current, prev, isInverse = false }: { current: number, prev: number, isInverse?: boolean }) => {
         if (!prev || prev === 0) return null;
@@ -181,9 +181,9 @@ export default function FeesPage() {
                             <p className="text-muted-foreground font-medium mb-1">Chi phí CTKM (Voucher)</p>
                             <div className="flex items-baseline gap-2 flex-wrap">
                                 <h3 className="text-3xl font-bold text-emerald-500">
-                                    {formatVND(subsidyData.reduce((a, b) => a + b.value, 0))}
+                                    {formatVND(subsidyData.reduce((a: number, b: { value: number }) => a + b.value, 0))}
                                 </h3>
-                                {prevMetrics && <PoPIndicator current={subsidyData.reduce((a, b) => a + b.value, 0)} prev={prevSubsidies} />}
+                                {prevMetrics && <PoPIndicator current={subsidyData.reduce((a: number, b: { value: number }) => a + b.value, 0)} prev={prevSubsidies} />}
                             </div>
                             <p className="text-sm text-muted-foreground mt-1">Voucher Shop</p>
                         </div>
@@ -203,7 +203,7 @@ export default function FeesPage() {
                     </h3>
                     <div className="flex flex-col md:flex-row gap-6">
                         <div className="h-[250px] w-full md:w-1/2">
-                            {feeData.reduce((a, b) => a + b.value, 0) > 0 ? (
+                            {feeData.reduce((a: number, b: { value: number }) => a + b.value, 0) > 0 ? (
                                 <ResponsiveContainer width="100%" height="100%">
                                     <PieChart>
                                         <Pie
@@ -251,7 +251,7 @@ export default function FeesPage() {
                         Phân bổ Chi phí CTKM & Voucher
                     </h3>
                     <div className="h-[250px] w-full">
-                        {subsidyData.reduce((a, b) => a + b.value, 0) > 0 ? (
+                        {subsidyData.reduce((a: number, b: { value: number }) => a + b.value, 0) > 0 ? (
                             <ResponsiveContainer width="100%" height="100%">
                                 <BarChart
                                     layout="vertical"
@@ -292,8 +292,8 @@ export default function FeesPage() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-border">
-                            {feeData.map((item, idx) => {
-                                const total = feeData.reduce((a, b) => a + b.value, 0);
+                            {feeData.map((item: { type: string, value: number }, idx: number) => {
+                                const total = feeData.reduce((a: number, b: { value: number }) => a + b.value, 0);
                                 return (
                                     <tr key={idx} className="hover:bg-muted/30 transition-colors">
                                         <td className="px-6 py-4 text-sm text-foreground font-medium">{item.type}</td>

@@ -19,12 +19,16 @@ export async function GET(request: NextRequest) {
         let orders: ShopeeOrder[] = [];
 
         if (channelKey && channelKey !== 'all') {
-            const [platform, ...shopNameParts] = channelKey.split('_');
-            const shopName = shopNameParts.join('_');
-            orders = await getAllOrders(platform, shopName);
+            const channels = channelKey.split(',');
+            const filters = channels.map(c => {
+                const [platform, ...shopNameParts] = c.split('_');
+                return { platform, shopName: shopNameParts.join('_') || undefined };
+            });
+            orders = await getAllOrders(filters);
         } else {
             orders = await getAllOrders();
         }
+
 
         return NextResponse.json(orders || []);
     } catch (error) {

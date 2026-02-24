@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { calculateMetrics, filterOrders } from '../../utils/calculator';
-import { MetricResult, ShopeeOrder } from '../../utils/types';
+import { MetricResult, ShopeeOrder, OperationAnalysis, DailyShippingMetric } from '../../utils/types';
 import {
     BarChart,
     Bar,
@@ -25,13 +25,13 @@ import { ChartTooltip } from '../../components/ChartTooltip';
 export default function OperationsPage() {
     const [metrics, setMetrics] = useState<MetricResult | null>(null);
     const [loading, setLoading] = useState(true);
-    const { startDate, endDate, warehouse, channelKey } = useFilter();
+    const { startDate, endDate, warehouse, channelKeys } = useFilter();
 
     useEffect(() => {
         const fetchData = async () => {
             try {
                 setLoading(true);
-                const res = await fetch('/api/orders?channel=' + channelKey);
+                const res = await fetch('/api/orders?channel=' + channelKeys.join(','));
                 const orders: ShopeeOrder[] = await res.json();
                 const filtered = filterOrders(orders, startDate, endDate, warehouse);
 
@@ -47,7 +47,7 @@ export default function OperationsPage() {
             }
         };
         fetchData();
-    }, [startDate, endDate, warehouse, channelKey]);
+    }, [startDate, endDate, warehouse, channelKeys]);
 
     if (loading) return <PageSkeleton />;
 
@@ -64,7 +64,7 @@ export default function OperationsPage() {
 
     const opData = metrics.operationAnalysis || [];
     const avgShipTime = opData.length > 0
-        ? (opData.reduce((a, b) => a + (b.avgShipTime * b.orderCount), 0) / opData.reduce((a, b) => a + b.orderCount, 0))
+        ? (opData.reduce((a: number, b: OperationAnalysis) => a + (b.avgShipTime * b.orderCount), 0) / opData.reduce((a: number, b: OperationAnalysis) => a + b.orderCount, 0))
         : 0;
 
     const totalOrders = metrics.totalOrders;
@@ -149,7 +149,7 @@ export default function OperationsPage() {
                             <ResponsiveContainer width="100%" height="100%">
                                 <BarChart
                                     layout="vertical"
-                                    data={opData.sort((a, b) => b.orderCount - a.orderCount)}
+                                    data={[...opData].sort((a: OperationAnalysis, b: OperationAnalysis) => b.orderCount - a.orderCount)}
                                     margin={{ top: 5, right: 30, left: 40, bottom: 5 }}
                                 >
                                     <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="var(--border)" />
@@ -255,7 +255,7 @@ export default function OperationsPage() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-border">
-                            {opData.map((item, idx) => (
+                            {opData.map((item: OperationAnalysis, idx: number) => (
                                 <tr key={idx} className="hover:bg-muted/30 transition-colors">
                                     <td className="px-6 py-4 text-sm text-foreground font-medium">{item.carrier}</td>
                                     <td className="px-6 py-4 text-sm text-muted-foreground text-right">{item.orderCount}</td>

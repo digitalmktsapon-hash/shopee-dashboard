@@ -1,1518 +1,557 @@
-import { ShopeeOrder, MetricResult, ProductPerformance, CancelAnalysis, ReturnAnalysis, FeeAnalysis, SubsidyAnalysis, CustomerAnalysis, OperationAnalysis, RevenueTrend, DailyFinancialMetric, RiskAlert, ProductRiskProfile, SkuEconomics, SkuType, SkuBadge, OrderEconomics, PortfolioSummary, ParetoItem } from './types';
-import { formatVND, formatNumber } from './format';
+import { ShopeeOrder, MetricResult, RevenueTrend, ProductEconomicsResult, SkuEconomics, OrderEconomics, ParetoItem, CustomerAnalysis, OperationAnalysis, DailyShippingMetric, FeeAlertOrder } from './types';
 
-export const parseShopeeDate = (dateStr: string): Date | null => {
+export const parseShopeeDate = (dateStr: string | undefined | null): Date | null => {
     if (!dateStr) return null;
     try {
-        // Clean string
         const cleanStr = dateStr.trim();
-
-        // Try ISO directly if it looks like ISO (yyyy-mm-dd)
         if (cleanStr.match(/^\d{4}-\d{2}-\d{2}/)) {
             const d = new Date(cleanStr);
             if (!isNaN(d.getTime())) return d;
         }
-
-        // Try dd-mm-yyyy HH:mm or dd/mm/yyyy HH:mm
-        // Split by space to get date part
         const datePart = cleanStr.split(' ')[0];
-
-        // Handle dd-mm-yyyy
-        if (datePart.includes('-')) {
-            const parts = datePart.split('-');
+        const sep = datePart.includes('-') ? '-' : (datePart.includes('/') ? '/' : null);
+        if (sep) {
+            const parts = datePart.split(sep);
             if (parts.length === 3) {
-                // Check if first part is year (yyyy-mm-dd) or day (dd-mm-yyyy)
-                if (parts[0].length === 4) {
-                    return new Date(`${parts[0]}-${parts[1]}-${parts[2]}`);
-                } else {
-                    return new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
-                }
+                if (parts[0].length === 4) return new Date(`${parts[0]}-${parts[1]}-${parts[2]}`);
+                else return new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
             }
         }
-
-        // Handle dd/mm/yyyy
-        if (datePart.includes('/')) {
-            const parts = datePart.split('/');
-            if (parts.length === 3) {
-                // Assume dd/mm/yyyy
-                return new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
-            }
-        }
-
-        // Fallback to standard Date parse
         const d = new Date(cleanStr);
         if (!isNaN(d.getTime())) return d;
-
     } catch (e) { return null; }
     return null;
 };
 
-export const filterOrders = (orders: ShopeeOrder[], startDate: string, endDate: string, warehouse: string): ShopeeOrder[] => {
+export const filterOrders = (orders: ShopeeOrder[], startDate: string | undefined, endDate: string | undefined, warehouse: string | undefined): ShopeeOrder[] => {
     return orders.filter(o => {
-        // Warehouse Filter
-        if (warehouse !== 'All') {
-            if (o.warehouseName !== warehouse) return false;
-        }
-
-        // Date Filter
+        if (warehouse && warehouse !== 'All' && o.warehouseName !== warehouse) return false;
         if (!startDate && !endDate) return true;
 
-        const orderDateStr = o.orderDate || (o as any).orderCreationDate;
-        const orderDate = parseShopeeDate(orderDateStr);
+        const start = startDate ? new Date(startDate) : new Date(0);
+        const end = endDate ? new Date(endDate) : new Date(8640000000000000);
+        start.setHours(0, 0, 0, 0);
+        if (endDate) end.setHours(23, 59, 59, 999);
 
-        // Also parse updateTime for cross-month returns
-        const updateDateStr = o.updateTime;
-        const updateDate = updateDateStr ? parseShopeeDate(updateDateStr) : null;
+        const payoutDate = parseShopeeDate(o.payoutDate);
+        const isSalesInPeriod = payoutDate && payoutDate >= start && payoutDate <= end;
 
-        let isOrderInPeriod = true;
-        let isReturnInPeriod = false;
+        const updateDate = parseShopeeDate(o.updateTime);
+        const isReturn = o.returnStatus && o.returnStatus !== '';
+        const isReturnInPeriod = isReturn && updateDate && updateDate >= start && updateDate <= end;
 
-        if (startDate) {
-            const start = new Date(startDate);
-            start.setHours(0, 0, 0, 0);
-            if (!orderDate || orderDate < start) isOrderInPeriod = false;
-            if (updateDate && updateDate >= start) isReturnInPeriod = true;
-        }
-
-        if (endDate) {
-            const end = new Date(endDate);
-            end.setHours(23, 59, 59, 999);
-            if (!orderDate || orderDate > end) isOrderInPeriod = false;
-            if (updateDate && updateDate > end) isReturnInPeriod = false;
-        } else {
-            isReturnInPeriod = updateDate ? true : false;
-        }
-
-        // An order is included if its Creation Date falls in the period, 
-        // OR if it's a Return and its Update Date falls in the period.
-        return isOrderInPeriod || (isReturnInPeriod && (o.returnStatus === 'Đã Chấp Thuận Yêu Cầu' || (o.returnQuantity || 0) > 0));
+        return isSalesInPeriod || isReturnInPeriod;
     });
 };
 
-export const calculateMetrics = (orders: ShopeeOrder[]): MetricResult => {
-    let totalOrders = 0;
-    let totalSuccessfulOrders = 0;
-    let totalListRevenue = 0;
-    let totalNetRevenue = 0;
-    let totalSurcharges = 0;
-    let totalSubsidies = 0;
-    let totalProductQty = 0;
-    let totalReturnQty = 0;
-    let totalNetQty = 0;
-    let totalListRevenueRealized = 0; // New: Giá gốc * Qty thực giữ (Realized only)
-    let totalAffiliateFees = 0; // Tracked explicitly
+export const calculateMetrics = (orders: ShopeeOrder[], config?: { startDate?: string; endDate?: string; adExpenseX?: number }): MetricResult => {
+    const start = config?.startDate ? new Date(config.startDate) : null;
+    if (start) start.setHours(0, 0, 0, 0);
+    const end = config?.endDate ? new Date(config.endDate) : null;
+    if (end) end.setHours(23, 59, 59, 999);
+    const adExpenseX = config?.adExpenseX || 0;
 
-    const productMap: Record<string, ProductPerformance> = {};
-    const locationMap: Record<string, { revenue: number, count: number, profit: number }> = {};
-    const statusMap: Record<string, { revenue: number, count: number }> = {};
+    let totalGMV = 0;
+    let totalShopSubsidies = 0;
+    let totalPlatformFees = 0;
+    let uniqueOrdersSet = new Set<string>();
+    let totalReturnValue = 0;
+    let totalReturnFees = 0;
+
+    // Breakdown accumulators (aligned with CFO formulas)
+    let totalFixedFee = 0;
+    let totalServiceFee = 0;
+    let totalPaymentFee = 0;
+    let totalSellerRebate = 0;
+    let totalShopComboDiscount = 0;
+    let totalTradeInBonus = 0;
+    let totalShopVoucher = 0;
+    let totalShopeeRebate = 0;
+
+    const trendMap: Record<string, RevenueTrend> = {};
+    const statusMap: Record<string, { count: number, revenue: number }> = {};
+    const locationMap: Record<string, { revenue: number, orders: number, profit: number }> = {};
+    const returnOrderMap: Record<string, any> = {};
+    const productMap: Record<string, any> = {};
     const customerMap: Record<string, CustomerAnalysis> = {};
-    const carrierMap: Record<string, { count: number, shipTimeTotal: number, shipTimeCount: number }> = {};
-    const dailyShippingMap: Record<string, { totalTime: number, orderCount: number }> = {};
-    const trends: Record<string, any> = {};
-    const dailyMap: Record<string, DailyFinancialMetric> = {};
-    const cancelReasonMap: Record<string, number> = {};
-    const returnCarrierMap: Record<string, { count: number, value: number }> = {};
-    const feeMap: Record<string, number> = {
-        'Phí cố định': 0,
-        'Phí dịch vụ': 0,
-        'Phí thanh toán': 0,
-        'Phí Affiliate': 0,
-        'Phí vận chuyển hoàn': 0
-    };
-    const subsidyMap: Record<string, number> = {
-        'Voucher từ Shop': 0,
-        'Trợ giá từ Shopee': 0
-    };
+    const carrierMap: Record<string, { orderCount: number; totalShipTime: number }> = {};
+    const shippingTrendMap: Record<string, { count: number; totalTime: number }> = {};
 
-    // 0. Global Deduplication of lines (to handle overlapping reports)
-    const uniqueLines: ShopeeOrder[] = [];
-    const lineSeenSet = new Set<string>();
+    let completedOrders = 0;
+    let canceledOrders = 0;
+    let returnedOrdersCount = 0;
+    let totalProcessingTime = 0;
+    let orderWithProcessingTimeCount = 0;
+    let slowDeliveryCount = 0;
+    const feeAlerts: FeeAlertOrder[] = [];
+    const returnProvinceMap: Record<string, { count: number, value: number }> = {};
+    const carrierDetailsMap: Record<string, { success: number, total: number, deliveryTime: number, returns: number }> = {};
 
-    orders.forEach(line => {
-        // Create a unique key for this specific product line in this specific order
-        const lineKey = `${line.orderId}_${line.skuReferenceNo || ''}_${line.variationName || ''}_${line.quantity}_${line.dealPrice || line.originalPrice}`;
-        if (!lineSeenSet.has(lineKey)) {
-            lineSeenSet.add(lineKey);
-            uniqueLines.push(line);
-        }
-    });
+    // Track unique orders for counts (avoid multi-item overcounting)
+    const procStatus = new Set<string>();
+    const procGlobal = new Set<string>();
+    const procCarrier = new Set<string>();
+    const procLocation = new Set<string>();
+    const procTrend = new Set<string>();
+    const procCustomer = new Set<string>();
+    const procReturnProv = new Set<string>();
 
-    // Group unique lines by Order ID
-    const orderGroups: Record<string, ShopeeOrder[]> = {};
-    uniqueLines.forEach(line => {
-        if (!orderGroups[line.orderId]) orderGroups[line.orderId] = [];
-        orderGroups[line.orderId].push(line);
-    });
+    orders.forEach(o => {
+        const payoutDate = parseShopeeDate(o.payoutDate);
+        const updateDate = parseShopeeDate(o.updateTime);
+        const orderDate = parseShopeeDate(o.orderDate);
+        const isCancelled = o.orderStatus === 'Đã hủy';
+        const isReturned = o.returnStatus && o.returnStatus !== '';
+        const isCompleted = o.orderStatus === 'Hoàn thành';
 
-    Object.values(orderGroups).forEach(orderLines => {
-        const firstLine = orderLines[0];
-        const orderId = firstLine.orderId;
-        const status = firstLine.orderStatus;
-        const returnStatus = firstLine.returnStatus;
-        // Establish Date Keys for Context
-        const dateStr = firstLine.orderDate || (firstLine as any).orderCreationDate;
-        let dateKey = 'Unknown';
-        if (dateStr) {
-            const d = parseShopeeDate(dateStr);
-            if (d) dateKey = d.toISOString().split('T')[0];
+        const inSalesRange = !start || (payoutDate && payoutDate >= start && (!end || payoutDate <= end));
+        const inReturnRange = !start || (updateDate && updateDate >= start && (!end || updateDate <= end));
+
+        if (!statusMap[o.orderStatus || 'N/A']) statusMap[o.orderStatus || 'N/A'] = { count: 0, revenue: 0 };
+
+        if (!procStatus.has(o.orderId + o.orderStatus)) {
+            statusMap[o.orderStatus || 'N/A'].count++;
+            procStatus.add(o.orderId + o.orderStatus);
         }
 
-        const updateStr = firstLine.updateTime;
-        let updateKey = dateKey; // fallback
-        if (updateStr) {
-            const u = parseShopeeDate(updateStr);
-            if (u) updateKey = u.toISOString().split('T')[0];
+        // MASTER CATEGORIES
+        if (!procGlobal.has(o.orderId)) {
+            if (isCompleted) completedOrders++;
+            if (isCancelled) canceledOrders++;
+            if (isReturned) returnedOrdersCount++;
+            procGlobal.add(o.orderId);
         }
 
-        const totalQtyBeforeReturn = orderLines.reduce((sum, l) => sum + (l.quantity || 0), 0);
-        const totalReturnQtyInOrder = orderLines.reduce((sum, l) => sum + (l.returnQuantity || 0), 0);
-        const qtyKept = (totalQtyBeforeReturn - totalReturnQtyInOrder) > 0 ? (totalQtyBeforeReturn - totalReturnQtyInOrder) : 0;
-
-        const isCancelled = status === 'Đã hủy';
-        const hasReturn = returnStatus === 'Đã Chấp Thuận Yêu Cầu' || (totalReturnQtyInOrder || 0) > 0;
-        const isRealized = !isCancelled && !hasReturn;
-
-        if (isCancelled) {
-            const reason = firstLine.cancelReason || 'Không rõ lý do';
-            cancelReasonMap[reason] = (cancelReasonMap[reason] || 0) + 1;
-        }
-
-        // 1. Core Base Metrics (Revenue, COGS) - Tied strictly to Order Date
-        // 1️⃣ Doanh thu gộp (Giá gốc * Số lượng)
-        let baseGrossRevenue = 0;
-        let baseCOGS = 0;
-
-        // 2️⃣ Tổng giảm giá Shop chịu (Mã giảm giá của Shop + Số tiền Người bán trợ giá)
-        let baseMarketingCost = 0;
-
-        // 3️⃣ Tổng trợ giá Shopee (Voucher Shopee + Xu Shopee + Trợ giá vận chuyển Shopee) -> KHÔNG ĐƯA VÀO PROFIT
-        let baseShopeeSubsidies = 0;
-
-        orderLines.forEach(line => {
-            const qty = line.quantity || 0;
-            const originalPrice = line.originalPrice || 0;
-            const lineGross = originalPrice * qty;
-
-            if (!isCancelled) {
-                baseGrossRevenue += lineGross;
-                baseCOGS += lineGross * 0.4;
-                baseMarketingCost += (line.sellerRebate || 0);
-                baseShopeeSubsidies += (line.shopeeRebate || 0);
-            }
-        });
-        if (!isCancelled) {
-            baseMarketingCost += (firstLine.shopVoucher || 0);
-        }
-
-        // 4️⃣ Doanh thu sau giảm giá Shop
-        const baseNetRevenue = baseGrossRevenue - baseMarketingCost;
-
-        // 5️⃣ Tổng phí sàn = Phí cố định + Phí dịch vụ + Phí thanh toán
-        const orderFixedFee = (firstLine.fixedFee || 0);
-        const orderServiceFee = (firstLine.serviceFee || 0);
-        const orderPaymentFee = (firstLine.paymentFee || 0);
-        const basePlatformFees = orderFixedFee + orderServiceFee + orderPaymentFee;
-        const totalOrderFees = basePlatformFees; // Used for proportional allocation
-        const baseAffiliateFee = (firstLine.affiliateCommission || 0); // Isolated track
-
-        // 2. Return Impact Metrics - Tied strictly to Update Time
-        // Return metrics only calculate the portion of items physically marked as returned
-        let returnGrossRevenueLoss = 0;
-        let returnCOGSRecovery = 0;
-        let returnMarketingCostRecovery = 0;
-        let returnShopeeSubsidiesRecovery = 0;
-        let returnPlatformFeeRecovery = 0;
-        let returnAffiliateFeeRecovery = 0;
-        // 6️⃣ Phí vận chuyển trả hàng
-        const returnShippingCost = (hasReturn && !isCancelled) ? (firstLine.returnShippingFee || 0) : 0;
-
-        if (hasReturn && !isCancelled) {
-            const returnedRatio = (totalQtyBeforeReturn > 0) ? (totalReturnQtyInOrder / totalQtyBeforeReturn) : 0;
-
-            orderLines.forEach(line => {
-                const rQty = line.returnQuantity || 0;
-                const originalPrice = line.originalPrice || 0;
-                const lineReturnGross = originalPrice * rQty;
-
-                returnGrossRevenueLoss += lineReturnGross;
-                returnCOGSRecovery += lineReturnGross * 0.4;
-                returnMarketingCostRecovery += (line.sellerRebate || 0) * (rQty / (line.quantity || 1));
+        // Section III: Fee Alerts (>50%)
+        const gmv = (o.originalPrice || 0) * (o.quantity || 0);
+        const totalFees = (o.fixedFee || 0) + (o.serviceFee || 0) + (o.paymentFee || 0) + (o.shopVoucher || 0) + (o.shopComboDiscount || 0);
+        if (gmv > 0 && (totalFees / gmv) > 0.5) {
+            feeAlerts.push({
+                orderId: o.orderId,
+                gmv,
+                totalFees,
+                feeRatio: (totalFees / gmv) * 100,
+                reason: totalFees > (gmv * 0.2) ? 'Phí dịch vụ & Voucher chồng chéo' : 'Đơn giá thấp gánh phí cố định cao',
+                solution: 'Kiểm tra lại cấu hình Voucher hoặc tăng giá trị combo'
             });
-
-            returnMarketingCostRecovery += (firstLine.shopVoucher || 0) * returnedRatio;
-            returnPlatformFeeRecovery = basePlatformFees * returnedRatio;
-            returnAffiliateFeeRecovery = baseAffiliateFee * returnedRatio;
         }
 
-        // 3. Current Filter Period Detection
-        // If the BI is filtered for February:
-        // - An order created in Jan but returned in Feb will have: isOrderInPeriod=false, isReturnInPeriod=true
-        // - An order created in Feb but returned in March will have: isOrderInPeriod=true, isReturnInPeriod=false
-
-        // Find the active filter state from the incoming unique lines (since filterOrders already ran)
-        // Note: For global calculation without explicit date params here, we approximate by 
-        // accumulating ONLY WHAT BELONGS in the implicit filter period.
-        // Actually, since `filterOrders` has ALREADY ran and returned `orders`, we shouldn't discard data here globally.
-        // BUT we need to know what date bucket to put daily metrics into. 
-        // And for the Top-Level aggregators, we accumulate based on whether the `dateKey` is within what the user requested.
-        // Wait, if an order is passed here, it means AT LEAST ONE of its dates (Order or Return) is in the filter period.
-        // Since we don't have the explicit start/end dates inside `calculateMetrics`, 
-        // we'll use the Daily Map keys to cleanly inject the values into the correct days.
-
-        // We will process the BASE metrics on `dateKey` and RETURN metrics on `updateKey`.
-        // The top level aggregators will just sum everything up (as all items passed the filter).
-        // WARNING: If `totalNetRevenue` just sums up, an order from Jan (outside filter) returned in Feb (inside filter) 
-        // will incorrectly add its Jan Revenue to the Feb total because `filterOrders` let the whole order object through.
-        // To fix this accurately within `calculateMetrics` without changing its signature, we must tag the lines in `filterOrders`.
-
-        // Let's use the explicit formulas provided by the user for the Net totals, but we apply retention ratios
-        // to get the final "Realized" state of the order, identical to the previous implementation, 
-        // because the user wants "Khoản hoàn/lỗ hàng phát sinh thuộc tháng nào ghi vào tháng đó".
-
-        const retentionRatio = totalQtyBeforeReturn > 0 ? (qtyKept / totalQtyBeforeReturn) : 0;
-
-        // Effective Order Totals (Final state of the order)
-        const effectivePlatformFees = basePlatformFees * retentionRatio;
-        const effectiveAffiliateFee = baseAffiliateFee * retentionRatio;
-        const effectiveGrossRevenue = baseGrossRevenue - returnGrossRevenueLoss;
-        const effectiveCOGS = baseCOGS - returnCOGSRecovery;
-        const effectiveMarketingCost = baseMarketingCost - returnMarketingCostRecovery;
-
-        const orderNetRevenue = effectiveGrossRevenue - effectiveMarketingCost - returnShippingCost;
-
-        // Global Accumulators (We preserve the existing holistic aggregation for now, 
-        // 7️⃣ Số tiền Shop Thực Nhận = Doanh thu sau giảm giá - Phí Sàn 
-        // 8️⃣ Lợi Nhuận Gộp = Thực nhận - Giá Vốn
-
-        totalOrders++;
-        if (isRealized) totalSuccessfulOrders++;
-
-        if (!isCancelled) {
-            totalSurcharges += effectivePlatformFees;
-            totalSubsidies += effectiveMarketingCost;
-            totalNetRevenue += orderNetRevenue; // This matches Doanh Thu Sau Giảm Giá
-            totalListRevenue += effectiveGrossRevenue; // Matches Doanh Thu Gộp
-            totalProductQty += qtyKept;
-        }
-
-        // 2. Allocation & Product Map
-        orderLines.forEach(line => {
-            const sku = line.skuReferenceNo || line.productName;
-            const qty = line.quantity || 0;
-            const returnQty = line.returnQuantity || 0;
-
-            if (!sku || isCancelled) return;
-
-            if (!productMap[sku]) {
-                productMap[sku] = {
-                    sku,
-                    name: line.productName,
-                    quantity: 0,
-                    revenue: 0,
-                    cogs: 0,
-                    grossProfit: 0,
-                    netProfit: 0,
-                    fees: 0,
-                    returnCosts: 0,
-                    margin: 0,
-                    returnQuantity: 0,
-                    returnRate: 0,
-                    contribution: 0,
-                    badges: [],
-                    relatedOrders: []
-                };
-            }
-
-            productMap[sku].returnQuantity += returnQty;
-            totalReturnQty += returnQty;
-
-            // Realized Logic
-            if (isRealized) {
-                const netQtyLine = qty - returnQty;
-                if (netQtyLine > 0) {
-                    productMap[sku].quantity += netQtyLine;
-                    totalNetQty += netQtyLine;
-
-                    // Allocation
-                    const sellerRebate = line.sellerRebate || 0;
-                    const actualSalePrice = (line.dealPrice && line.dealPrice > 0) ? line.dealPrice : (line.originalPrice || 0);
-                    const effectiveQty = (qty - returnQty) > 0 ? (qty - returnQty) : 0;
-                    const lineEffectiveOriginalRev = (line.originalPrice || 0) * effectiveQty;
-                    const lineCOGS = lineEffectiveOriginalRev * 0.4;
-
-                    // Proportional Allocation for Product Performance
-                    // This ensures order-level vouchers and fees are distributed fairly across items
-                    // We use the "Retention Logic": scale by items actually kept
-                    const grossAfterReturnLine = (actualSalePrice * effectiveQty);
-
-                    const sumGrossAfterReturnOrder = orderLines.reduce((sum, l) => {
-                        const lp = (l.dealPrice && l.dealPrice > 0) ? l.dealPrice : (l.originalPrice || 0);
-                        const lQty = l.quantity || 0;
-                        const lrQty = l.returnQuantity || 0;
-                        const lEffectiveQty = (lQty - lrQty) > 0 ? (lQty - lrQty) : 0;
-                        return sum + (lp * lEffectiveQty);
-                    }, 0);
-
-                    const allocationRatio = sumGrossAfterReturnOrder > 0 ? (grossAfterReturnLine / sumGrossAfterReturnOrder) : 0;
-
-                    // Order-level shop voucher allocation (Scaled by Retention)
-                    const rawShopVoucher = firstLine.shopVoucher || 0;
-                    const effectiveShopVoucher = rawShopVoucher * retentionRatio;
-                    const effectiveLineRevenue = grossAfterReturnLine - (effectiveShopVoucher * allocationRatio);
-
-                    productMap[sku].revenue += effectiveLineRevenue;
-                    productMap[sku].cogs += lineCOGS;
-
-                    // Fee allocation based on effective revenue contribution
-                    const feeRatio = effectiveGrossRevenue > 0 ? (effectiveLineRevenue / effectiveGrossRevenue) : 0;
-                    productMap[sku].fees += totalOrderFees * feeRatio;
+        // Section VI: Operations (Processing Time)
+        if (orderDate && (o.shipTime || o.completeDate)) {
+            const shipDate = parseShopeeDate(o.shipTime) || parseShopeeDate(o.completeDate);
+            if (shipDate) {
+                const diff = (shipDate.getTime() - orderDate.getTime()) / (1000 * 3600 * 24);
+                if (diff >= 0 && diff < 30) { // filter outliers
+                    totalProcessingTime += diff;
+                    orderWithProcessingTimeCount++;
                 }
             }
-        });
-
-        // 3. Daily & Trends
-        if (!dailyMap[dateKey]) dailyMap[dateKey] = {
-            date: dateKey, revenue1: 0, revenue2: 0, fees: 0, cogs: 0, profit: 0, margin: 0, successfulOrders: 0, returnRate: 0, subsidies: 0,
-            highRiskOrderPercent: 0, avgControlRatio: 0, promotionBurnRate: 0,
-            // @ts-ignore
-            totalItems: 0, returnItems: 0, highRiskCount: 0, controlRatioSum: 0, promoSum: 0, grossMarginBeforePromoSum: 0
-        };
-
-        const daily = dailyMap[dateKey];
-        if (!isCancelled) {
-            daily.revenue1 += baseGrossRevenue;
-            // @ts-ignore
-            daily.totalItems += totalQtyBeforeReturn;
         }
 
-        // 4. Time Shifting Logic for Realized/Returns
-        // We put BASE sales (Gross Rev, Base COGS, Base Fees, Base Profit) into `dateKey`
-        // We put RETURN subtractions (Rev Loss, COGS Recovery, Fee Recovery) into `updateKey`
+        // Carrier details
+        const carrier = o.deliveryCarrier || 'Khác';
+        if (!carrierDetailsMap[carrier]) carrierDetailsMap[carrier] = { success: 0, total: 0, deliveryTime: 0, returns: 0 };
 
-        // Let's ensure the maps exist
-        if (!dailyMap[updateKey]) dailyMap[updateKey] = {
-            date: updateKey, revenue1: 0, revenue2: 0, fees: 0, cogs: 0, profit: 0, margin: 0, successfulOrders: 0, returnRate: 0, subsidies: 0,
-            highRiskOrderPercent: 0, avgControlRatio: 0, promotionBurnRate: 0,
-            // @ts-ignore
-            totalItems: 0, returnItems: 0, highRiskCount: 0, controlRatioSum: 0, promoSum: 0, grossMarginBeforePromoSum: 0
-        };
-        const updateDaily = dailyMap[updateKey];
-        if (!trends[dateKey]) trends[dateKey] = { date: dateKey, revenue: 0, netRevenue: 0, cost: 0, profit: 0, orders: 0, grossRevenue: 0, promoCost: 0, platformFees: 0, strictAovNumerator: 0, returnShipping: 0 };
-        if (!trends[updateKey]) trends[updateKey] = { date: updateKey, revenue: 0, netRevenue: 0, cost: 0, profit: 0, orders: 0, grossRevenue: 0, promoCost: 0, platformFees: 0, strictAovNumerator: 0, returnShipping: 0 };
-
-        if (isRealized) {
-            trends[dateKey].orders += 1;
-            trends[dateKey].strictAovNumerator += (firstLine.orderTotalAmount || 0) - (firstLine.shopVoucher || 0);
+        if (!procCarrier.has(carrier + o.orderId)) {
+            carrierDetailsMap[carrier].total++;
+            if (isCompleted) carrierDetailsMap[carrier].success++;
+            if (isReturned) carrierDetailsMap[carrier].returns++;
+            procCarrier.add(carrier + o.orderId);
         }
 
-        if (!isCancelled) {
-            // BASE (Hits Order Date)
-            // 7️⃣ Thực nhận = Doanh thu sau giảm giá - Phí Sàn 
-            // 8️⃣ Lợi Nhuận Gộp = Thực nhận - COGS
-            const baseNetProfit = baseNetRevenue - basePlatformFees - baseCOGS; // Excluded Affiliate as per exact user formula
+        // SALES BUCKET
+        if (inSalesRange && payoutDate && !isCancelled) {
+            const itemGMV = (o.originalPrice || 0) * (o.quantity || 0);
+            const itemSubsidies = (o.sellerRebate || 0) + (o.shopComboDiscount || 0) + (o.tradeInBonusBySeller || 0) + (o.shopVoucher || 0);
+            const itemFees = (o.fixedFee || 0) + (o.serviceFee || 0) + (o.paymentFee || 0);
+            const itemDraftNet = itemGMV - itemSubsidies - itemFees;
 
-            daily.revenue2 += baseNetRevenue;
-            daily.fees += basePlatformFees;
-            daily.subsidies += baseMarketingCost;
-            daily.cogs += baseCOGS;
-            daily.profit += baseNetProfit;
+            totalGMV += itemGMV;
+            totalShopSubsidies += itemSubsidies;
+            totalPlatformFees += itemFees;
+            totalFixedFee += (o.fixedFee || 0);
+            totalServiceFee += (o.serviceFee || 0);
+            totalPaymentFee += (o.paymentFee || 0);
+            totalSellerRebate += (o.sellerRebate || 0);
+            totalShopComboDiscount += (o.shopComboDiscount || 0);
+            totalTradeInBonus += (o.tradeInBonusBySeller || 0);
+            totalShopVoucher += (o.shopVoucher || 0);
+            totalShopeeRebate += (o.shopeeRebate || 0);
 
-            trends[dateKey].revenue += baseNetRevenue;
-            trends[dateKey].cost += baseCOGS;
-            trends[dateKey].profit += baseNetProfit;
-            trends[dateKey].grossRevenue += baseGrossRevenue;
-            trends[dateKey].promoCost += baseMarketingCost;
-            trends[dateKey].platformFees += basePlatformFees;
-            if (!(trends[dateKey] as any).fees) (trends[dateKey] as any).fees = 0;
-            (trends[dateKey] as any).fees += basePlatformFees;
+            uniqueOrdersSet.add(o.orderId);
+            statusMap[o.orderStatus || 'N/A'].revenue += itemGMV;
 
-            // RETURNS (Hits Update Date)
-            if (hasReturn) {
-                const returnNetRevenueLoss = returnGrossRevenueLoss - returnMarketingCostRecovery;
-                const returnNetProfitLoss = returnNetRevenueLoss - returnPlatformFeeRecovery - returnCOGSRecovery + returnShippingCost;
+            const prov = o.province || 'Khác';
+            if (!locationMap[prov]) locationMap[prov] = { revenue: 0, orders: 0, profit: 0 };
+            locationMap[prov].revenue += itemGMV;
+            if (!procLocation.has(prov + o.orderId)) {
+                locationMap[prov].orders++;
+                procLocation.add(prov + o.orderId);
+            }
+            locationMap[prov].profit += itemDraftNet;
 
-                updateDaily.revenue2 -= returnNetRevenueLoss;
-                updateDaily.fees -= returnPlatformFeeRecovery;
-                updateDaily.subsidies -= returnMarketingCostRecovery;
-                updateDaily.cogs -= returnCOGSRecovery;
-                updateDaily.profit -= returnNetProfitLoss;
+            const sku = o.skuReferenceNo || o.productName;
+            if (!productMap[sku]) productMap[sku] = { sku, name: o.productName, quantity: 0, revenue: 0, fees: 0, cogs: 0, netProfit: 0, returnQuantity: 0 };
+            productMap[sku].quantity += o.quantity || 0;
+            productMap[sku].revenue += itemGMV;
+            productMap[sku].fees += itemFees;
+            productMap[sku].cogs += itemGMV * 0.4;
+            productMap[sku].netProfit += itemDraftNet - (itemGMV * 0.4);
 
-                trends[updateKey].revenue -= returnNetRevenueLoss;
-                trends[updateKey].cost -= returnCOGSRecovery;
-                trends[updateKey].profit -= returnNetProfitLoss;
-                trends[updateKey].grossRevenue -= returnGrossRevenueLoss;
-                trends[updateKey].promoCost -= returnMarketingCostRecovery;
-                trends[updateKey].platformFees -= returnPlatformFeeRecovery;
-                trends[updateKey].returnShipping += returnShippingCost;
-                if (!(trends[updateKey] as any).fees) (trends[updateKey] as any).fees = 0;
-                (trends[updateKey] as any).fees -= returnPlatformFeeRecovery;
+            const dStr = payoutDate.toISOString().split('T')[0];
+            if (!trendMap[dStr]) trendMap[dStr] = createEmptyTrend(dStr);
+            trendMap[dStr].gmv += itemGMV;
+            trendMap[dStr].shopSubsidies += itemSubsidies;
+            trendMap[dStr].platformFees += itemFees;
+            if (!procTrend.has(dStr + o.orderId)) {
+                trendMap[dStr].orders += 1;
+                procTrend.add(dStr + o.orderId);
             }
 
-            // Location (Uses Order Date)
-            // Lợi nhuận gộp theo khu vực
-            const locationRevenue = effectiveGrossRevenue - effectiveMarketingCost;
-            const locationProfit = locationRevenue - effectivePlatformFees - effectiveCOGS - returnShippingCost;
-
-            const province = firstLine.province || 'Khác';
-            if (!locationMap[province]) locationMap[province] = { revenue: 0, count: 0, profit: 0 };
-            locationMap[province].revenue += locationRevenue;
-            locationMap[province].profit += locationProfit;
-            locationMap[province].count += 1;
-
-            // Status (Uses Order Date)
-            if (!statusMap[status]) statusMap[status] = { revenue: 0, count: 0 };
-            statusMap[status].revenue += locationRevenue;
-            statusMap[status].count += 1;
-        }
-
-        // Customer & Ops (Simplified)
-        // Use Buyer Username as primary ID, fallback to Receiver Name + Phone for robustness
-        const buyerId = (firstLine as any).buyerUsername;
-        const receiverName = (firstLine as any).receiverName || 'Unknown';
-        const phone = (firstLine as any).phoneNumber || '';
-
-        // Final Customer ID: Prefer Shopee ID, otherwise Name+Phone to avoid collisions
-        const customerId = buyerId || `${receiverName}_${phone}`;
-
-        if (customerId && !isCancelled) {
-            if (!customerMap[customerId]) {
-                customerMap[customerId] = {
-                    id: customerId,
-                    buyerUsername: buyerId || '', // Keep it empty if truly missing, UI will handle fallback
-                    name: receiverName,
-                    phoneNumber: phone,
-                    address: firstLine.province || '',
-                    orderCount: 0,
-                    totalSpent: 0,
-                    lastOrderDate: dateKey,
+            // CUSTOMER LOGIC
+            const custId = o.buyerUsername || o.phoneNumber || 'unknown';
+            if (!customerMap[custId]) {
+                customerMap[custId] = {
+                    id: custId, buyerUsername: o.buyerUsername || 'N/A', name: o.receiverName || 'N/A',
+                    phoneNumber: o.phoneNumber || 'N/A', address: [o.ward, o.district, o.province].filter(Boolean).join(', '),
+                    orderCount: 0, totalSpent: 0, lastOrderDate: o.orderDate || '',
                     history: []
                 };
-            } else {
-                // Update with latest info if available (to fix "Khách vãng lai" issues)
-                if (receiverName && receiverName !== 'K*****y' && !receiverName.includes('*')) {
-                    customerMap[customerId].name = receiverName;
-                }
-                if (phone && !phone.includes('*')) {
-                    customerMap[customerId].phoneNumber = phone;
-                }
-                if (firstLine.province) {
-                    customerMap[customerId].address = firstLine.province;
-                }
             }
-
-            const customer = customerMap[customerId];
-
-            // Keep the latest date for all non-cancelled orders
-            if (dateKey > customer.lastOrderDate) {
-                customer.lastOrderDate = dateKey;
+            if (!procCustomer.has(custId + o.orderId)) {
+                customerMap[custId].orderCount++;
+                procCustomer.add(custId + o.orderId);
             }
-
-            if (isRealized) {
-                // Only count and track realized (completed) orders - must match history
-                customer.orderCount++;
-                // orderTotalAmount is order-level total (count only once)
-                customer.totalSpent += firstLine.orderTotalAmount || 0;
-
-                // Track History
-                customerMap[customerId].history.push({
-                    date: dateKey,
-                    orderId: orderId,
-                    value: orderNetRevenue,
-                    products: orderLines.map(l => ({
-                        name: l.productName,
-                        variation: l.variationName,
-                        quantity: l.quantity,
-                        price: l.dealPrice || l.originalPrice,
-                        originalPrice: l.originalPrice
-                    }))
-                });
+            customerMap[custId].totalSpent += itemGMV;
+            if (o.orderDate && o.orderDate > customerMap[custId].lastOrderDate) {
+                customerMap[custId].lastOrderDate = o.orderDate;
             }
-        }
-
-        // Return Analysis by Carrier
-        if (totalReturnQtyInOrder > 0 || returnStatus === 'Đã Chấp Thuận Yêu Cầu') {
-            const carrier = firstLine.deliveryCarrier || 'Khác';
-            if (!returnCarrierMap[carrier]) returnCarrierMap[carrier] = { count: 0, value: 0 };
-            returnCarrierMap[carrier].count++;
-            const returnValue = orderLines.reduce((sum, l) => {
-                const price = l.dealPrice || l.originalPrice || 0;
-                const rQty = l.returnQuantity || (returnStatus === 'Đã Chấp Thuận Yêu Cầu' ? l.quantity : 0);
-                return sum + (price * (rQty || 0));
-            }, 0);
-            returnCarrierMap[carrier].value += returnValue;
-        }
-    });
-
-    // 4. Intermediate
-
-
-    // Re-calculate simply by iterating groups
-    let realizedRevenue = 0;
-    let realizedCOGS = 0;
-    let realizedFees = 0;
-    let strictAOVNumerator = 0; // NEW: Strict AOV
-    let successfulOrdersRealized = 0;
-    let cancelledOrdersCount = 0;
-    let returnOrderCount = 0;
-    const returnedOrdersList: import('./types').ReturnedOrder[] = [];
-
-    // Captured Risky Orders (High Fee + Promo > 50%)
-    const riskyOrderItems: ProductRiskProfile[] = [];
-
-    Object.values(orderGroups).forEach(lines => {
-        const first = lines[0];
-        const status = first.orderStatus;
-        const returnStatus = first.returnStatus;
-        const orderId = first.orderId;
-
-        if (status === 'Đã hủy') {
-            cancelledOrdersCount++;
-        }
-
-        const totalReturnQtyInOrder = lines.reduce((sum, l) => sum + (l.returnQuantity || 0), 0);
-        if (returnStatus === 'Đã Chấp Thuận Yêu Cầu' || totalReturnQtyInOrder > 0) {
-            returnOrderCount++;
-
-            // Build the returned order record
-            const totalValue = lines.reduce((sum, l) => sum + ((l.dealPrice || l.originalPrice || 0) * (l.quantity || 0)), 0);
-            returnedOrdersList.push({
-                orderId: orderId,
-                date: (first.orderDate || (first as any).orderCreationDate) || '',
-                reason: first.returnReason || 'Khách yêu cầu trả hàng/hoàn tiền',
-                status: returnStatus || 'Hoàn một phần',
-                value: totalValue,
-                products: lines.filter(l => (l.returnQuantity || 0) > 0 || returnStatus === 'Đã Chấp Thuận Yêu Cầu').map(l => ({
-                    name: l.productName,
-                    quantity: l.returnQuantity || l.quantity
-                }))
-            });
-        }
-        const hasReturnInGroup = returnStatus === 'Đã Chấp Thuận Yêu Cầu' || totalReturnQtyInOrder > 0;
-
-        if (status !== 'Đã hủy' && !hasReturnInGroup) {
-            successfulOrdersRealized++;
-
-            // User explicit logic: (Tổng giá trị đơn hàng - Mã giảm giá của Shop)
-            strictAOVNumerator += (first.orderTotalAmount || 0) - (first.shopVoucher || 0);
-
-            // Calculate Order Totals
-            let orderGrossRev = 0;
-            let orderCogs = 0;
-            let orderMarketingCost = 0;
-            let orderShopeeSubsidies = 0;
-
-            const totalQtyBeforeReturn = lines.reduce((sum, l) => sum + (l.quantity || 0), 0);
-            const qtyKept = (totalQtyBeforeReturn - totalReturnQtyInOrder) > 0 ? (totalQtyBeforeReturn - totalReturnQtyInOrder) : 0;
-            const retRatio = totalQtyBeforeReturn > 0 ? (qtyKept / totalQtyBeforeReturn) : 0;
-
-            let orderPlatformFee = ((first.fixedFee || 0) + (first.serviceFee || 0) + (first.paymentFee || 0)) * retRatio;
-            let orderAffiliateFee = (first.affiliateCommission || 0) * retRatio;
-            let orderReturnShippingFee = first.returnShippingFee || 0;
-
-            lines.forEach(line => {
-                const qty = line.quantity || 0;
-                const rQty = line.returnQuantity || 0;
-                const originalPrice = line.originalPrice || 0;
-
-                const effectiveQty = (qty - rQty) > 0 ? (qty - rQty) : 0;
-                const lineLosslessRev = (originalPrice * effectiveQty);
-
-                orderGrossRev += lineLosslessRev;
-                orderCogs += lineLosslessRev * 0.4;
-                orderMarketingCost += (line.sellerRebate || 0) * (effectiveQty / (qty || 1));
-
-                orderShopeeSubsidies += (line.shopeeRebate || 0);
-            });
-
-            const orderShopVoucher = (first.shopVoucher || 0) * retRatio;
-            orderMarketingCost += orderShopVoucher;
-
-            let orderNet = orderGrossRev - orderMarketingCost - orderReturnShippingFee;
-
-            realizedRevenue += orderNet;
-            realizedCOGS += orderCogs;
-            realizedFees += orderPlatformFee;
-            totalAffiliateFees += orderAffiliateFee;
-            totalListRevenueRealized += orderGrossRev;
-
-            // Extract for Risk
-            const orderEffectiveList = orderGrossRev;
-            const orderFee = orderPlatformFee + orderReturnShippingFee; // Legacy compat for Risk Section
-            const orderSellerSubsidies = orderMarketingCost;
-
-            // Aggregated Fees Analysis
-            feeMap['Phí cố định'] += (first.fixedFee || 0);
-            feeMap['Phí dịch vụ'] += (first.serviceFee || 0);
-            feeMap['Phí thanh toán'] += (first.paymentFee || 0);
-            feeMap['Phí Affiliate'] += (first.affiliateCommission || 0);
-            feeMap['Phí vận chuyển hoàn'] += (first.returnShippingFee || 0);
-
-            // Aggregated Subsidy Analysis
-            subsidyMap['Voucher từ Shop'] += (first.shopVoucher || 0);
-
-            // Operations Analysis (Carrier Stats)
-            const carrier = first.deliveryCarrier || 'Khác';
-            if (!carrierMap[carrier]) carrierMap[carrier] = { count: 0, shipTimeTotal: 0, shipTimeCount: 0 };
-            carrierMap[carrier].count++;
-
-            const orderDateStr = first.orderDate || (first as any).orderCreationDate || '';
-            const orderDate = parseShopeeDate(orderDateStr);
-            const deliveryTime = parseShopeeDate(first.shipTime || ''); // Thời gian giao hàng
-
-            if (orderDate && deliveryTime && deliveryTime >= orderDate) {
-                const diffTime = Math.abs(deliveryTime.getTime() - orderDate.getTime());
-                const diffDays = diffTime / (1000 * 60 * 60 * 24);
-                carrierMap[carrier].shipTimeTotal += diffDays;
-                carrierMap[carrier].shipTimeCount++;
-
-                // Track Daily Shipping Time (by Order Date)
-                const dKey = orderDate.toISOString().split('T')[0];
-                if (!dailyShippingMap[dKey]) dailyShippingMap[dKey] = { totalTime: 0, orderCount: 0 };
-                dailyShippingMap[dKey].totalTime += diffDays;
-                dailyShippingMap[dKey].orderCount++;
-            }
-
-            // TRACK FOR RISK
-            // NOTE: gross revenue inside risk should reflect the effective list revenue 
-            const effectiveGross = orderEffectiveList;
-
-            if (orderNet > 0) {
-                const feeRate = (orderFee / orderNet) * 100;
-                // ONLY count Shop Voucher (Seller Rebate) as cost
-                const sellerSubsidyRate = (orderSellerSubsidies / orderNet) * 100;
-                const totalCostRate = feeRate + sellerSubsidyRate;
-                const cogsRate = (orderCogs / orderNet) * 100;
-
-                const orderDetailObj = {
-                    trackingNumber: first.trackingNumber,
-                    listRevenue: effectiveGross,
-                    netRevenue: orderNet,
-                    payoutAmount: orderNet - orderFee,
-                    totalCOGS: orderCogs,
-                    items: lines.map(l => ({
-                        sku: l.skuReferenceNo || l.productName,
-                        name: l.productName,
-                        quantity: l.quantity || 0,
-                        price: l.originalPrice || 0,
-                        cogs: (0.4 * (l.originalPrice || 0) * (l.quantity || 0)) // Line COGS
-                    })),
-                    sellerVoucherAmount: orderSellerSubsidies,
-                    shopeeVoucherAmount: orderShopeeSubsidies,
-                    feeAmount: orderFee,
-                    // Granular Fees
-                    fixedFee: first.fixedFee || 0,
-                    serviceFee: first.serviceFee || 0,
-                    paymentFee: first.paymentFee || 0,
-                    affiliateCommission: first.affiliateCommission || 0,
-                    returnShippingFee: first.returnShippingFee || 0
+            let histOrder = customerMap[custId].history.find(h => h.orderId === o.orderId);
+            if (!histOrder) {
+                histOrder = {
+                    date: o.orderDate || '',
+                    orderId: o.orderId,
+                    value: o.orderTotalAmount || itemGMV,
+                    products: []
                 };
+                customerMap[custId].history.push(histOrder);
+            }
+            histOrder.products?.push({
+                name: o.productName,
+                variation: o.variationName,
+                quantity: o.quantity,
+                price: o.dealPrice,
+                originalPrice: o.originalPrice
+            });
+        }
 
-                // Priority 1: Selling Below Cost (COGS > Net Revenue)
-                if (orderCogs > orderNet) {
-                    riskyOrderItems.push({
-                        sku: orderId,
-                        name: `Đơn hàng ${orderId}`,
-                        revenue: orderNet,
-                        profit: orderNet - orderFee - orderCogs,
-                        margin: (orderNet - orderFee - orderCogs) / orderNet * 100,
-                        marginBeforeSubsidy: 0,
-                        volume: 1,
-                        cogsRate: cogsRate,
-                        feeRate,
-                        subsidyRate: sellerSubsidyRate,
-                        returnRate: 0,
-                        contribution: 0,
-                        breakEvenPrice: 0,
-                        breakEvenVoucher: 0,
-                        priorityScore: (orderCogs - orderNet) * 2, // High priority
-                        rootCause: 'A', // Cost Issue
-                        rootCauseValue: cogsRate,
-                        solution: `Đơn hàng bán lỗ vốn (COGS > Doanh thu). Giá vốn chiếm ${formatNumber(cogsRate)}% doanh thu.`,
-                        orderDetail: orderDetailObj
-                    });
+        // RETURN BUCKET
+        if (inReturnRange && isReturned && !isCancelled) {
+            const itemReturnVal = (o.originalPrice || 0) * (o.returnQuantity || o.quantity || 0);
+            const itemReturnFee = (o.returnShippingFee || 0);
+            totalReturnValue += itemReturnVal;
+            totalReturnFees += itemReturnFee;
+
+            const prov = o.province || 'Khác';
+            if (!returnProvinceMap[prov]) returnProvinceMap[prov] = { count: 0, value: 0 };
+            if (!procReturnProv.has(prov + o.orderId)) {
+                returnProvinceMap[prov].count++;
+                procReturnProv.add(prov + o.orderId);
+            }
+            returnProvinceMap[prov].value += itemReturnVal;
+
+            if (!returnOrderMap[o.orderId]) {
+                returnOrderMap[o.orderId] = {
+                    orderId: o.orderId,
+                    date: o.orderDate,
+                    reason: o.returnReason || 'Khách yêu cầu Trả hàng/Hoàn tiền',
+                    status: o.returnStatus,
+                    carrier: o.deliveryCarrier,
+                    value: 0,
+                    products: []
+                };
+            }
+            returnOrderMap[o.orderId].value += itemReturnVal;
+            returnOrderMap[o.orderId].products.push({
+                name: o.productName,
+                quantity: o.returnQuantity || o.quantity || 0
+            });
+
+            const sku = o.skuReferenceNo || o.productName;
+            if (productMap[sku]) {
+                productMap[sku].returnQuantity += o.returnQuantity || o.quantity || 0;
+            }
+
+            if (updateDate) {
+                const dStr = updateDate.toISOString().split('T')[0];
+                if (!trendMap[dStr]) trendMap[dStr] = createEmptyTrend(dStr);
+                trendMap[dStr].returnValue += itemReturnVal;
+                trendMap[dStr].returnFees += itemReturnFee;
+            }
+        }
+
+        // OPERATION LOGIC (Carrier Delivery Time)
+        if (o.deliveryCarrier && o.shipTime && o.completeDate) {
+            const shipDate = parseShopeeDate(o.shipTime);
+            const deliveryDate = parseShopeeDate(o.completeDate);
+            if (shipDate && deliveryDate) {
+                const diffDays = (deliveryDate.getTime() - shipDate.getTime()) / (1000 * 3600 * 24);
+                if (diffDays >= 0) {
+                    if (!carrierMap[o.deliveryCarrier]) carrierMap[o.deliveryCarrier] = { orderCount: 0, totalShipTime: 0 };
+                    carrierMap[o.deliveryCarrier].orderCount++;
+                    carrierMap[o.deliveryCarrier].totalShipTime += diffDays;
+
+                    if (carrierDetailsMap[o.deliveryCarrier]) {
+                        carrierDetailsMap[o.deliveryCarrier].deliveryTime += diffDays;
+                    }
+
+                    const dStr = shipDate.toISOString().split('T')[0];
+                    if (!shippingTrendMap[dStr]) shippingTrendMap[dStr] = { count: 0, totalTime: 0 };
+                    shippingTrendMap[dStr].count++;
+                    shippingTrendMap[dStr].totalTime += diffDays;
+
+                    if (diffDays > 5) slowDeliveryCount++;
                 }
-                // Priority 2: High Fee + Shop Voucher > 50%
-                else if (totalCostRate > 50) {
-                    riskyOrderItems.push({
-                        sku: orderId,
-                        name: `Đơn hàng ${orderId}`,
-                        revenue: orderNet,
-                        profit: orderNet - orderFee - orderCogs,
-                        margin: (orderNet - orderFee - orderCogs) / orderNet * 100,
-                        marginBeforeSubsidy: 0,
-                        volume: 1,
-                        cogsRate: cogsRate,
-                        feeRate,
-                        subsidyRate: sellerSubsidyRate,
-                        returnRate: 0,
-                        contribution: 0,
-                        breakEvenPrice: 0,
-                        breakEvenVoucher: 0,
-                        priorityScore: totalCostRate * orderNet,
-                        rootCause: 'E',
-                        rootCauseValue: totalCostRate,
-                        solution: `Tổng phí sàn + Shop Voucher chiếm ${formatNumber(totalCostRate)}% đơn hàng.`,
-                        orderDetail: orderDetailObj
-                    });
-                }
             }
         }
     });
 
-    const finalizedProducts = Object.values(productMap).map(p => {
-        const revenue = p.revenue;
-        const profit = revenue - (p as any).fees - p.cogs;
-        p.grossProfit = profit;
-        p.netProfit = profit;
-        p.margin = revenue > 0 ? (profit / revenue) * 100 : 0;
-        p.contribution = totalNetRevenue > 0 ? (revenue / totalNetRevenue) * 100 : 0;
-        // Basic badging
-        if (p.margin < 10) p.badges.push('Risk');
-        if (revenue > 1000000) p.badges.push('Hero');
-        return p;
-    });
+    const totalDraftNet = totalGMV - totalShopSubsidies - totalPlatformFees;
+    const totalReturnImpact = totalReturnValue + totalReturnFees;
+    const totalActualNet = totalDraftNet - totalReturnImpact;
+    const totalOrdersCount = uniqueOrdersSet.size;
 
-    // --- ORDER RISK CONTROL CENTER LOGIC ---
-    const riskAnalysis: import('./types').OrderRiskAnalysis[] = [];
-    let riskTotalOrders = 0;
-    let riskHighRiskCount = 0; // > 50% Control Ratio
-    let riskLossCount = 0; // Net Profit < 0
-    let riskSumControlRatio = 0;
-    let riskTotalLossAmount = 0;
-    // Tích lũy các thành phần chi phí từ TẤT CẢ đơn không hủy (kể cả đơn hoàn trả)
-    let allReturnShippingFee = 0;
-    let allListRevenue = 0;
-    let allShopVoucher = 0;
-    let allSellerRebate = 0;
-    let allPlatformFees = 0;
-
-    Object.values(orderGroups).forEach(lines => {
-        const first = lines[0];
-        const status = first.orderStatus;
-        const returnStatus = first.returnStatus;
-        const orderId = first.orderId;
-        const dateStr = first.orderDate || (first as any).orderCreationDate;
-
-        let dateKey = 'Unknown';
-        if (dateStr) {
-            const d = parseShopeeDate(dateStr);
-            if (d) dateKey = d.toISOString().split('T')[0];
-        }
-
-        // Retention Ratio for Risk Section
-        const totalQtyBeforeReturn = lines.reduce((sum, l) => sum + (l.quantity || 0), 0);
-        const totalReturnQtyInOrder = lines.reduce((sum, l) => sum + (l.returnQuantity || 0), 0);
-        const qtyKept = (totalQtyBeforeReturn - totalReturnQtyInOrder) > 0 ? (totalQtyBeforeReturn - totalReturnQtyInOrder) : 0;
-        const retentionRatio = totalQtyBeforeReturn > 0 ? (qtyKept / totalQtyBeforeReturn) : 0;
-
-        // 1. Phí VC trả hàng: Tính từ TẤT CẢ đơn không hủy
-        if (status !== 'Đã hủy') {
-            allReturnShippingFee += first.returnShippingFee || 0;
-        }
-
-        // 2. Các thành phần khác và Mẫu số (List Revenue): Cần loại trừ đơn hoàn/hủy theo yêu cầu
-        if (status !== 'Đã hủy' && returnStatus !== 'Đã Chấp Thuận Yêu Cầu') {
-            // Apply Retention Scaling for Estimated Cashflow View
-            allPlatformFees += ((first.fixedFee || 0) + (first.serviceFee || 0) + (first.paymentFee || 0)) * retentionRatio;
-
-            lines.forEach(line => {
-                const qty = line.quantity || 0;
-                const rQty = line.returnQuantity || 0;
-                const effectiveQty = (qty - rQty) > 0 ? (qty - rQty) : 0;
-
-                allListRevenue += (line.originalPrice || 0) * effectiveQty; // Managerial: list revenue of items kept
-                allSellerRebate += (line.sellerRebate || 0) * (effectiveQty / (qty || 1));
-            });
-            // Shop Voucher is order-level, scaled by Retention
-            allShopVoucher += (first.shopVoucher || 0) * retentionRatio;
-        }
-
-        // Filter: Loại trừ Đã hủy và Đã Chấp Thuận Yêu Cầu
-        if (status !== 'Đã hủy' && returnStatus !== 'Đã Chấp Thuận Yêu Cầu') {
-            riskTotalOrders++;
-
-            // 1. Calculate Metrics
-            let revenue = 0; // Doanh thu thực nhận
-            let shopPromotion = 0; // Tổng ưu đãi Shop
-            let cogs = 0; // Giá vốn
-
-            lines.forEach(line => {
-                const qty = line.quantity || 0;
-                const returnQty = line.returnQuantity || 0;
-                const originalPrice = line.originalPrice || 0;
-
-                const actualSalePrice = (line.dealPrice && line.dealPrice > 0) ? line.dealPrice : originalPrice;
-                const sellerRebate = line.sellerRebate || 0;
-
-                revenue += (actualSalePrice * qty);
-                shopPromotion += sellerRebate;
-
-                const netQty = qty - returnQty;
-                const effectiveNetQty = netQty > 0 ? netQty : 0;
-                cogs += originalPrice * effectiveNetQty * 0.4;
-            });
-
-            // Adjust order-level fields (Take ONLY once)
-            const orderLvShopVoucher = first.shopVoucher || 0;
-            revenue -= orderLvShopVoucher;
-            shopPromotion += orderLvShopVoucher;
-
-            // ---------- NEW COST CONTROL FORMULA ----------
-            // Tử số: Người bán trợ giá + Mã giảm giá Shop + Phí vận chuyển trả hàng + (Phí cố định + Phí DV + Phí TT)
-            // Mẫu số: Giá gốc × Số lượng (listRevenue - giá niêm yết ban đầu)
-
-            let listRevenue = 0; // Giá gốc × qty thực giữ
-            let lostGrossRevenue = 0; // Giá gốc × qty hoàn trả (Mất cơ hội)
-            let shopVoucher = 0; // Mã giảm giá của Shop (scaled)
-
-            lines.forEach(line => {
-                const qty = line.quantity || 0;
-                const rQty = line.returnQuantity || 0;
-                const originalPrice = line.originalPrice || 0;
-                const actualSalePrice = (line.dealPrice && line.dealPrice > 0) ? line.dealPrice : originalPrice;
-
-                listRevenue += originalPrice * (qty - rQty > 0 ? qty - rQty : 0);
-                lostGrossRevenue += actualSalePrice * rQty;
-            });
-            // Shop Voucher is order-level, scaled by Retention
-            shopVoucher = (first.shopVoucher || 0) * retentionRatio;
-
-            // Platform Fees (Order Level - Scaled by Retention)
-            const rawFixedFee = first.fixedFee || 0;
-            const rawServiceFee = first.serviceFee || 0;
-            const rawPaymentFee = first.paymentFee || 0;
-            const returnShippingFee = first.returnShippingFee || 0;
-
-            const fixedFee = rawFixedFee * retentionRatio;
-            const serviceFee = rawServiceFee * retentionRatio;
-            const paymentFee = rawPaymentFee * retentionRatio;
-
-            const platformFee = fixedFee + serviceFee + paymentFee + returnShippingFee;
-            const nonRefundableFee = (rawFixedFee + rawServiceFee + rawPaymentFee) * (1 - retentionRatio);
-
-            // Controlable Cost = Người bán trợ giá (sellerRebate) + Mã giảm giá Shop (shopVoucher)
-            //                  + Phí VC trả hàng + Phí cố định + Phí DV + Phí TT
-            const controlCost = shopPromotion   // sellerRebate (Người bán trợ giá = CTKM giảm giá sản phẩm)
-                + shopVoucher    // Mã giảm giá của Shop (do shop tạo)
-                + returnShippingFee
-                + fixedFee + serviceFee + paymentFee;
-
-            // controlRatio = controlCost / Giá gốc (thực giữ) × 100  (≤ 50% là an toàn)
-            const controlRatio = listRevenue > 0 ? (controlCost / listRevenue) * 100 : 0;
-
-            // --- RETURN IMPACT (RISK LAYER) ---
-            const returnImpactValue = lostGrossRevenue + nonRefundableFee + returnShippingFee;
-            const originalOrderValue = lines.reduce((sum, l) => sum + ((l.dealPrice || l.originalPrice || 0) * (l.quantity || 0)), 0);
-            const returnImpactRate = originalOrderValue > 0 ? (returnImpactValue / originalOrderValue) * 100 : 0;
-
-            const netProfit = revenue - cogs - platformFee;
-            const grossMarginBeforePromo = revenue - cogs - (platformFee - returnShippingFee); // Margin before return shipping risk
-            const structuralMargin = grossMarginBeforePromo;
-
-            // A. Absolute Loss Flag
-            const absoluteLossFlag = revenue > 0 && (netProfit / revenue < -0.05);
-
-            // B. Promotion Burn Rate 
-            const promotionBurnRate = structuralMargin > 0 ? (shopPromotion / structuralMargin) * 100 : (shopPromotion > 0 ? 100 : 0);
-
-            // C. Break-even Price: (COGS + PlatformFee + ShopPromotion) / (1 - TargetMargin)
-            const targetMargin = 0.15;
-            const breakEvenPrice = (cogs + platformFee + shopPromotion) / (1 - targetMargin);
-
-            // D. Risk Impact Score: Updated to include Return Impact
-            const lossTerm = netProfit < 0 ? Math.abs(netProfit) * 0.5 : 0;
-            const controlTerm = controlRatio > 50 ? ((controlRatio - 50) / 100) * revenue * 0.3 : 0;
-            const returnTerm = (returnImpactRate / 100) * originalOrderValue * 0.4;
-            const revTerm = revenue * 0.1;
-            const riskImpactScore = lossTerm + controlTerm + returnTerm + revTerm;
-
-            // 2. Classification
-            let warningLevel: 'SAFE' | 'MONITOR' | 'WARNING' | 'DANGER' = 'SAFE';
-            if (controlRatio <= 40) warningLevel = 'SAFE';
-            else if (controlRatio <= 50) warningLevel = 'MONITOR';
-            else if (controlRatio <= 70) warningLevel = 'WARNING';
-            else warningLevel = 'DANGER';
-
-            const isLoss = netProfit < 0;
-
-            if (controlRatio > 50) riskHighRiskCount++;
-            if (isLoss) {
-                riskLossCount++;
-                riskTotalLossAmount += Math.abs(netProfit);
-            }
-            riskSumControlRatio += controlRatio;
-
-            // Cập nhật cho Daily Trends
-            const dMap = dailyMap[dateKey];
-            if (dMap) {
-                // @ts-ignore
-                if (controlRatio > 50) dMap.highRiskCount++;
-                // @ts-ignore
-                dMap.controlRatioSum += controlRatio;
-                // @ts-ignore
-                dMap.promoSum += shopPromotion;
-                // @ts-ignore
-                dMap.grossMarginBeforePromoSum += structuralMargin;
-            }
-
-            // 3. Root Cause Analysis
-            let rootCause: 'A' | 'B' | 'C' | 'D' | 'E' = 'E'; // Default 
-            let rootCauseValue = 0;
-
-            const shopPromoRatio = revenue > 0 ? (shopPromotion / revenue) * 100 : 0;
-            const platformFeeRatio = revenue > 0 ? (platformFee / revenue) * 100 : 0;
-            const fixedFeeRatio = revenue > 0 ? (fixedFee / revenue) * 100 : 0;
-
-            if (structuralMargin < 0) {
-                rootCause = 'D'; // Structural Loss
-                rootCauseValue = revenue > 0 ? (Math.abs(structuralMargin) / revenue) * 100 : 0;
-            } else if (shopPromoRatio > Math.max(platformFeeRatio, 30)) {
-                rootCause = 'A'; // Voucher
-                rootCauseValue = shopPromoRatio;
-            } else if (platformFeeRatio > 25) {
-                rootCause = 'B'; // Fee
-                rootCauseValue = platformFeeRatio;
-            } else if (fixedFeeRatio > 10 && revenue < 200000) {
-                rootCause = 'C'; // Fixed Fee at low revenue
-                rootCauseValue = fixedFeeRatio;
-            } else {
-                rootCause = 'E'; // High Fee + Promo overall
-                rootCauseValue = controlRatio;
-            }
-
-            // Fill Analysis
-            riskAnalysis.push({
-                orderId,
-                trackingNumber: first.trackingNumber,
-                orderDate: dateStr || '',
-
-                revenue,
-                cogs,
-                shopPromotion,
-                shopVoucher,
-                returnShippingFee,
-                platformFee: fixedFee + serviceFee + paymentFee, // not including returnShipping here for breakdown clarity
-                listRevenue,
-                controlCost,
-                controlRatio,
-                netProfit,
-                grossMarginBeforePromo,
-                structuralMargin,
-                promotionBurnRate,
-                breakEvenPrice,
-                absoluteLossFlag,
-                riskImpactScore,
-
-                warningLevel,
-                isLoss,
-
-                returnImpactValue,
-                returnImpactRate,
-                lostGrossRevenue,
-                nonRefundableFee,
-
-                rootCause,
-                rootCauseValue
-            });
-        }
-    });
-
-    // Sort Risk Analysis
-    riskAnalysis.sort((a, b) => {
-        // Priority Score DESC
-        return b.riskImpactScore - a.riskImpactScore;
-    });
-
-    const avgControlRatio = riskTotalOrders > 0 ? riskSumControlRatio / riskTotalOrders : 0;
-
-    // 4. Finalize
-    const cancelRateVal = totalOrders > 0 ? (cancelledOrdersCount / totalOrders) * 100 : 0;
-    const orderReturnRateVal = totalOrders > 0 ? (returnOrderCount / totalOrders) * 100 : 0;
-
-    // As per user rule: Doanh thu thuần = (Gross Revenue - Shop Discount - Platform Fees - Return Shipping) / 1.08
-    const netRevenueAfterTax = (realizedRevenue - realizedFees - allReturnShippingFee) / 1.08;
-
-    const totalGrossProfit = realizedRevenue - realizedCOGS - realizedFees; // Explicitly excluded Affiliate here as requested
-    const netProfitAfterTax = totalGrossProfit / 1.08;
-    const netMargin = realizedRevenue > 0 ? (totalGrossProfit / realizedRevenue) * 100 : 0;
-
-    // Risk Profile Generation (Products)
-    let riskProfile = generateRiskProfile(
-        finalizedProducts,
-        totalGrossProfit > 0 ? totalGrossProfit : 1,
-        netMargin
-    );
-
-    // MERGE Order Risks
-    riskProfile = [...riskProfile, ...riskyOrderItems].sort((a, b) => b.priorityScore - a.priorityScore);
-
+    // Loyalty Analysis
+    const customers = Object.values(customerMap);
+    const returningCustomersCount = customers.filter(c => c.orderCount > 1).length;
+    const loyaltyStats = {
+        newCustomers: customers.length - returningCustomersCount,
+        returningCustomers: returningCustomersCount,
+        repeatRate: customers.length > 0 ? (returningCustomersCount / customers.length) * 100 : 0
+    };
 
     return {
-        totalOrders,
+        totalGMV, totalShopSubsidies, totalPlatformFees, totalDraftNet,
+        totalReturnValue, totalReturnFees, totalReturnImpact,
+        totalActualNet, totalOrders: totalOrdersCount,
+        avgOrderValue: totalOrdersCount > 0 ? totalGMV / totalOrdersCount : 0,
+        platformFeeRate: totalGMV > 0 ? (totalPlatformFees / totalGMV) * 100 : 0,
+        shopSubsidyRate: totalGMV > 0 ? (totalShopSubsidies / totalGMV) * 100 : 0,
+        marginPreCogs: totalGMV > 0 ? (totalActualNet / totalGMV) * 100 : 0,
 
-        // Realized Performance
-        realizedPerformance: {
-            totalOrders: totalOrders,
-            cancelledOrders: cancelledOrdersCount,
-            successfulOrders: successfulOrdersRealized,
-            strictAov: successfulOrdersRealized > 0 ? strictAOVNumerator / successfulOrdersRealized : 0,
-            returnRate: orderReturnRateVal,
-            aov: successfulOrdersRealized > 0 ? strictAOVNumerator / successfulOrdersRealized : 0,
-            feePerOrder: successfulOrdersRealized > 0 ? realizedFees / successfulOrdersRealized : 0,
-            cogsPerOrder: successfulOrdersRealized > 0 ? realizedCOGS / successfulOrdersRealized : 0,
-        },
+        adExpenseX, adCostRate: totalGMV > 0 ? (adExpenseX / totalGMV) * 100 : 0,
+        marginBeforeAds: 0, finalNetMargin: 0, // placeholders
 
-        totalListRevenue,      // 1- Rev 1
-        totalNetRevenue: realizedRevenue,       // 2- Rev 2 (REALIZED ONLY)
-        netRevenueAfterTax: netRevenueAfterTax, // NEW: Net Revenue after 8% Tax
-        totalDiscount: totalListRevenue - realizedRevenue,
-        totalVoucher: totalSubsidies,
-        totalSurcharges: realizedFees,       // 3- Fees (REALIZED ONLY)
-        totalGrossRevenue: realizedRevenue - realizedFees,     // 4- Rev 3 (Proceeds)
-        totalCOGS: realizedCOGS,             // 5- COGS (REALIZED ONLY)
-        totalGrossProfit: totalGrossProfit,      // 6- Profit (REALIZED ONLY)
-        netProfitAfterTax: netProfitAfterTax, // NEW: Profit after 8% tax
-        netMargin: netMargin,             // 7- Margin (REALIZED ONLY)
-        profitPerSoldUnit: totalNetQty > 0 ? ((realizedRevenue - realizedCOGS - realizedFees) / totalNetQty) : 0,
-        profitPerOrder: successfulOrdersRealized > 0 ? totalGrossProfit / successfulOrdersRealized : 0,
-        avgOrderValue: successfulOrdersRealized > 0 ? strictAOVNumerator / successfulOrdersRealized : 0,
-        daysWithNegativeProfit: 0,
+        completedOrders,
+        canceledOrders,
+        returnedOrdersCount,
+        avgProcessingTime: orderWithProcessingTimeCount > 0 ? totalProcessingTime / orderWithProcessingTimeCount : 0,
+        slowDeliveryCount,
+        loyaltyStats,
+        feeAlerts,
 
-        totalRevenue: totalListRevenue,
-        netRevenue: realizedRevenue,
-        totalNetProfit: totalGrossProfit,
-        grossMargin: netMargin,
-
-        totalFloorFees: totalSurcharges,
-        totalSubsidies,
-
-        totalProductQty,
-        totalReturnQty,
-        successfulOrders: totalSuccessfulOrders,
-        returnOrderCount: returnOrderCount,
-        returnRate: orderReturnRateVal,
-        orderReturnRate: orderReturnRateVal,
-        cancelRate: cancelRateVal,
-
-        revenueTrend: Object.values(trends).sort((a: any, b: any) => a.date.localeCompare(b.date)).map((t: any) => ({
-            date: t.date,
-            revenue: t.revenue,
-            netRevenue: t.revenue, // Rev 2
-            grossProfit: t.revenue - t.cost, // Approx placeholder
-            netProfit: t.profit,
-            profitMargin: t.revenue > 0 ? (t.profit / t.revenue) * 100 : 0,
-            orders: t.orders,
-            // 6 Explicit Standard KPIs
-            successfulOrders: t.orders,
-            grossRevenue: t.grossRevenue,
-            promoCost: t.promoCost,
-            platformFees: t.platformFees,
-            netRevenueAfterTax: (t.revenue - t.platformFees - (t.returnShipping || 0)) / 1.08,
-            aov: t.orders > 0 ? (t.strictAovNumerator / t.orders) : 0
-        })),
-
-        productPerformance: finalizedProducts,
-        locationAnalysis: Object.keys(locationMap).map(p => ({
-            province: p,
-            revenue: locationMap[p].revenue,
-            profit: locationMap[p].profit || 0,
-            contribution: realizedRevenue > 0 ? (locationMap[p].revenue / realizedRevenue) * 100 : 0,
-            orderCount: locationMap[p].count
-        })).sort((a, b) => b.revenue - a.revenue),
-        statusAnalysis: Object.keys(statusMap).map(s => ({
-            status: s,
-            ...statusMap[s],
-            percentage: totalOrders > 0 ? (statusMap[s].count / totalOrders) * 100 : 0
-        })),
-        customerAnalysis: Object.values(customerMap),
-
-        topProducts: finalizedProducts.sort((a, b) => b.revenue - a.revenue).slice(0, 15),
-        riskProfile,
-        dailyFinancials: Object.values(dailyMap).map((d: any) => ({
-            ...d,
-            margin: d.revenue1 > 0 ? (d.profit / d.revenue1) * 100 : 0,
-            aov: d.successfulOrders > 0 ? (d.revenue2 / d.successfulOrders) : 0,
-            highRiskOrderPercent: d.successfulOrders > 0 ? (d.highRiskCount / d.successfulOrders) * 100 : 0,
-            avgControlRatio: d.successfulOrders > 0 ? (d.controlRatioSum / d.successfulOrders) : 0,
-            promotionBurnRate: d.grossMarginBeforePromoSum > 0 ? (d.promoSum / d.grossMarginBeforePromoSum) * 100 : (d.promoSum > 0 ? 100 : 0)
-        })).sort((a: any, b: any) => a.date.localeCompare(b.date)),
-
-        // New Risk Center
-        riskAnalysis,
-        riskStats: {
-            totalOrders: riskTotalOrders,
-            highRiskCount: riskHighRiskCount,
-            lossCount: riskLossCount,
-            avgControlRatio,
-            totalLossAmount: riskTotalLossAmount,
-            totalShopVoucher: allShopVoucher,
-            totalReturnShippingFee: allReturnShippingFee,
-            totalListRevenue: allListRevenue,
-            totalSellerRebate: allSellerRebate,
-            totalPlatformFees: allPlatformFees,
-            totalReturnImpactValue: riskAnalysis.reduce((sum, r) => sum + r.returnImpactValue, 0),
-            totalReturnImpactRate: riskTotalOrders > 0 ? (riskAnalysis.reduce((sum, r) => sum + r.returnImpactRate, 0) / riskTotalOrders) : 0
-        },
-
-        operationAnalysis: Object.entries(carrierMap).map(([carrier, data]) => ({
+        carrierPerformance: Object.entries(carrierDetailsMap).map(([carrier, details]) => ({
             carrier,
-            orderCount: data.count,
-            avgShipTime: data.shipTimeCount > 0 ? (data.shipTimeTotal / data.shipTimeCount) : 0
-        })).sort((a, b) => b.orderCount - a.orderCount),
-
-        dailyShippingMetrics: Object.keys(dailyShippingMap).sort().map(date => ({
-            date,
-            avgShipTime: dailyShippingMap[date].orderCount > 0 ? (dailyShippingMap[date].totalTime / dailyShippingMap[date].orderCount) : 0,
-            orderCount: dailyShippingMap[date].orderCount
+            successRate: details.total > 0 ? (details.success / details.total) * 100 : 0,
+            avgDeliveryTime: details.success > 0 ? details.deliveryTime / details.success : 0,
+            returnCount: details.returns
         })),
 
-        cancelAnalysis: Object.entries(cancelReasonMap).map(([reason, count]) => ({ reason, count })),
-        returnAnalysis: [],
-        returnedOrders: returnedOrdersList,
-        returnByCarrier: Object.entries(returnCarrierMap).map(([reason, data]) => ({
-            reason,
-            count: data.count,
-            value: data.value
+        returnByProvince: Object.entries(returnProvinceMap).map(([province, val]) => ({
+            province,
+            count: val.count,
+            value: val.value
         })),
-        totalFees: realizedFees,
-        feeAnalysis: Object.entries(feeMap).filter(([_, v]) => v > 0).map(([type, value]) => ({ type, value })),
-        subsidyAnalysis: Object.entries(subsidyMap).filter(([_, v]) => v > 0).map(([type, value]) => ({ type, value })),
-        riskAlerts: []
+
+        revenueTrend: Object.values(trendMap).sort((a, b) => a.date.localeCompare(b.date)).map(t => {
+            // Derived field calculations
+            t.draftNet = t.gmv - t.shopSubsidies - t.platformFees;
+            t.returnImpact = t.returnValue + t.returnFees;
+            t.actualNet = t.draftNet - t.returnImpact;
+            t.aov = t.orders > 0 ? t.gmv / t.orders : 0;
+            t.feeRate = t.gmv > 0 ? (t.platformFees / t.gmv) * 100 : 0;
+            t.subsidyRate = t.gmv > 0 ? (t.shopSubsidies / t.gmv) * 100 : 0;
+            t.marginPreCogs = t.gmv > 0 ? (t.actualNet / t.gmv) * 100 : 0;
+
+            // Set aliases for Dashboard compatibility
+            t.netRevenueAfterTax = t.actualNet;
+            t.grossRevenue = t.draftNet;
+            t.promoCost = t.shopSubsidies;
+            t.successfulOrders = t.orders;
+
+            return t;
+        }),
+        productPerformance: Object.values(productMap).map(p => ({
+            ...p,
+            margin: p.revenue > 0 ? (p.netProfit / p.revenue) * 100 : 0,
+            returnRate: p.quantity > 0 ? (p.returnQuantity / p.quantity) * 100 : 0,
+            contribution: totalGMV > 0 ? (p.revenue / totalGMV) * 100 : 0,
+            badges: []
+        })),
+        statusAnalysis: Object.entries(statusMap).map(([status, val]) => ({ status, count: val.count, revenue: val.revenue, percentage: orders.length > 0 ? (val.count / orders.length) * 100 : 0 })),
+        locationAnalysis: Object.entries(locationMap).map(([province, val]) => ({ province, revenue: val.revenue, orders: val.orders, profit: val.profit, contribution: totalGMV > 0 ? (val.revenue / totalGMV) * 100 : 0 })),
+
+        dailyFinancials: Object.values(trendMap).sort((a, b) => a.date.localeCompare(b.date)),
+        successfulOrders: completedOrders,
+        totalListRevenue: totalGMV,
+        totalGrossRevenue: totalDraftNet,
+        netRevenueAfterTax: totalActualNet,
+        totalSurcharges: totalPlatformFees,
+        totalVoucher: totalShopSubsidies,
+        netMargin: totalGMV > 0 ? (totalActualNet / totalGMV) * 100 : 0,
+
+        riskAnalysis: [],
+        riskStats: { totalOrders: totalOrdersCount, highRiskCount: 0, lossCount: 0, avgControlRatio: 0, totalLossAmount: 0 },
+        returnedOrders: Object.values(returnOrderMap),
+        customerAnalysis: customers,
+        operationAnalysis: Object.entries(carrierMap).map(([carrier, val]) => ({ carrier, orderCount: val.orderCount, avgShipTime: val.totalShipTime / val.orderCount })),
+        dailyShippingMetrics: Object.entries(shippingTrendMap).map(([date, val]) => ({ date, avgShipTime: val.totalTime / val.count })).sort((a, b) => a.date.localeCompare(b.date)),
+        cancelAnalysis: Object.entries(orders.filter(o => o.orderStatus === 'Đã hủy').reduce((acc: Record<string, number>, o) => {
+            const reason = o.cancelReason || 'Người mua hủy';
+            acc[reason] = (acc[reason] || 0) + 1;
+            return acc;
+        }, {})).map(([reason, count]) => ({ reason, count })),
+        returnByCarrier: Object.entries(Object.values(returnOrderMap).reduce((acc: Record<string, { count: number, value: number }>, r: any) => {
+            const carrier = r.carrier || 'Khác';
+            if (!acc[carrier]) acc[carrier] = { count: 0, value: 0 };
+            acc[carrier].count++;
+            acc[carrier].value += r.value;
+            return acc;
+        }, {})).map(([reason, val]) => ({ reason, count: val.count, value: val.value })),
+
+        totalRevenue: totalGMV,
+        totalFees: totalPlatformFees,
+        feeAnalysis: [
+            { type: 'Phí cố định', value: totalFixedFee },
+            { type: 'Phí dịch vụ', value: totalServiceFee },
+            { type: 'Phí thanh toán', value: totalPaymentFee }
+        ],
+        subsidyAnalysis: [
+            { type: 'KM Shop', value: totalShopSubsidies },
+            { type: 'KM Shopee (đã trừ)', value: totalShopeeRebate }
+        ]
     };
 };
 
-// Define generateRiskProfile outside to ensure visibility
-const generateRiskProfile = (
-    products: any[],
-    shopTotalProfit: number,
-    shopAvgMargin: number
-): ProductRiskProfile[] => {
+export const calculateProductEconomics = (orders: ShopeeOrder[]): ProductEconomicsResult => {
+    const skuMap: Record<string, SkuEconomics> = {};
+    const orderMap: Record<string, OrderEconomics> = {};
+    let totalRevenue = 0;
+    let totalProfit = 0;
+    let guardrailImpact = 0;
 
-    // Filter likely risky products: Margin < 15% OR ReturnRate > 10% OR Profit < 0
-    // But keep enough to show "Priority Scores" even for non-critical if user wants diagnosis.
-    // Filter likely risky products: Margin < 20% OR ReturnRate > 5% OR Profit < 0
-    // Removed `true` debug flag to only show actual risks.
-    const riskyProducts = products.filter((p: any) => {
-        return (p.margin < 20) || ((p.returnRate || 0) > 5) || (p.grossProfit <= 0);
+    orders.forEach(o => {
+        const isCancelled = o.orderStatus === 'Đã hủy';
+        if (isCancelled) return;
+
+        const gmv = (o.originalPrice || 0) * (o.quantity || 0);
+        const subsidies = (o.sellerRebate || 0) + (o.shopComboDiscount || 0) + (o.tradeInBonusBySeller || 0) + (o.shopVoucher || 0);
+        const fees = (o.fixedFee || 0) + (o.serviceFee || 0) + (o.paymentFee || 0);
+        const cogs = gmv * 0.4;
+        const draftNet = gmv - subsidies - fees;
+        const profit = draftNet - cogs;
+
+        // SKU level
+        const skuKey = o.skuReferenceNo || o.productName;
+        if (!skuMap[skuKey]) {
+            skuMap[skuKey] = {
+                sku: skuKey, name: o.productName, quantity: 0, listPrice: o.originalPrice,
+                proceeds: 0, netRevenue: 0, netRevenueAfterTax: 0, cogs: 0, fees: 0,
+                subsidy: 0, profit: 0, margin: 0, returnRate: 0,
+                skuType: 'Standard', badge: 'OK'
+            };
+        }
+        skuMap[skuKey].quantity += o.quantity;
+        skuMap[skuKey].proceeds += gmv;
+        skuMap[skuKey].netRevenue += draftNet;
+        skuMap[skuKey].netRevenueAfterTax += draftNet; // Simplified for SKU level
+        skuMap[skuKey].cogs += cogs;
+        skuMap[skuKey].fees += fees;
+        skuMap[skuKey].subsidy += subsidies;
+        skuMap[skuKey].profit += profit;
+
+        if (!orderMap[o.orderId]) {
+            orderMap[o.orderId] = {
+                orderId: o.orderId, orderDate: o.orderDate, totalListPrice: 0,
+                proceeds: 0, netRevenueAfterTax: 0, discountPct: 0, totalCogs: 0,
+                totalFees: 0, totalSubsidy: 0, profit: 0, margin: 0, guardrailBreached: false,
+                lineCount: 0
+            };
+        }
+        orderMap[o.orderId].totalListPrice += (o.originalPrice * o.quantity);
+        orderMap[o.orderId].proceeds += gmv;
+        orderMap[o.orderId].totalCogs += cogs;
+        orderMap[o.orderId].totalFees += fees;
+        orderMap[o.orderId].totalSubsidy += subsidies;
+        orderMap[o.orderId].netRevenueAfterTax += draftNet;
+        orderMap[o.orderId].profit += profit;
+        orderMap[o.orderId].lineCount = (orderMap[o.orderId].lineCount || 0) + 1;
+
+        totalRevenue += gmv;
+        totalProfit += profit;
     });
 
-    return riskyProducts.map((p: any) => {
-        // 1. Structure Breakdown
-        const revenue = p.revenue || 0;
-        const fees = p.fees || 0;
-        const cogs = p.cogs || 0;
-        const subtitles = (p as any).subsidies || 0;
-        const listRev = (p as any).listRevenue || revenue; // Fallback
-
-        // Rates based on Net Revenue
-        const cogsRate = revenue > 0 ? (cogs / revenue) * 100 : 0;
-        const feeRate = revenue > 0 ? (fees / revenue) * 100 : 0;
-        const subsidyRate = revenue > 0 ? (subtitles / revenue) * 100 : 0;
-
-        // 2. Margin Before Subsidy
-        const marginBeforeSubsidy = revenue > 0 ? ((p.grossProfit + subtitles) / revenue) * 100 : 0;
-
-        // 3. Contribution
-        const contribution = shopTotalProfit > 0 ? (p.grossProfit / shopTotalProfit) * 100 : 0;
-
-        // 4. Root Cause Analysis
-        let rootCause: 'A' | 'B' | 'C' | 'D' | 'E' = 'A';
-        let rootCauseValue = cogsRate;
-        const returnRate = p.returnRate || 0;
-        const totalFeePromoRate = feeRate + subsidyRate;
-
-        // Priority check
-        if (returnRate > 15) {
-            rootCause = 'D';
-            rootCauseValue = returnRate;
-        } else if (totalFeePromoRate > 50) {
-            rootCause = 'E';
-            rootCauseValue = totalFeePromoRate;
-        } else if (subsidyRate > 15) {
-            rootCause = 'C';
-            rootCauseValue = subsidyRate;
-        } else if (feeRate > 20) {
-            rootCause = 'B';
-            rootCauseValue = feeRate;
-        } else {
-            rootCause = 'A'; // Cost Structure default
-            rootCauseValue = cogsRate;
-        }
-
-        // 5. Break-even & Solutions
-        let solution = "";
-        let breakEvenPrice = 0;
-        let breakEvenVoucher = 0;
-
-        // Break-even Price
-        const variableCostRate = (fees + subtitles) / (revenue || 1);
-        const denominator = (1 - variableCostRate) > 0.05 ? (1 - variableCostRate) : 0.05;
-        const targetRev = cogs / denominator;
-        breakEvenPrice = p.quantity > 0 ? targetRev / p.quantity : 0;
-
-        // Break-even Voucher
-        const maxSub = listRev - cogs - fees;
-        breakEvenVoucher = listRev > 0 ? (maxSub / listRev) * 100 : 0;
-
-        // Solution Text
-        if (rootCause === 'D') {
-            solution = `Giảm tỷ lệ hoàn còn 5% -> Lãi thêm ${formatVND((returnRate - 5) * listRev / 100)}`;
-        } else if (rootCause === 'E') {
-            solution = `Cắt giảm CTKM. Tổng phí sàn + KM đang chiếm ${formatNumber(totalFeePromoRate)}% doanh thu.`;
-        } else if (rootCause === 'C') {
-            solution = `Cắt giảm ${formatNumber(subsidyRate - 10)}% voucher -> Margin tăng ${formatNumber(subsidyRate - 10)}%`;
-        } else if (rootCause === 'B') {
-            solution = `Kiểm tra ngành hàng/cân nặng. Phí sàn đang chiếm ${formatNumber(feeRate)}%`;
-        } else {
-            const priceInc = breakEvenPrice - (revenue / (p.quantity || 1));
-            solution = `Tăng giá bán ${formatVND(priceInc > 0 ? priceInc : 0)}/sp để hòa vốn`;
-        }
-
-        // 6. Priority Score (Target 15%)
-        const marginGap = 15 - (p.margin || 0);
-        let priorityScore = (marginGap * revenue);
-        if (p.grossProfit < 0) priorityScore *= 1.5;
-
-        return {
-            sku: p.sku,
-            name: p.name,
-            revenue,
-            profit: p.grossProfit,
-            margin: p.margin,
-            marginBeforeSubsidy,
-            volume: p.quantity,
-            cogsRate,
-            feeRate,
-            subsidyRate,
-            returnRate,
-            contribution,
-            breakEvenPrice,
-            breakEvenVoucher,
-            priorityScore,
-            rootCause,
-            rootCauseValue,
-            solution,
-            relatedOrders: p.relatedOrders
-        };
-
-    }).sort((a: any, b: any) => b.priorityScore - a.priorityScore);
-};
-
-// ─────────────────────────────────────────────────────────────────
-// NEW: Product Economics (3-page redesign)
-// ─────────────────────────────────────────────────────────────────
-export interface ProductEconomicsResult {
-    skuEconomics: SkuEconomics[];
-    orderEconomics: OrderEconomics[];
-    portfolio: PortfolioSummary;
-}
-
-export function calculateProductEconomics(orders: ShopeeOrder[]): ProductEconomicsResult {
-    const COGS_RATE = 0.40;
-    const GUARDRAIL_DISCOUNT = 40; // % max discount from list price
-
-    // ── Group order lines by orderId ──────────────────────────────
-    const orderGroupMap: Record<string, ShopeeOrder[]> = {};
-    const seenLines = new Set<string>();
-
-    for (const o of orders) {
-        const status = (o.orderStatus || '').toLowerCase();
-        if (status.includes('hủy') || status.includes('cancel')) continue; // skip cancelled
-        const lineKey = `${o.orderId}_${o.skuReferenceNo}_${o.quantity}`;
-        if (seenLines.has(lineKey)) continue;
-        seenLines.add(lineKey);
-        if (!orderGroupMap[o.orderId]) orderGroupMap[o.orderId] = [];
-        orderGroupMap[o.orderId].push(o);
-    }
-
-    // ── Per-SKU accumulators ──────────────────────────────────────
-    const skuAccMap: Record<string, {
-        name: string;
-        qty: number;
-        listPriceSum: number;      // sum of originalPrice × qty
-        allocatedRev: number;
-        fees: number;
-        subsidy: number;
-        returnQty: number;
-        totalSoldQty: number;
-    }> = {};
-
-    // ── Order Economics list ──────────────────────────────────────
-    const orderEconomics: OrderEconomics[] = [];
-
-    for (const [orderId, lines] of Object.entries(orderGroupMap)) {
-        // Order totals
-        const totalListPrice = lines.reduce((s, l) => s + (l.originalPrice || 0) * (l.quantity || 1), 0);
-        const totalActualPrice = lines.reduce((s, l) => s + (l.dealPrice || l.originalPrice || 0) * (l.quantity || 1), 0);
-        const totalListPriceForAlloc = totalListPrice || 1;
-        const totalFees = lines.reduce((s, l) => s + ((l.fixedFee || 0) + (l.serviceFee || 0) + (l.paymentFee || 0) + (l.affiliateCommission || 0)), 0);
-        const totalSubsidy = lines.reduce((s, l) => s + ((l.sellerRebate || 0) + (l.shopeeRebate || 0) + (l.sellerSubsidy || 0)), 0);
-        const totalCogs = totalListPrice * COGS_RATE;
-        const discountPct = totalListPrice > 0 ? ((totalListPrice - totalActualPrice) / totalListPrice) * 100 : 0;
-        const guardrailBreached = discountPct > GUARDRAIL_DISCOUNT;
-
-        const orderProceeds = totalActualPrice - totalFees;
-        const orderNetRevenueAfterTax = orderProceeds / 1.08;
-        const orderProfit = orderProceeds - totalCogs + totalSubsidy;
-
-        const firstLine = lines[0];
-        orderEconomics.push({
-            orderId,
-            orderDate: firstLine.orderDate || '',
-            lineCount: lines.length,
-            totalListPrice,
-            totalActualPrice,
-            proceeds: orderProceeds,
-            netRevenueAfterTax: orderNetRevenueAfterTax,
-            discountPct,
-            guardrailBreached,
-            totalCogs,
-            totalFees,
-            totalSubsidy,
-            orderProfit,
-            orderMargin: orderProceeds > 0 ? (orderProfit / orderProceeds) * 100 : 0,
-        });
-
-        // ── Smart group allocation: discounted vs. non-discounted ──
-        // Non-discounted lines keep their exact dealPrice (no sharing needed).
-        // Discounted lines share the "discount pool" proportionally by list price.
-        const discountedLines = lines.filter(l => (l.dealPrice || 0) < (l.originalPrice || 0));
-        const nonDiscountedLines = lines.filter(l => (l.dealPrice || l.originalPrice || 0) >= (l.originalPrice || 0));
-
-        // Revenue for non-discounted: exact deal price
-        const nonDiscountedActual = nonDiscountedLines.reduce((s, l) => s + (l.dealPrice || l.originalPrice || 0) * (l.quantity || 1), 0);
-        // Remaining revenue to allocate among discounted group
-        const discountedActual = totalActualPrice - nonDiscountedActual;
-        const discountedListTotal = discountedLines.reduce((s, l) => s + (l.originalPrice || 0) * (l.quantity || 1), 0);
-
-        const processLine = (l: ShopeeOrder, allocatedRev: number, feeBase: number) => {
-            const sku = l.skuReferenceNo || l.productName;
-            const listPriceSku = (l.originalPrice || 0) * (l.quantity || 1);
-            const lineShare = totalListPrice > 0 ? listPriceSku / totalListPrice : 1 / lines.length;
-            const feeShare = feeBase * lineShare;
-            const subsidyShare = totalSubsidy * lineShare;
-
-            if (!skuAccMap[sku]) {
-                skuAccMap[sku] = { name: l.productName, qty: 0, listPriceSum: 0, allocatedRev: 0, fees: 0, subsidy: 0, returnQty: 0, totalSoldQty: 0 };
-            }
-            const acc = skuAccMap[sku];
-            acc.qty += (l.quantity || 1);
-            acc.totalSoldQty += (l.quantity || 1);
-            acc.listPriceSum += listPriceSku;
-            acc.allocatedRev += allocatedRev;
-            acc.fees += feeShare;
-            acc.subsidy += subsidyShare;
-            acc.returnQty += (l.returnQuantity || 0);
-        };
-
-        // Non-discounted: each SKU earns its own deal price
-        for (const l of nonDiscountedLines) {
-            const rev = (l.dealPrice || l.originalPrice || 0) * (l.quantity || 1);
-            processLine(l, rev, totalFees);
-        }
-
-        // Discounted group: allocate discountedActual by list price ratio
-        for (const l of discountedLines) {
-            const listPriceSku = (l.originalPrice || 0) * (l.quantity || 1);
-            const share = discountedListTotal > 0 ? listPriceSku / discountedListTotal : 1 / discountedLines.length;
-            const rev = discountedActual * share;
-            processLine(l, rev, totalFees);
-        }
-    }
-
-    // ── Build SKU Economics with badges ──────────────────────────
-    const allProfits = Object.entries(skuAccMap).map(([sku, a]) => {
-        const cogs = a.listPriceSum * COGS_RATE;
-        return { sku, profit: a.allocatedRev - cogs - a.fees + a.subsidy };
+    const skuEconomics = Object.values(skuMap).map(s => {
+        s.margin = s.proceeds > 0 ? (s.profit / s.proceeds) * 100 : 0;
+        if (s.margin < 5) s.badge = '🔴 Kill List';
+        else if (s.margin < 15) s.badge = '🟠 Risk';
+        else if (s.margin > 30) s.badge = '🟢 Hero';
+        return s;
     });
-    const allProfitsSorted = [...allProfits].sort((a, b) => b.profit - a.profit);
-    const bottom20Threshold = allProfitsSorted[Math.floor(allProfitsSorted.length * 0.8)]?.profit ?? 0;
-    const top30RevenueThreshold = (() => {
-        const revs = Object.values(skuAccMap).map(a => a.allocatedRev).sort((a, b) => b - a);
-        return revs[Math.floor(revs.length * 0.3)] ?? 0;
-    })();
 
-    const skuEconomics: SkuEconomics[] = Object.entries(skuAccMap).map(([sku, acc]) => {
-        const cogs = acc.listPriceSum * COGS_RATE;
-        const proceeds = acc.allocatedRev - acc.fees;
-        const netRevenueAfterTax = proceeds / 1.08;
-        const profit = proceeds - cogs + acc.subsidy;
+    const orderEconomics = Object.values(orderMap).map(o => {
+        o.margin = o.proceeds > 0 ? (o.profit / o.proceeds) * 100 : 0;
+        o.discountPct = o.totalListPrice > 0 ? ((o.totalListPrice - o.proceeds) / o.totalListPrice) * 100 : 0;
+        o.guardrailBreached = o.discountPct > 40;
+        if (o.guardrailBreached) guardrailImpact += (o.totalListPrice * 0.4 - (o.totalListPrice - o.proceeds));
+        return o;
+    });
 
-        const contributionMargin = profit;
-        const margin = proceeds > 0 ? (profit / proceeds) * 100 : 0;
-        const returnRate = acc.totalSoldQty > 0 ? (acc.returnQty / acc.totalSoldQty) * 100 : 0;
-        const listPrice = acc.qty > 0 ? acc.listPriceSum / acc.qty : 0;
+    const pareto = [...skuEconomics].sort((a, b) => b.profit - a.profit);
+    let cumulative = 0;
+    const totalPosProfit = skuEconomics.reduce((sum, s) => sum + Math.max(0, s.profit), 0);
 
-        // Badge logic (priority: Kill List > Risk > Hero > Traffic Driver > OK)
-        let badge: SkuBadge = 'OK';
-        const isBottom20Rev = acc.allocatedRev <= bottom20Threshold;
-
-        if (profit < 0 || (margin < 10 && isBottom20Rev)) {
-            badge = '🔴 Kill List';
-        } else if (returnRate >= 10 || margin < 15) {
-            badge = '🟠 Risk';
-        } else if (margin >= 25 && returnRate <= 5 && acc.allocatedRev >= top30RevenueThreshold) {
-            badge = '🟢 Hero';
-        } else if (acc.allocatedRev >= top30RevenueThreshold && margin < 25) {
-            badge = '🔵 Traffic Driver';
-        }
-
-        // SKU type: heuristics
-        let skuType: SkuType = 'Core';
-        if (acc.allocatedRev === 0) skuType = 'Gift';
-        else if (badge === '🔵 Traffic Driver') skuType = 'Traffic';
-
-        return { sku, name: acc.name, skuType, quantity: acc.qty, listPrice, allocatedRevenue: acc.allocatedRev, proceeds, netRevenueAfterTax, cogs, fees: acc.fees, subsidy: acc.subsidy, profit, contributionMargin, margin, returnRate, badge };
-    }).sort((a, b) => b.proceeds - a.proceeds);
-
-    // ── Portfolio Summary ─────────────────────────────────────────
-    const totalProfit = skuEconomics.reduce((s, p) => s + p.profit, 0);
-    const totalRevenue = skuEconomics.reduce((s, p) => s + p.allocatedRevenue, 0);
-    const totalMargin = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0;
-    const breachedOrders = orderEconomics.filter(o => o.guardrailBreached);
-    const guardrailBreachRate = orderEconomics.length > 0 ? (breachedOrders.length / orderEconomics.length) * 100 : 0;
-    const guardrailBreachImpact = breachedOrders.reduce((s, o) => s + o.orderProfit, 0);
-
-    // Simulate: what if breached orders were repriced to exactly 60% of list price?
-    const potentialProfitGain = breachedOrders.reduce((gain, o) => {
-        const flooredRevenue = o.totalListPrice * 0.60; // 60% of niêm yết
-        const simulatedProfit = flooredRevenue - o.totalCogs - o.totalFees - o.totalSubsidy; // Subsidy is a cost here
-        return gain + (simulatedProfit - o.orderProfit);
-    }, 0);
-
-    const lossSKUs = skuEconomics.filter(p => p.profit < 0);
-    const lossSKURatio = skuEconomics.length > 0 ? (lossSKUs.length / skuEconomics.length) * 100 : 0;
-
-    // Pareto analysis
-    const top20Count = Math.max(1, Math.ceil(skuEconomics.length * 0.2));
-    const skuByProfit = [...skuEconomics].sort((a, b) => b.profit - a.profit);
-    let cumProfit = 0;
-    const pareto: ParetoItem[] = skuByProfit.map((p, i) => {
-        cumProfit += p.profit;
+    const paretoResult: ParetoItem[] = pareto.map((p, idx) => {
+        cumulative += Math.max(0, p.profit);
+        const cumPct = totalPosProfit > 0 ? (cumulative / totalPosProfit) * 100 : 0;
         return {
-            sku: p.sku,
-            name: p.name,
+            sku: p.sku, name: p.name, revenue: p.proceeds,
             profit: p.profit,
-            cumProfitPct: totalProfit > 0 ? (cumProfit / totalProfit) * 100 : 0,
-            isTop20: i < top20Count,
+            cumulativeRevenue: cumulative,
+            revenuePercentage: totalRevenue > 0 ? (p.proceeds / totalRevenue) * 100 : 0,
+            cumulativePercentage: 0,
+            cumProfitPct: cumPct,
+            isCore80: false,
+            isTop20: idx < pareto.length * 0.2
         };
     });
-    const top20ProfitShare = pareto.filter(p => p.isTop20).reduce((s, p) => s + p.profit, 0);
-    const top20ProfitSharePct = totalProfit > 0 ? (top20ProfitShare / totalProfit) * 100 : 0;
+
+    const breachedOrders = orderEconomics.filter(o => o.guardrailBreached);
+    const lossSKUs = skuEconomics.filter(s => s.profit < 0);
+    const top20SKUs = paretoResult.filter(p => p.isTop20);
+    const top20Profit = top20SKUs.reduce((sum, p) => sum + Math.max(0, p.profit), 0);
 
     return {
         skuEconomics,
         orderEconomics,
         portfolio: {
+            avgMargin: totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0,
             totalRevenue,
             totalProfit,
-            totalMargin,
-            guardrailBreachRate,
-            guardrailBreachImpact,
-            potentialProfitGain,
-            top20ProfitShare: top20ProfitSharePct,
-            lossSKURatio,
-            pareto,
-        },
+            guardrailBreachImpact: guardrailImpact,
+            totalMargin: totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0,
+            guardrailBreachRate: orderEconomics.length > 0 ? (breachedOrders.length / orderEconomics.length) * 100 : 0,
+            potentialProfitGain: guardrailImpact, // simplified for now as gap to 40% margin
+            top20ProfitShare: totalPosProfit > 0 ? (top20Profit / totalPosProfit) * 100 : 0,
+            lossSKURatio: skuEconomics.length > 0 ? (lossSKUs.length / skuEconomics.length) * 100 : 0,
+            pareto: paretoResult
+        }
     };
-}
+};
+
+const createEmptyTrend = (dateStr: string): RevenueTrend => ({
+    date: dateStr, gmv: 0, shopSubsidies: 0, platformFees: 0, draftNet: 0,
+    returnValue: 0, returnFees: 0, returnImpact: 0, actualNet: 0,
+    orders: 0, aov: 0, feeRate: 0, subsidyRate: 0, marginPreCogs: 0,
+    netRevenueAfterTax: 0, grossRevenue: 0, promoCost: 0, successfulOrders: 0
+});

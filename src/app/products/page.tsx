@@ -1,10 +1,9 @@
 ﻿"use client";
 
 import React, { useEffect, useState } from 'react';
-import { calculateProductEconomics, ProductEconomicsResult } from '../../utils/calculator';
+import { calculateProductEconomics } from '../../utils/calculator';
 import { filterOrders } from '../../utils/calculator';
-import { ShopeeOrder } from '../../utils/types';
-import { SkuEconomics, OrderEconomics, ParetoItem } from '../../utils/types';
+import { ShopeeOrder, ProductEconomicsResult, SkuEconomics, OrderEconomics, ParetoItem } from '../../utils/types';
 import { Package, TrendingUp, ShieldAlert, BarChart3, Search, ArrowUpDown, ChevronUp, ChevronDown, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { useFilter } from '../../contexts/FilterContext';
 import { PageSkeleton } from '../../components/Skeleton';
@@ -27,15 +26,15 @@ export default function ProductsPage() {
     const [tab, setTab] = useState<Tab>('sku');
     const [searchSku, setSearchSku] = useState('');
     const [searchOrder, setSearchOrder] = useState('');
-    const [skuSort, setSkuSort] = useState<{ key: keyof SkuEconomics; dir: 'asc' | 'desc' }>({ key: 'allocatedRevenue', dir: 'desc' });
-    const [orderSort, setOrderSort] = useState<{ key: keyof OrderEconomics; dir: 'asc' | 'desc' }>({ key: 'totalActualPrice', dir: 'desc' });
-    const { startDate, endDate, warehouse, channelKey } = useFilter();
+    const [skuSort, setSkuSort] = useState<{ key: keyof SkuEconomics; dir: 'asc' | 'desc' }>({ key: 'proceeds', dir: 'desc' });
+    const [orderSort, setOrderSort] = useState<{ key: keyof OrderEconomics; dir: 'asc' | 'desc' }>({ key: 'proceeds', dir: 'desc' });
+    const { startDate, endDate, warehouse, channelKeys } = useFilter();
 
     useEffect(() => {
         const fetchData = async () => {
             try {
                 setLoading(true);
-                const res = await fetch('/api/orders?channel=' + channelKey);
+                const res = await fetch('/api/orders?channel=' + channelKeys.join(','));
                 const orders: ShopeeOrder[] = await res.json();
                 const filtered = filterOrders(orders, startDate, endDate, warehouse);
                 if (filtered.length > 0) {
@@ -50,7 +49,7 @@ export default function ProductsPage() {
             }
         };
         fetchData();
-    }, [startDate, endDate, warehouse, channelKey]);
+    }, [startDate, endDate, warehouse, channelKeys]);
 
     if (loading) return <PageSkeleton />;
 
@@ -86,7 +85,7 @@ export default function ProductsPage() {
 
     // ── Filtered & Sorted data ────────────────────────────────────────────
     const skuFiltered = sortBy(
-        data.skuEconomics.filter(p =>
+        data.skuEconomics.filter((p: SkuEconomics) =>
             p.name.toLowerCase().includes(searchSku.toLowerCase()) ||
             p.sku.toLowerCase().includes(searchSku.toLowerCase())
         ),
@@ -95,7 +94,7 @@ export default function ProductsPage() {
     );
 
     const orderFiltered = sortBy(
-        data.orderEconomics.filter(o =>
+        data.orderEconomics.filter((o: OrderEconomics) =>
             o.orderId.toLowerCase().includes(searchOrder.toLowerCase())
         ),
         orderSort.key,
@@ -301,11 +300,11 @@ export default function ProductsPage() {
                                         <th className="px-4 py-3 text-right text-xs font-bold text-muted-foreground uppercase cursor-pointer hover:text-foreground" onClick={() => handleOrderSort('totalSubsidy')}>
                                             <div className="flex items-center justify-end">CTKM <SortIcon<OrderEconomics> k="totalSubsidy" cfg={orderSort} /></div>
                                         </th>
-                                        <th className="px-4 py-3 text-right text-xs font-bold text-muted-foreground uppercase cursor-pointer hover:text-foreground" onClick={() => handleOrderSort('orderProfit')}>
-                                            <div className="flex items-center justify-end">Lợi nhuận gộp <SortIcon<OrderEconomics> k="orderProfit" cfg={orderSort} /></div>
+                                        <th className="px-4 py-3 text-right text-xs font-bold text-muted-foreground uppercase cursor-pointer hover:text-foreground" onClick={() => handleOrderSort('profit')}>
+                                            <div className="flex items-center justify-end">Lợi nhuận gộp <SortIcon<OrderEconomics> k="profit" cfg={orderSort} /></div>
                                         </th>
-                                        <th className="px-4 py-3 text-right text-xs font-bold text-muted-foreground uppercase cursor-pointer hover:text-foreground" onClick={() => handleOrderSort('orderMargin')}>
-                                            <div className="flex items-center justify-end">Biên % <SortIcon<OrderEconomics> k="orderMargin" cfg={orderSort} /></div>
+                                        <th className="px-4 py-3 text-right text-xs font-bold text-muted-foreground uppercase cursor-pointer hover:text-foreground" onClick={() => handleOrderSort('margin')}>
+                                            <div className="flex items-center justify-end">Biên % <SortIcon<OrderEconomics> k="margin" cfg={orderSort} /></div>
                                         </th>
                                         <th className="px-4 py-3 text-center text-xs font-bold text-muted-foreground uppercase">Cảnh báo</th>
                                     </tr>
@@ -326,11 +325,11 @@ export default function ProductsPage() {
                                             <td className="px-4 py-3 text-right text-muted-foreground">{formatVND(o.totalCogs)}</td>
                                             <td className="px-4 py-3 text-right text-orange-400">{formatVND(o.totalFees)}</td>
                                             <td className="px-4 py-3 text-right text-emerald-400">{formatVND(o.totalSubsidy)}</td>
-                                            <td className={clsx('px-4 py-3 text-right font-bold', o.orderProfit >= 0 ? 'text-emerald-400' : 'text-rose-400')}>
-                                                {formatVND(o.orderProfit)}
+                                            <td className={clsx('px-4 py-3 text-right font-bold', o.profit >= 0 ? 'text-emerald-400' : 'text-rose-400')}>
+                                                {formatVND(o.profit)}
                                             </td>
-                                            <td className={clsx('px-4 py-3 text-right font-bold', o.orderMargin >= 15 ? 'text-emerald-400' : o.orderMargin >= 0 ? 'text-yellow-400' : 'text-rose-400')}>
-                                                {o.orderMargin.toFixed(1)}%
+                                            <td className={clsx('px-4 py-3 text-right font-bold', o.margin >= 15 ? 'text-emerald-400' : o.margin >= 0 ? 'text-yellow-400' : 'text-rose-400')}>
+                                                {o.margin.toFixed(1)}%
                                             </td>
                                             <td className="px-4 py-3 text-center">
                                                 {o.guardrailBreached

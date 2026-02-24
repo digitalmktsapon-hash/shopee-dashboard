@@ -25,7 +25,7 @@ export default function RiskControlPage() {
     const [metrics, setMetrics] = useState<MetricResult | null>(null);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
-    const { startDate, endDate, warehouse, channelKey } = useFilter();
+    const { startDate, endDate, warehouse, channelKeys } = useFilter();
 
     const [selectedOrder, setSelectedOrder] = useState<OrderRiskAnalysis | null>(null);
     const [sortConfig, setSortConfig] = useState<{ key: keyof OrderRiskAnalysis, direction: 'asc' | 'desc' } | null>({ key: 'riskImpactScore', direction: 'desc' });
@@ -34,7 +34,7 @@ export default function RiskControlPage() {
         const fetchData = async () => {
             try {
                 setLoading(true);
-                const res = await fetch('/api/orders?channel=' + channelKey);
+                const res = await fetch('/api/orders?channel=' + channelKeys.join(','));
                 const orders: ShopeeOrder[] = await res.json();
 
                 const filtered = filterOrders(orders, startDate, endDate, warehouse);
@@ -50,7 +50,7 @@ export default function RiskControlPage() {
             }
         };
         fetchData();
-    }, [startDate, endDate, warehouse, channelKey]);
+    }, [startDate, endDate, warehouse, channelKeys]);
 
     if (loading) return <PageSkeleton />;
 

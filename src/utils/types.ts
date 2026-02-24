@@ -1,99 +1,71 @@
 export interface ShopeeOrder {
-  orderId: string; // Mã đơn hàng
-  trackingNumber: string; // Mã vận đơn
-  orderDate: string; // Ngày đặt hàng
-  orderStatus: string; // Trạng Thái Đơn Hàng
-  cancelReason?: string; // Lý do hủy
-  returnStatus?: string; // Trạng thái Trả hàng/Hoàn tiền
-  returnReason?: string; // Lý do trả hàng (nếu có)
-
-  skuReferenceNo: string; // SKU phân loại hàng (Use this for variation SKU)
-  productName: string; // Tên sản phẩm
-  variationName?: string; // Tên phân loại hàng
-  quantity: number; // Số lượng
-  productWeight?: number; // Cân nặng sản phẩm
-  totalWeight?: number; // Tổng cân nặng
-
-  originalPrice: number; // Giá gốc
-  dealPrice: number; // Giá ưu đãi
-  sellerRebate?: number; // Tổng số tiền được người bán trợ giá
-  shopeeRebate?: number; // Được Shopee trợ giá
-
-  buyerPaid: number; // Tổng số tiền người mua thanh toán
-  orderTotalAmount: number; // Tổng giá trị đơn hàng (VND)
-
-  // Fees
-  fixedFee: number; // Phí cố định
-  serviceFee: number; // Phí Dịch Vụ
-  paymentFee: number; // Phí thanh toán
-  shippingFee: number; // Phí vận chuyển (dự kiến) ? or paid by buyer?
-  buyerShippingFee?: number; // Phí vận chuyển mà người mua trả
-  returnShippingFee?: number; // Phí vận chuyển trả hàng
-  shopeeShippingRebate?: number; // Phí vận chuyển tài trợ bởi Shopee (dự kiến)
-  affiliateCommission?: number; // Phí hoa hồng Tiếp thị liên kết
-
-
-  // Return
-  returnQuantity?: number; // Số lượng sản phẩm được hoàn trả
-
-  // Info
-  buyerUsername?: string; // Tên tài khoản người mua (Người Mua)
-  receiverName?: string; // Tên Người nhận
-  phoneNumber?: string; // Số điện thoại
-  province?: string; // Tỉnh/Thành phố
-  district?: string; // Quận
-  ward?: string; // TP / Quận / Huyện (Actually Ward/Commune often in "Quận" or "Địa chỉ"?) -> "TP / Quận / Huyện" in file
-  deliveryCarrier?: string; // Đơn Vị Vận Chuyển
-  paymentMethod?: string; // Phương thức thanh toán
-
-  // Dates
-  shipTime?: string; // Thời gian giao hàng
-  completeDate?: string; // Thời gian hoàn thành đơn hàng
-  updateTime?: string; // Thời gian Cập nhật
-  payoutDate?: string; // Thời gian đơn hàng được thanh toán
-  // Location
-  warehouseName?: string; // Tên kho hàng
-
-  // Detailed Report Fields
-  packageId?: string; // Mã Kiện Hàng
-  bestSellingProduct?: string; // Sản Phẩm Bán Chạy
-  buyerRemarks?: string; // Nhận xét từ Người mua
-  deliveryMethod?: string; // Phương thức giao hàng
-  orderType?: string; // Loại đơn hàng
-  expectedDeliveryDate?: string; // Ngày giao hàng dự kiến
-  shipDate?: string; // Ngày gửi hàng
-  productSku?: string; // SKU sản phẩm
-  sellerSubsidy?: number; // Người bán trợ giá
-  dealPriceTotal?: number; // Tổng giá bán (sản phẩm)
-  shopVoucher?: number; // Mã giảm giá của Shop
-  coinCashback?: number; // Hoàn Xu
-  shopeeVoucher?: number; // Mã giảm giá của Shopee
-  comboIndicator?: string; // Chỉ tiêu Combo Khuyến Mãi
-  shopeeComboDiscount?: number; // Giảm giá từ combo Shopee
-  shopComboDiscount?: number; // Giảm giá từ Combo của Shop
-  shopeeCoinsRedeemed?: number; // Shopee Xu được hoàn
-  cardPromotionDiscount?: number; // Số tiền được giảm khi thanh toán bằng thẻ Ghi nợ
-  tradeInDiscount?: number; // Trade-in Discount
-  tradeInBonus?: number; // Trade-in Bonus
-  tradeInBonusBySeller?: number; // Trade-in Bonus by Seller
-  codAmount?: number; // Tiền ký quỹ Người Mua
-  country?: string; // Quốc gia
-  remarks?: string; // Ghi chú
+  orderId: string;
+  trackingNumber: string;
+  orderDate: string;
+  orderStatus: string;
+  cancelReason?: string;
+  returnStatus?: string;
+  returnReason?: string;
+  skuReferenceNo: string;
+  productName: string;
+  variationName?: string;
+  quantity: number;
+  originalPrice: number;
+  dealPrice: number;
+  sellerRebate?: number;
+  shopeeRebate?: number;
+  buyerPaid: number;
+  orderTotalAmount: number;
+  fixedFee: number;
+  serviceFee: number;
+  paymentFee: number;
+  shippingFee: number;
+  buyerShippingFee?: number;
+  returnShippingFee?: number;
+  shopeeShippingRebate?: number;
+  affiliateCommission?: number;
+  returnQuantity?: number;
+  buyerUsername?: string;
+  receiverName?: string;
+  phoneNumber?: string;
+  province?: string;
+  district?: string;
+  ward?: string;
+  deliveryCarrier?: string;
+  paymentMethod?: string;
+  shipTime?: string;
+  completeDate?: string;
+  updateTime?: string;
+  payoutDate?: string;
+  warehouseName?: string;
+  packageId?: string;
+  shopVoucher?: number;
+  shopeeComboDiscount?: number;
+  shopComboDiscount?: number;
+  tradeInBonusBySeller?: number;
 }
 
 export interface RevenueTrend {
   date: string;
-  revenue: number;
-  netRevenue: number;
-  grossProfit: number;
-  netProfit: number;
-  profitMargin: number;
-  orders: number;
-  grossRevenue: number;
-  promoCost: number;
-  platformFees: number;
-  netRevenueAfterTax: number;
-  aov: number;
+  gmv: number;               // 1. GMV
+  shopSubsidies: number;    // 2. Trợ giá Shop
+  platformFees: number;     // 3. Phí sàn
+  draftNet: number;         // 4. DT Thuần Phát Sinh
+  returnValue: number;      // 5. Giá trị hàng hoàn
+  returnFees: number;       // 6. Phí hoàn hàng
+  returnImpact: number;     // 7. Tác động hoàn hàng
+  actualNet: number;        // 8. DT Thuần Thực Tế
+  orders: number;           // 9. Đơn phát sinh
+  aov: number;              // 10. AOV
+  feeRate: number;          // 11. Tỷ lệ phí sàn
+  subsidyRate: number;      // 12. Tỷ lệ trợ giá Shop
+  marginPreCogs: number;    // 13. Biên LN trước giá vốn
+
+  // Aliases for Dashboard Chart Compatibility
+  netRevenueAfterTax?: number; // actualNet
+  grossRevenue?: number;       // draftNet
+  promoCost?: number;          // shopSubsidies
+  successfulOrders?: number;   // orders
 }
 
 export interface ProductPerformance {
@@ -101,124 +73,100 @@ export interface ProductPerformance {
   name: string;
   quantity: number;
   revenue: number;
-  cogs: number; // Cost of Goods Sold
-  grossProfit: number; // Profit before fees/ads
-  netProfit: number; // Final profit after all deductions
   fees: number;
-  returnCosts: number;
-  margin: number; // Gross Margin %
+  cogs: number;
+  netProfit: number;
+  margin: number;
+  contribution: number;
   returnQuantity: number;
   returnRate: number;
-  contribution: number; // % contribution to total net revenue
-  badges: string[]; // 'Hero', 'Risk', 'Traffic Driver', 'Kill List'
-  relatedOrders?: {
-    orderId: string;
-    date: string;
-    quantity: number;
-    netRevenue: number;
-    fees: number;
-    subsidies: number;
-    cogs: number;
-    profit: number;
-  }[];
+  badges: string[];
 }
-
-export type SkuType = 'Core' | 'Combo Component' | 'Gift' | 'Traffic';
-export type SkuBadge = '🔴 Kill List' | '🟠 Risk' | '🟢 Hero' | '🔵 Traffic Driver' | 'OK';
 
 export interface SkuEconomics {
   sku: string;
   name: string;
-  skuType: SkuType;
   quantity: number;
-  listPrice: number;        // originalPrice (giá niêm yết)
-  allocatedRevenue: number; // Revenue before fees
-  proceeds: number;         // Doanh thu gộp (after fees)
-  netRevenueAfterTax: number; // Doanh thu thuần (proceeds / 1.08)
-  cogs: number;             // 40% × listPrice × quantity
+  listPrice: number;
+  proceeds: number;   // GMV
+  netRevenue: number; // Draft Net
+  netRevenueAfterTax: number; // Actual Net (estimated per SKU)
+  cogs: number;
   fees: number;
   subsidy: number;
-  profit: number;           // proceeds - cogs
-  contributionMargin: number;
-  margin: number;           // profit / proceeds (%)
-  returnRate: number;       // %
-  badge: SkuBadge;
+  profit: number;
+  margin: number;
+  returnRate: number;
+  skuType: 'Gift' | 'Traffic' | 'Standard';
+  badge: string;
 }
 
 export interface OrderEconomics {
   orderId: string;
   orderDate: string;
-  lineCount: number;
   totalListPrice: number;
-  totalActualPrice: number;
-  proceeds: number;          // Doanh thu gộp
-  netRevenueAfterTax: number; // Doanh thu thuần
-  discountPct: number;       // (listPrice - actualPrice) / listPrice × 100
-  guardrailBreached: boolean;// discountPct > 40%
-  totalCogs: number;         // 40% × totalListPrice
+  proceeds: number;
+  netRevenueAfterTax: number;
+  discountPct: number;
+  totalCogs: number;
   totalFees: number;
   totalSubsidy: number;
-  orderProfit: number;       // actualPrice - cogs - fees + subsidy
-  orderMargin: number;       // orderProfit / actualPrice (%)
+  profit: number;
+  margin: number;
+  guardrailBreached: boolean;
+  lineCount?: number;
 }
 
 export interface ParetoItem {
   sku: string;
   name: string;
+  revenue: number;
   profit: number;
-  cumProfitPct: number; // cumulative % of total profit
+  cumulativeRevenue: number;
+  revenuePercentage: number;
+  cumulativePercentage: number;
+  cumProfitPct: number;
+  isCore80: boolean;
   isTop20: boolean;
 }
 
-export interface PortfolioSummary {
-  totalRevenue: number;
-  totalProfit: number;
-  totalMargin: number;
-  guardrailBreachRate: number;      // % of orders breaching 60% rule
-  guardrailBreachImpact: number;    // Actual profit of breached orders
-  potentialProfitGain: number;      // Additional profit if guardrail enforced (60% floor)
-  top20ProfitShare: number;         // % of profit from top 20% SKUs
-  lossSKURatio: number;             // % of SKUs with negative profit
-  pareto: ParetoItem[];
+export interface ProductEconomicsResult {
+  skuEconomics: SkuEconomics[];
+  orderEconomics: OrderEconomics[];
+  portfolio: {
+    avgMargin: number;
+    totalRevenue: number;
+    totalProfit: number;
+    guardrailBreachImpact: number;
+    totalMargin: number;
+    guardrailBreachRate: number;
+    potentialProfitGain: number;
+    top20ProfitShare: number;
+    lossSKURatio: number;
+    pareto: ParetoItem[];
+  };
 }
 
-
-export interface CancelAnalysis {
-  reason: string;
-  count: number;
-}
-
-export interface ReturnAnalysis {
-  reason: string;
-  count: number;
-  value: number;
-}
-
-export interface ReturnedOrder {
-  orderId: string;
-  date: string;
-  reason: string;
-  status: string;
-  value: number;
-  products: { name: string, quantity: number }[];
-}
-
-export interface FeeAnalysis {
-  type: string;
-  value: number;
-}
-
-export interface SubsidyAnalysis {
-  type: string;
-  value: number;
+export interface ProductRiskProfile {
+  sku: string;
+  name: string;
+  revenue: number;
+  profit: number;
+  margin: number;
+  volume: number;
+  feeRate: number;
+  subsidyRate: number;
+  returnRate: number;
+  rootCause: string;
+  solution: string;
 }
 
 export interface CustomerAnalysis {
-  id: string; // Unique identifier for mapping
-  buyerUsername: string; // Tên tài khoản người đặt
-  name: string; // receiverName - Tên người nhận
+  id: string;
+  buyerUsername: string;
+  name: string;
   phoneNumber: string;
-  address: string; // Combined address
+  address: string;
   orderCount: number;
   totalSpent: number;
   lastOrderDate: string;
@@ -226,7 +174,7 @@ export interface CustomerAnalysis {
     date: string;
     orderId: string;
     value: number;
-    products: {
+    products?: {
       name: string;
       variation?: string;
       quantity: number;
@@ -239,251 +187,121 @@ export interface CustomerAnalysis {
 export interface OperationAnalysis {
   carrier: string;
   orderCount: number;
-  avgShipTime: number; // Days (if computable)
+  avgShipTime: number;
 }
 
-export interface LocationAnalysis {
-  province: string;
-  revenue: number;
-  profit: number;
-  contribution: number;
-  orderCount: number;
-}
-
-export interface StatusAnalysis {
-  status: string;
-  revenue: number;
-  count: number;
-  percentage: number;
-}
-
-export interface DailyFinancialMetric {
+export interface DailyShippingMetric {
   date: string;
-  revenue1: number; // Gross Listing (No Cancel)
-  revenue2: number; // Net Selling (Realized)
-  fees: number;     // Realized
-  cogs: number;     // Realized
-  profit: number;   // Realized
-  margin: number;   // Realized
-  successfulOrders: number; // Realized
-  returnRate: number;
-  subsidies: number; // Realized (Seller + Shopee Rebate)
-  highRiskOrderPercent: number; // % đơn vượt 50% phí
-  avgControlRatio: number; // Average Control Ratio theo ngày
-  promotionBurnRate: number; // Shop Promotion / Gross Profit Before Promotion
-}
-
-export interface RiskAlert {
-  type: 'SKU' | 'DAY';
-  id: string; // SKU or Date
-  name?: string; // Product Name for SKU
-  alertType: 'LOW_MARGIN' | 'HIGH_RETURN' | 'NEGATIVE_PROFIT' | 'HIGH_FEE' | 'HIGH_SUBSIDY';
-  value: number; // The logic value (e.g. 5% margin)
-  threshold: number; // The threshold (e.g. 10%)
-  revenue?: number; // Context
-  profit?: number; // Context
-  analysis: string; // "Nguyên nhân"
-  solutionShort: string; // "Giải pháp ngắn hạn"
-  solutionLong: string; // "Giải pháp dài hạn"
-}
-
-export interface ProductRiskProfile {
-  sku: string;
-  name: string;
-
-  // 1-5 Core Financials
-  revenue: number; // Net Revenue
-  profit: number; // Net Profit
-  margin: number; // %
-  marginBeforeSubsidy: number; // % (Profit + Subsidies) / Revenue
-  volume: number; // Quantity
-
-  // 6-9 Structure Breakdown
-  cogsRate: number; // %
-  feeRate: number; // %
-  subsidyRate: number; // %
-  returnRate: number; // %
-
-  // 10-14 Advanced Analytics
-  contribution: number; // % of Shop Profit
-  breakEvenPrice: number; // Est. Price for 0 profit
-  breakEvenVoucher: number; // Max Subsidy % for 0 profit
-  priorityScore: number; // Scoring for sorting
-  structuralMargin?: number; // Structural Margin %
-  promotionBurnRate?: number; // % Promotion Burn
-
-  // Root Cause & Solution
-  rootCause: 'A' | 'B' | 'C' | 'D' | 'E'; // A: Voucher, B: Fee, C: Fixed Fee, D: Structural Loss
-  rootCauseValue: number;
-  solution: string;
-  relatedOrders?: {
-    orderId: string;
-    date: string;
-    quantity: number;
-    netRevenue: number;
-    fees: number;
-    subsidies: number;
-    cogs: number;
-    profit: number;
-  }[];
-  orderDetail?: {
-    trackingNumber?: string;
-    listRevenue: number;   // Doanh thu niêm yết
-    netRevenue: number;    // Sau KM Shop
-    payoutAmount: number;  // Sau Phí sàn (Thực nhận)
-    totalCOGS: number;
-    items: {
-      sku: string;
-      name: string;
-      quantity: number;
-      price: number;       // Giá bán (sau KM phân bổ nếu có, hoặc giá gốc tùy logic hiển thị) -> Let's use Original Price for "Niêm yết"
-      cogs: number;
-    }[];
-    sellerVoucherAmount: number;
-    shopeeVoucherAmount: number;
-    feeAmount: number;
-    // Granular Fees
-    fixedFee?: number;
-    serviceFee?: number;
-    paymentFee?: number;
-    affiliateCommission?: number;
-  };
+  avgShipTime: number;
 }
 
 export interface OrderRiskAnalysis {
   orderId: string;
   trackingNumber: string;
   orderDate: string;
-
-  // 1. Calculated Metrics
-  revenue: number; // Sum(Original Price * Qty)
-  cogs: number; // 40% * Revenue
-  shopPromotion: number; // Người bán trợ giá (sellerRebate - giảm giá sản phẩm từ CTKM)
-  shopVoucher: number;   // Mã giảm giá của Shop (do shop tạo)
-  returnShippingFee: number; // Phí vận chuyển trả hàng
-  platformFee: number;   // Phí cố định + Phí DV + Phí thanh toán (không gồm VC trả hàng)
-  listRevenue: number;   // Giá gốc × số lượng (mẫu số của control ratio)
-  controlCost: number; // Shop Promo + Platform Fee
-  controlRatio: number; // Control Cost / Revenue
-  netProfit: number; // Revenue - COGS - Control Cost
-  grossMarginBeforePromo: number; // Revenue - COGS - Platform Fee
-  structuralMargin: number; // Same as above conceptually
-  promotionBurnRate: number;
-  breakEvenPrice: number;
-  absoluteLossFlag: boolean;
-  riskImpactScore: number;
-
+  revenue: number;
+  controlRatio: number;
+  netProfit: number;
   warningLevel: 'SAFE' | 'MONITOR' | 'WARNING' | 'DANGER';
   isLoss: boolean;
+}
 
-  // 3. Return Impact Layer
-  returnImpactValue: number;
-  returnImpactRate: number;
-  lostGrossRevenue: number;
-  nonRefundableFee: number;
-
-  // 4. Root Cause
-  rootCause: 'A' | 'B' | 'C' | 'D' | 'E' | 'N/A';
-  rootCauseValue: number; // The % driving the cause (e.g. Fee %, Promo %)
+export interface FeeAlertOrder {
+  orderId: string;
+  gmv: number;
+  totalFees: number;
+  feeRatio: number;
+  reason: string;
+  solution: string;
 }
 
 export interface MetricResult {
+  // 13 Core KPIs
+  totalGMV: number;
+  totalShopSubsidies: number;
+  totalPlatformFees: number;
+  totalDraftNet: number;
+  totalReturnValue: number;
+  totalReturnFees: number;
+  totalReturnImpact: number;
+  totalActualNet: number;
   totalOrders: number;
-
-  // 1. Doanh thu 1 (Giá niêm yết sau hoàn)
-  totalListRevenue: number;
-
-  // 2. Doanh thu 2 (Giá ưu đãi sau trợ giá)
-  totalNetRevenue: number;
-  netRevenueAfterTax: number;
-
-  // New: CTKM (Doanh thu 1 - Doanh thu 2)
-  totalDiscount: number;
-  totalVoucher: number; // Added from instruction
-
-  // 3. Tổng phụ phí (Cố định + Dịch vụ + Thanh toán)
-  totalSurcharges: number;
-
-  // 4. Doanh thu 3 (Doanh thu đơn hàng ước tính)
-  totalGrossRevenue: number; // Net Proceeds
-  totalCOGS: number;
-  totalGrossProfit: number;
-  netProfitAfterTax: number;
-  netMargin: number;
   avgOrderValue: number;
-  profitPerOrder: number;
-  orderReturnRate: number;
-  cancelRate: number; // Added
-  daysWithNegativeProfit: number;
+  platformFeeRate: number;
+  shopSubsidyRate: number;
+  marginPreCogs: number;
 
-  // Legacy / Compatibility fields
-  totalRevenue: number;
-  netRevenue: number;
-  totalNetProfit: number;
-  grossMargin: number;
+  // Strategic CFO Indicators
+  adExpenseX: number;
+  adCostRate: number;
+  marginBeforeAds: number;
+  finalNetMargin: number;
 
-  totalFloorFees: number;
-  totalSubsidies: number;
+  // New Shopee Master Sections
+  completedOrders: number;
+  canceledOrders: number;
+  returnedOrdersCount: number;
+  avgProcessingTime: number; // Order to Ship
+  slowDeliveryCount: number;
 
-  totalProductQty: number;
-  totalReturnQty: number;
-  successfulOrders: number;
-  returnOrderCount: number;
-  returnRate: number;
+  loyaltyStats: {
+    newCustomers: number;
+    returningCustomers: number;
+    repeatRate: number;
+  };
 
-  revenueTrend: RevenueTrend[]; // Now containing daily realized
-  dailyFinancials: DailyFinancialMetric[];
+  feeAlerts: FeeAlertOrder[];
 
+  carrierPerformance: {
+    carrier: string;
+    successRate: number;
+    avgDeliveryTime: number;
+    returnCount: number;
+  }[];
+
+  returnByProvince: {
+    province: string;
+    count: number;
+    value: number;
+  }[];
+
+  revenueTrend: RevenueTrend[];
   productPerformance: ProductPerformance[];
-  topProducts: ProductPerformance[]; // Top 10-15
-  riskProfile: ProductRiskProfile[]; // New Risk Center
+  statusAnalysis: { status: string, count: number, revenue: number, percentage: number }[];
+  locationAnalysis: { province: string, revenue: number, orders: number, profit: number, contribution: number }[];
 
-  locationAnalysis: LocationAnalysis[];
-  statusAnalysis: StatusAnalysis[];
-  customerAnalysis: CustomerAnalysis[];
+  dailyFinancials: RevenueTrend[];
+  successfulOrders: number;
+  totalListRevenue: number;
+  totalGrossRevenue: number;
+  netRevenueAfterTax: number;
+  totalSurcharges: number;
+  totalVoucher: number;
+  netMargin: number;
 
-  // Legacy or Empty
-  cancelAnalysis: any[];
-  returnAnalysis: any[];
-  returnedOrders: ReturnedOrder[]; // List of explicitly returned orders
-  returnByCarrier?: any[];
-  feeAnalysis: any[];
-  totalFees?: number;
-  subsidyAnalysis: any[];
-
-  // New: Order Risk Control Center
   riskAnalysis: OrderRiskAnalysis[];
   riskStats: {
     totalOrders: number;
-    highRiskCount: number; // > 50% Control Ratio
-    lossCount: number; // Net Profit < 0
+    highRiskCount: number;
+    lossCount: number;
     avgControlRatio: number;
     totalLossAmount: number;
-    totalShopVoucher: number;
-    totalReturnShippingFee: number;
-    totalListRevenue: number;
-    totalSellerRebate: number;
-    totalPlatformFees: number;
-    totalReturnImpactValue: number;
-    totalReturnImpactRate: number;
   };
+  returnedOrders: any[];
+  profitPerOrder?: number;
+  daysWithNegativeProfit?: number;
 
-  // Optional/Legacy
-  operationAnalysis?: OperationAnalysis[];
-  dailyShippingMetrics?: { date: string; avgShipTime: number; orderCount: number; }[];
-  realizedPerformance?: {
-    totalOrders: number;
-    cancelledOrders: number;
-    successfulOrders: number;
-    strictAov: number;
-    returnRate: number;
-    aov: number;
-    feePerOrder: number;
-    cogsPerOrder: number;
-  };
+  customerAnalysis: CustomerAnalysis[];
+  operationAnalysis: OperationAnalysis[];
+  dailyShippingMetrics: DailyShippingMetric[];
+  cancelAnalysis: { reason: string; count: number }[];
+  returnByCarrier: { reason: string; count: number; value: number }[];
 
-  profitPerSoldUnit?: number; // legacy
-  riskAlerts?: any[]; // legacy
+  // Aliases for page compatibility
+  totalRevenue: number;
+  totalFees: number;
+  feeAnalysis: { type: string; value: number }[];
+  subsidyAnalysis: { type: string; value: number }[];
 }
 
 export type Platform = 'shopee' | 'shopee_north' | 'shopee_south' | 'tiki' | 'lazada' | 'tiktok' | 'thuocsi' | 'other';

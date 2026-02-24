@@ -20,16 +20,13 @@ import {
     Activity,
 } from 'lucide-react';
 
-const NAV_ITEMS = [
-    { name: 'Đa kênh', href: '/overview', icon: Layers },
-    { name: 'Tổng quan', href: '/', icon: LayoutDashboard },
-    { name: 'Sản phẩm', href: '/products', icon: Package },
-    { name: 'Đơn hàng', href: '/orders', icon: ShoppingBag },
-    { name: 'Doanh thu', href: '/revenue', icon: TrendingUp },
-    { name: 'Phí & CTKM', href: '/fees', icon: CreditCard },
-    { name: 'Khách hàng', href: '/customers', icon: Users },
-    { name: 'Vận hành', href: '/operations', icon: Activity },
-    { name: 'Rủi ro', href: '/risk', icon: AlertTriangle },
+const NAV_ITEMS: { name: string; href: string; icon: any }[] = [
+    { name: 'Đa Kênh', href: '/', icon: LayoutDashboard },
+    { name: 'Shopee', href: '/shopee', icon: ShoppingBag },
+    { name: 'Thuocsi', href: '/thuocsi', icon: Activity },
+    { name: 'Tiki', href: '/tiki', icon: ShoppingCart },
+    { name: 'Lazada', href: '/lazada', icon: Layers },
+    { name: 'Tiktokshop', href: '/tiktokshop', icon: TrendingUp },
     { name: 'Nguồn dữ liệu', href: '/data-sources', icon: Database },
 ];
 

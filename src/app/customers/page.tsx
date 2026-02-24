@@ -14,7 +14,7 @@ export default function CustomersPage() {
     const [prevMetrics, setPrevMetrics] = useState<MetricResult | null>(null);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
-    const { startDate, endDate, warehouse, channelKey } = useFilter();
+    const { startDate, endDate, warehouse, channelKeys } = useFilter();
 
     const [selectedCustomer, setSelectedCustomer] = useState<CustomerAnalysis | null>(null);
     const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
@@ -24,7 +24,7 @@ export default function CustomersPage() {
         const fetchData = async () => {
             try {
                 setLoading(true);
-                const res = await fetch('/api/orders?channel=' + channelKey);
+                const res = await fetch('/api/orders?channel=' + channelKeys.join(','));
                 const orders: ShopeeOrder[] = await res.json();
                 // Current Period
                 const filtered = filterOrders(orders, startDate, endDate, warehouse);
@@ -66,7 +66,7 @@ export default function CustomersPage() {
             }
         };
         fetchData();
-    }, [startDate, endDate, warehouse, channelKey]);
+    }, [startDate, endDate, warehouse, channelKeys]);
 
     if (loading) return <PageSkeleton />;
 
@@ -95,7 +95,7 @@ export default function CustomersPage() {
 
     // Sort
     if (sortConfig !== null) {
-        filteredCustomers.sort((a, b) => {
+        filteredCustomers.sort((a: CustomerAnalysis, b: CustomerAnalysis) => {
             if (a[sortConfig.key] < b[sortConfig.key]) {
                 return sortConfig.direction === 'asc' ? -1 : 1;
             }
@@ -142,12 +142,12 @@ export default function CustomersPage() {
     };
 
     const currentTotalCust = filteredCustomers.length;
-    const currentTop10Spent = filteredCustomers.slice(0, 10).reduce((acc, c) => acc + c.totalSpent, 0);
+    const currentTop10Spent = filteredCustomers.slice(0, 10).reduce((acc: number, c: CustomerAnalysis) => acc + c.totalSpent, 0);
     const currentAvgSpent = currentTotalCust > 0 ? currentTop10Spent / currentTotalCust : 0; // Or sum of all / length
 
     const prevFilteredCustomers = prevMetrics?.customerAnalysis || [];
     const prevTotalCust = prevFilteredCustomers.length;
-    const prevTop10Spent = prevFilteredCustomers.slice(0, 10).reduce((acc, c) => acc + c.totalSpent, 0);
+    const prevTop10Spent = prevFilteredCustomers.slice(0, 10).reduce((acc: number, c: CustomerAnalysis) => acc + c.totalSpent, 0);
     const prevAvgSpent = prevTotalCust > 0 ? prevTop10Spent / prevTotalCust : 0; // Simplified for Top 10
 
     return (
@@ -188,8 +188,8 @@ export default function CustomersPage() {
                 </div>
                 <div className="p-6 rounded-2xl bg-gradient-to-br from-violet-600 to-purple-700 text-white shadow-lg">
                     <p className="text-violet-100 font-medium mb-1">Trung Bình Chi Tiêu / Khách</p>
-                    <h3 className="text-3xl font-bold">{formatVND(currentTotalCust > 0 ? filteredCustomers.reduce((acc, c) => acc + c.totalSpent, 0) / currentTotalCust : 0)}</h3>
-                    {prevMetrics && <PoPIndicator current={currentTotalCust > 0 ? filteredCustomers.reduce((acc, c) => acc + c.totalSpent, 0) / currentTotalCust : 0} prev={prevTotalCust > 0 ? prevFilteredCustomers.reduce((acc, c) => acc + c.totalSpent, 0) / prevTotalCust : 0} />}
+                    <h3 className="text-3xl font-bold">{formatVND(currentTotalCust > 0 ? filteredCustomers.reduce((acc: number, c: CustomerAnalysis) => acc + c.totalSpent, 0) / currentTotalCust : 0)}</h3>
+                    {prevMetrics && <PoPIndicator current={currentTotalCust > 0 ? filteredCustomers.reduce((acc: number, c: CustomerAnalysis) => acc + c.totalSpent, 0) / currentTotalCust : 0} prev={prevTotalCust > 0 ? prevFilteredCustomers.reduce((acc: number, c: CustomerAnalysis) => acc + c.totalSpent, 0) / prevTotalCust : 0} />}
                 </div>
             </div>
 
@@ -241,12 +241,15 @@ export default function CustomersPage() {
                                                 {(customer.buyerUsername || customer.id).substring(0, 2)}
                                             </div>
                                             <div>
-                                                <p className="font-bold text-foreground">
-                                                    {customer.buyerUsername || customer.name || 'Khách vãng lai'}
+                                                <div className="flex items-center gap-2">
+                                                    <p className="font-bold text-foreground">
+                                                        @{customer.buyerUsername || 'N/A'}
+                                                    </p>
+                                                    <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded text-muted-foreground font-bold uppercase tracking-tighter">Buyer</span>
+                                                </div>
+                                                <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                                                    <Users className="w-3 h-3" /> {customer.name || 'N/A'}
                                                 </p>
-                                                {customer.name && customer.name !== (customer.buyerUsername || customer.name) && (
-                                                    <p className="text-xs text-muted-foreground">Nhận: {customer.name}</p>
-                                                )}
                                             </div>
                                         </div>
                                     </td>
@@ -257,9 +260,9 @@ export default function CustomersPage() {
                                         </div>
                                     </td>
                                     <td className="px-6 py-4">
-                                        <div className="flex items-start gap-2 text-muted-foreground max-w-[200px] truncate" title={customer.address}>
+                                        <div className="flex items-start gap-2 text-muted-foreground max-w-[250px]" title={customer.address}>
                                             <MapPin className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                                            <span className="truncate">{customer.address || 'N/A'}</span>
+                                            <span className="text-xs leading-relaxed">{customer.address || 'N/A'}</span>
                                         </div>
                                     </td>
                                     <td className="px-6 py-4 text-center font-medium">
@@ -298,10 +301,16 @@ export default function CustomersPage() {
             {selectedCustomer && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
                     <div className="bg-background border border-border rounded-xl shadow-2xl w-full max-w-lg max-h-[80vh] flex flex-col animate-in fade-in zoom-in-95 duration-200">
-                        <div className="p-6 border-b border-border flex justify-between items-center">
+                        <div className="p-6 border-b border-border flex justify-between items-center bg-muted/20">
                             <div>
-                                <h3 className="text-lg font-bold">Lịch Sử Mua Hàng</h3>
-                                <p className="text-sm text-muted-foreground">{selectedCustomer.name} ({selectedCustomer.id})</p>
+                                <h3 className="text-lg font-bold flex items-center gap-2 uppercase tracking-tighter">
+                                    <ShoppingBag className="w-5 h-5 text-primary" /> Lịch Sử Mua Hàng
+                                </h3>
+                                <div className="flex items-center gap-3 mt-1">
+                                    <p className="text-sm font-bold text-primary">@{selectedCustomer.buyerUsername}</p>
+                                    <span className="text-muted-foreground text-xs">•</span>
+                                    <p className="text-xs text-muted-foreground font-medium">Người nhận: {selectedCustomer.name}</p>
+                                </div>
                             </div>
                             <button
                                 onClick={() => setSelectedCustomer(null)}

@@ -4,7 +4,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import { KPICard } from './KPICard';
 import { calculateMetrics, filterOrders } from '../utils/calculator';
-import { MetricResult, ShopeeOrder, DailyFinancialMetric, ProductRiskProfile } from '../utils/types';
+import { MetricResult, ShopeeOrder, RevenueTrend, ProductRiskProfile } from '../utils/types';
 import { Activity, CalendarDays, DollarSign, Package, TrendingUp, AlertCircle, ShoppingBag, XCircle, CheckCircle2, RefreshCcw, Ticket, ChevronRight, Download, Eye, Table as TableIcon, LayoutDashboard, X, ArrowRight, Percent, CreditCard, AlertTriangle, Truck } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, AreaChart, Area, PieChart, Pie, Cell, Legend, ComposedChart } from 'recharts';
 import { useFilter } from '../contexts/FilterContext';
@@ -14,7 +14,7 @@ import { formatVND, formatNumber, formatDateVN } from '../utils/format';
 import clsx from 'clsx';
 import { OrderRiskControlCenter } from './OrderRiskControlCenter';
 
-export default function Dashboard() {
+export default function Dashboard({ defaultPlatform }: { defaultPlatform?: string }) {
     const [metrics, setMetrics] = useState<MetricResult | null>(null);
     const [prevMetrics, setPrevMetrics] = useState<MetricResult | null>(null);
     const [loading, setLoading] = useState(true);
@@ -29,15 +29,18 @@ export default function Dashboard() {
         netRevenue: true,
         aov: true
     });
-    const { startDate, endDate, warehouse, channelKey } = useFilter();
+    const { startDate, endDate, warehouse, channelKeys, adExpenseX, setAdExpenseX } = useFilter();
+    const { setChannelKeys } = useFilter();
 
     const chartData = useMemo(() => {
         if (!metrics) return [];
+        // Approximate COGS as 40% of GMV for visualization if not provided
+        const estCogs = metrics.totalActualNet * 0.4; // Just a placeholder for the pie
         return [
-            { name: '4. Chi phí khuyến mãi', value: metrics.totalDiscount, color: '#f97316' }, // orange-500
-            { name: '5. Chi phí sàn', value: metrics.totalSurcharges, color: '#ef4444' },     // red-500
-            { name: '6. Giá vốn', value: metrics.totalCOGS, color: '#d97706' },               // amber-600
-            { name: '7. Lợi nhuận gộp', value: metrics.totalGrossProfit, color: '#10b981' }, // emerald-500
+            { name: '1. TRỢ GIÁ SHOP', value: metrics.totalShopSubsidies, color: '#f97316' },
+            { name: '2. PHÍ SÀN', value: metrics.totalPlatformFees, color: '#ef4444' },
+            { name: '3. HOÀN HÀNG (Tác động)', value: metrics.totalReturnImpact, color: '#d97706' },
+            { name: '4. DT THUẦN THỰC TẾ', value: metrics.totalActualNet, color: '#10b981' },
         ].filter(item => item.value > 0);
     }, [metrics]);
 
@@ -45,14 +48,28 @@ export default function Dashboard() {
         const fetchData = async () => {
             setLoading(true);
             try {
-                const res = await fetch('/api/orders?channel=' + channelKey);
+                // Determine channel query (join array into comma-separated string)
+                let channelQuery = channelKeys.join(',');
+
+                // If we are in a specific platform module (e.g. Shopee), 
+                // and the current selection doesn't match the platform, force it.
+                if (defaultPlatform) {
+                    const isAll = channelKeys.includes('all');
+                    const hasPlatform = channelKeys.some(k => k.startsWith(defaultPlatform));
+                    if (isAll || !hasPlatform) {
+                        channelQuery = defaultPlatform;
+                    }
+                }
+
+                const res = await fetch('/api/orders?channel=' + (channelQuery || 'all'));
                 const orders: ShopeeOrder[] = await res.json();
+
 
                 // Current Period
                 const filtered = filterOrders(orders, startDate, endDate, warehouse);
 
                 if (filtered.length > 0) {
-                    setMetrics(calculateMetrics(filtered));
+                    setMetrics(calculateMetrics(filtered, { startDate, endDate, adExpenseX }));
                 } else {
                     setMetrics(null);
                 }
@@ -73,7 +90,7 @@ export default function Dashboard() {
                     const prevFiltered = filterOrders(orders, prevStart.toISOString().split('T')[0], prevEnd.toISOString().split('T')[0], warehouse);
 
                     if (prevFiltered.length > 0) {
-                        setPrevMetrics(calculateMetrics(prevFiltered));
+                        setPrevMetrics(calculateMetrics(prevFiltered, { adExpenseX }));
                     } else {
                         setPrevMetrics(null);
                     }
@@ -90,7 +107,22 @@ export default function Dashboard() {
         };
 
         fetchData();
-    }, [startDate, endDate, warehouse, channelKey]);
+    }, [startDate, endDate, warehouse, channelKeys, defaultPlatform]);
+
+    const lowMarginProducts = useMemo(() => {
+        if (!metrics) return [];
+        return (metrics.productPerformance || []).filter(p => p.margin < 10 && p.revenue > 1000000).sort((a, b) => a.margin - b.margin).slice(0, 5);
+    }, [metrics]);
+
+    const highReturnProducts = useMemo(() => {
+        if (!metrics) return [];
+        return (metrics.productPerformance || []).filter(p => p.returnRate > 5 && p.quantity > 10).sort((a, b) => b.returnRate - a.returnRate).slice(0, 5);
+    }, [metrics]);
+
+    const daysWithNegativeProfit = useMemo(() => {
+        if (!metrics) return 0;
+        return (metrics.dailyFinancials || []).filter(d => d.actualNet < 0).length;
+    }, [metrics]);
 
     if (loading) return <PageSkeleton />;
 
@@ -153,13 +185,6 @@ export default function Dashboard() {
         </div>
     );
 
-    // --- Warning Logic & Helpers ---
-    const lowMarginProducts = metrics?.productPerformance.filter(p => p.margin < 10 && p.revenue > 1000000).sort((a, b) => a.margin - b.margin).slice(0, 5) || [];
-    const highReturnProducts = metrics?.productPerformance.filter(p => p.returnRate > 5 && p.quantity > 10).sort((a, b) => b.returnRate - a.returnRate).slice(0, 5) || [];
-    const negativeDays = metrics?.daysWithNegativeProfit || 0;
-
-
-
     // --- Period-over-Period component ---
     const PoPIndicator = ({ current, prev, isInverse = false }: { current: number, prev: number, isInverse?: boolean }) => {
         if (!prev || prev === 0) return null; // Or show N/A
@@ -201,60 +226,186 @@ export default function Dashboard() {
             {/* 1. KPI Cards Row - 6 Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-6 gap-4">
                 <KPICard
-                    title="ĐƠN THÀNH CÔNG"
-                    value={formatNumber(metrics?.successfulOrders || 0)}
+                    title="GMV (PHÁT SINH)"
+                    value={formatVND(metrics?.totalGMV || 0)}
                     icon={ShoppingBag}
-                    subValue={metrics && prevMetrics ? getChangePct(metrics.successfulOrders, prevMetrics.successfulOrders) : undefined}
-                    trend={metrics && prevMetrics ? (metrics.successfulOrders > prevMetrics.successfulOrders ? 'up' : 'down') : 'neutral'}
+                    subValue={metrics && prevMetrics ? getChangePct(metrics.totalGMV, prevMetrics.totalGMV) : undefined}
+                    trend={metrics && prevMetrics ? (metrics.totalGMV > prevMetrics.totalGMV ? 'up' : 'down') : 'neutral'}
                     className="text-sharp transition-all duration-300"
                     color="violet"
+                    formula="SUM(Giá gốc * Số lượng) - Payout Date"
                 />
                 <KPICard
-                    title="DOANH THU GỘP"
-                    value={formatVND(metrics?.totalGrossRevenue || 0)}
-                    icon={DollarSign}
-                    subValue={metrics && prevMetrics ? getChangePct(metrics.totalGrossRevenue, prevMetrics.totalGrossRevenue) : undefined}
-                    trend={metrics && prevMetrics ? (metrics.totalGrossRevenue > prevMetrics.totalGrossRevenue ? 'up' : 'down') : 'neutral'}
-                    className="text-sharp transition-all duration-300"
-                    color="blue"
-                    formula="Thực nhận: (Giá gốc - CTKM - Phí sàn)"
-                />
-                <KPICard
-                    title="CHI PHÍ CTKM"
-                    value={formatVND(metrics?.totalSubsidies || 0)}
+                    title="TRỢ GIÁ SHOP"
+                    value={formatVND(metrics?.totalShopSubsidies || 0)}
                     icon={Ticket}
-                    subValue={metrics && prevMetrics ? getChangePct(metrics.totalSubsidies, prevMetrics.totalSubsidies) : undefined}
-                    trend={metrics && prevMetrics ? (metrics.totalSubsidies > prevMetrics.totalSubsidies ? 'up' : 'down') : 'neutral'}
+                    subValue={metrics && prevMetrics ? getChangePct(metrics.totalShopSubsidies, prevMetrics.totalShopSubsidies) : undefined}
+                    trend={metrics && prevMetrics ? (metrics.totalShopSubsidies > prevMetrics.totalShopSubsidies ? 'up' : 'down') : 'neutral'}
                     className="text-sharp transition-all duration-300"
                     color="amber"
+                    formula="Voucher + Combo + Trợ giá người bán"
                 />
                 <KPICard
                     title="PHÍ SÀN"
-                    value={formatVND(metrics?.totalSurcharges || 0)}
+                    value={formatVND(metrics?.totalPlatformFees || 0)}
                     icon={CreditCard}
-                    subValue={metrics && prevMetrics ? getChangePct(metrics.totalSurcharges, prevMetrics.totalSurcharges) : undefined}
-                    trend={metrics && prevMetrics ? (metrics.totalSurcharges > prevMetrics.totalSurcharges ? 'up' : 'down') : 'neutral'}
+                    subValue={metrics && prevMetrics ? getChangePct(metrics.totalPlatformFees, prevMetrics.totalPlatformFees) : undefined}
+                    trend={metrics && prevMetrics ? (metrics.totalPlatformFees > prevMetrics.totalPlatformFees ? 'up' : 'down') : 'neutral'}
                     className="text-sharp transition-all duration-300"
                     color="rose"
+                    formula="Cố định + Dịch vụ + Thanh toán"
                 />
                 <KPICard
-                    title="DOANH THU THUẦN"
-                    value={formatVND(metrics?.netRevenueAfterTax || 0)}
+                    title="DT THUẦN PHÁT SINH"
+                    value={formatVND(metrics?.totalDraftNet || 0)}
                     icon={Activity}
-                    subValue={metrics && prevMetrics ? getChangePct(metrics.netRevenueAfterTax, prevMetrics.netRevenueAfterTax) : undefined}
-                    trend={metrics && prevMetrics ? (metrics.netRevenueAfterTax > prevMetrics.netRevenueAfterTax ? 'up' : 'down') : 'neutral'}
+                    subValue={metrics && prevMetrics ? getChangePct(metrics.totalDraftNet, prevMetrics.totalDraftNet) : undefined}
+                    trend={metrics && prevMetrics ? (metrics.totalDraftNet > prevMetrics.totalDraftNet ? 'up' : 'down') : 'neutral'}
+                    className="text-sharp transition-all duration-300"
+                    color="blue"
+                    formula="GMV - Trợ giá - Phí sàn"
+                />
+                <KPICard
+                    title="HÀNG HOÀN (TÁC ĐỘNG)"
+                    value={formatVND(metrics?.totalReturnImpact || 0)}
+                    icon={RefreshCcw}
+                    subValue={metrics && prevMetrics ? getChangePct(metrics.totalReturnImpact, prevMetrics.totalReturnImpact) : undefined}
+                    trend={metrics && prevMetrics ? (metrics.totalReturnImpact > prevMetrics.totalReturnImpact ? 'up' : 'down') : 'neutral'}
+                    className="text-sharp transition-all duration-300"
+                    color="rose"
+                    formula="Giá trị hàng hoàn + Phí hoàn hàng"
+                />
+                <KPICard
+                    title="DT THUẦN THỰC TẾ"
+                    value={formatVND(metrics?.totalActualNet || 0)}
+                    icon={TrendingUp}
+                    subValue={metrics && prevMetrics ? getChangePct(metrics.totalActualNet, prevMetrics.totalActualNet) : undefined}
+                    trend={metrics && prevMetrics ? (metrics.totalActualNet > prevMetrics.totalActualNet ? 'up' : 'down') : 'neutral'}
                     className="text-sharp transition-all duration-300"
                     color="emerald"
+                    formula="DT Phát sinh - Tác động hoàn hàng"
                 />
-                <KPICard
-                    title="AOV"
-                    value={formatVND(metrics?.avgOrderValue || 0)}
-                    icon={TrendingUp}
-                    subValue={metrics && prevMetrics ? getChangePct(metrics.avgOrderValue, prevMetrics.avgOrderValue) : undefined}
-                    trend={metrics && prevMetrics ? (metrics.avgOrderValue > prevMetrics.avgOrderValue ? 'up' : 'down') : 'neutral'}
-                    className="text-sharp transition-all duration-300"
-                    color="indigo"
-                />
+            </div>
+
+            {/* 1.5 CFO Strategic Section */}
+            <div className="bg-card/30 border border-primary/20 rounded-2xl overflow-hidden shadow-2xl backdrop-blur-md">
+                <div className="bg-primary/10 px-6 py-4 border-b border-primary/20 flex flex-wrap items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                        <div className="bg-primary/20 p-2 rounded-lg">
+                            <Activity className="w-5 h-5 text-primary" />
+                        </div>
+                        <div>
+                            <h2 className="text-lg font-bold text-foreground">
+                                {defaultPlatform ? `${defaultPlatform.toUpperCase()} - ` : ''}
+                                CHIẾN LƯỢC CFO & TỐI ƯU QUẢNG CÁO (X)
+                            </h2>
+                            <p className="text-xs text-muted-foreground font-medium">Công thức: Biên Ròng = 60% - C% - X%</p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-3 bg-background/50 border border-border px-4 py-2 rounded-xl">
+                        <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Chi phí quảng cáo (X):</span>
+                        <div className="relative">
+                            <input
+                                type="number"
+                                value={adExpenseX || ''}
+                                onChange={(e) => setAdExpenseX(Number(e.target.value))}
+                                placeholder="Nhập số tiền..."
+                                className="bg-transparent text-sm font-bold text-primary focus:outline-none w-32 placeholder:text-muted-foreground/30"
+                            />
+                            <span className="absolute right-0 text-[10px] font-black pointer-events-none text-primary/40">VND</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="p-6">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                        {/* KPI 1: Ad Rate */}
+                        <div className="bg-background/40 p-5 rounded-2xl border border-border/50 relative overflow-hidden group hover:border-primary/40 transition-colors">
+                            <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest mb-1">1. Tỷ lệ quảng cáo (X%)</p>
+                            <div className="flex items-baseline gap-2">
+                                <h3 className="text-2xl font-black text-rose-500">{formatNumber(metrics?.adCostRate || 0, 2)}%</h3>
+                                <span className="text-[10px] text-muted-foreground font-medium">trên GMV</span>
+                            </div>
+                            <div className="mt-3 w-full bg-muted/30 h-1.5 rounded-full overflow-hidden">
+                                <div className="bg-rose-500 h-full transition-all duration-1000" style={{ width: `${Math.min(metrics?.adCostRate || 0, 100)}%` }}></div>
+                            </div>
+                        </div>
+
+                        {/* KPI 2: Margin Before Ads */}
+                        <div className="bg-background/40 p-5 rounded-2xl border border-border/50 relative overflow-hidden group hover:border-primary/40 transition-colors">
+                            <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest mb-1">2. Biên còn lại (Trước X)</p>
+                            <div className="flex items-baseline gap-2">
+                                <h3 className="text-2xl font-black text-blue-500">{formatNumber(metrics?.marginBeforeAds || 0, 2)}%</h3>
+                                <span className="text-[10px] text-muted-foreground font-medium">Sẵn sàng cho X</span>
+                            </div>
+                            <div className="mt-3 w-full bg-muted/30 h-1.5 rounded-full overflow-hidden">
+                                <div className="bg-blue-500 h-full transition-all duration-1000" style={{ width: `${Math.max(0, Math.min(metrics?.marginBeforeAds || 0, 100))}%` }}></div>
+                            </div>
+                        </div>
+
+                        {/* KPI 3: Final Net Margin */}
+                        <div className="bg-background/40 p-5 rounded-2xl border border-border/50 relative overflow-hidden group hover:border-primary/40 transition-colors">
+                            <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest mb-1">3. Biên lợi nhuận ròng cuối</p>
+                            <div className="flex items-baseline gap-2">
+                                <h3 className={clsx("text-2xl font-black", (metrics?.finalNetMargin || 0) > 0 ? "text-emerald-500" : "text-rose-600")}>
+                                    {formatNumber(metrics?.finalNetMargin || 0, 2)}%
+                                </h3>
+                                <span className="text-[10px] text-muted-foreground font-medium">Lợi nhuận cuối cùng</span>
+                            </div>
+                            <div className="mt-3 w-full bg-muted/30 h-1.5 rounded-full overflow-hidden">
+                                <div className={clsx("h-full transition-all duration-1000", (metrics?.finalNetMargin || 0) > 0 ? "bg-emerald-500" : "bg-rose-600")} style={{ width: `${Math.max(0, Math.min(Math.abs(metrics?.finalNetMargin || 0), 100))}%` }}></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Decision Matrix */}
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 items-center">
+                        <div className="space-y-4">
+                            <h4 className="text-xs font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+                                <AlertCircle className="w-4 h-4 text-primary" />
+                                Ma trận ra quyết định Scale
+                            </h4>
+                            <div className="grid grid-cols-1 gap-2">
+                                {[
+                                    { range: '>10%', action: 'Scale mạnh', color: 'emerald', desc: 'Vùng xanh an toàn, tăng ngân sách ngay', active: (metrics?.finalNetMargin || 0) > 10 },
+                                    { range: '5–10%', action: 'Scale kiểm soát', color: 'blue', desc: 'Có lãi ổn định, tối ưu thêm vận hành', active: (metrics?.finalNetMargin || 0) <= 10 && (metrics?.finalNetMargin || 0) > 5 },
+                                    { range: '0–5%', action: 'Test nhỏ / Tối ưu', color: 'amber', desc: 'Biên mỏng, tập trung cắt giảm lãng phí', active: (metrics?.finalNetMargin || 0) <= 5 && (metrics?.finalNetMargin || 0) > 0 },
+                                    { range: '<0%', action: 'Dừng ngay / Cắt lỗ', color: 'rose', desc: 'Đang cháy túi, xem lại giá bán và phí', active: (metrics?.finalNetMargin || 0) <= 0 },
+                                ].map((item, idx) => (
+                                    <div key={idx} className={clsx(
+                                        "flex items-center justify-between p-3 rounded-xl border transition-all",
+                                        item.active ? `bg-${item.color}-500/20 border-${item.color}-500/40 ring-1 ring-${item.color}-500/20 scale-[1.02]` : "bg-muted/10 border-border/30 opacity-40"
+                                    )}>
+                                        <div className="flex items-center gap-3">
+                                            <div className={clsx("w-8 h-8 rounded-lg flex items-center justify-center font-black text-[10px]", `bg-${item.color}-500/20 text-${item.color}-500`)}>
+                                                {item.range}
+                                            </div>
+                                            <div>
+                                                <p className={clsx("text-xs font-bold", item.active ? `text-${item.color}-500` : "text-foreground")}>{item.action}</p>
+                                                <p className="text-[10px] text-muted-foreground">{item.desc}</p>
+                                            </div>
+                                        </div>
+                                        {item.active && <CheckCircle2 className={clsx("w-4 h-4", `text-${item.color}-500`)} />}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="bg-background/60 p-6 rounded-2xl border border-border/50 flex flex-col justify-center items-center text-center space-y-4">
+                            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+                                <DollarSign className="w-8 h-8 text-primary" />
+                            </div>
+                            <div>
+                                <h4 className="text-sm font-black text-foreground uppercase">Hạn mức quảng cáo tối đa</h4>
+                                <p className="text-xs text-muted-foreground mt-1">Để đạt điểm hòa vốn (BEP), bạn có thể chi tối đa:</p>
+                            </div>
+                            <div className="text-3xl font-black text-primary tracking-tight">
+                                {formatVND((metrics?.totalGMV || 0) * (Math.max(0, metrics?.marginBeforeAds || 0) / 100))}
+                            </div>
+                            <p className="text-[10px] text-muted-foreground italic">"Đừng để X vượt quá biên lợi nhuận còn lại của bạn"</p>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             {/* 2. Charts Row */}
@@ -312,8 +463,8 @@ export default function Dashboard() {
                                 <YAxis stroke="#666" fontSize={10} tickFormatter={(v) => `${(v / 1000000).toFixed(0)}M`} />
                                 <Tooltip content={<ChartTooltip formatter={(v: any) => formatVND(Number(v))} />} />
                                 <Legend />
-                                <Area type="monotone" dataKey="revenue" name="Doanh thu NET" stroke="#10b981" fill="url(#colorRev)" strokeWidth={2} />
-                                <Area type="monotone" dataKey="netProfit" name="Lợi nhuận" stroke="#8b5cf6" fill="transparent" strokeWidth={2} />
+                                <Area type="monotone" dataKey="gmv" name="GMV" stroke="#10b981" fill="url(#colorRev)" strokeWidth={2} />
+                                <Area type="monotone" dataKey="actualNet" name="DT Thuần Thực Tế" stroke="#8b5cf6" fill="transparent" strokeWidth={2} />
                             </AreaChart>
                         </ResponsiveContainer>
                     </div>
@@ -341,10 +492,10 @@ export default function Dashboard() {
                             <ShoppingBag className="w-4 h-4 text-primary" />
                         </div>
                         <div className="flex flex-wrap items-baseline gap-2 mt-2">
-                            <p className="text-2xl font-bold">{metrics?.realizedPerformance?.totalOrders || 0}</p>
-                            {prevMetrics && <PoPIndicator current={metrics?.realizedPerformance?.totalOrders || 0} prev={prevMetrics.realizedPerformance?.totalOrders || 0} />}
+                            <p className="text-2xl font-bold">{metrics?.totalOrders || 0}</p>
+                            {prevMetrics && <PoPIndicator current={metrics?.totalOrders || 0} prev={prevMetrics.totalOrders || 0} />}
                         </div>
-                        <p className="text-xs text-muted-foreground mt-1">Tất cả đơn hàng</p>
+                        <p className="text-xs text-muted-foreground mt-1">Lượt đơn đã thanh toán</p>
                     </div>
 
                     {/* 2. Đã hủy */}
@@ -357,31 +508,28 @@ export default function Dashboard() {
                             <XCircle className="w-4 h-4 text-red-500" />
                         </div>
                         <div className="flex flex-wrap items-baseline gap-2 mt-2">
-                            <p className="text-2xl font-bold text-red-500">{metrics?.realizedPerformance?.cancelledOrders || 0}</p>
-                            {prevMetrics && <PoPIndicator current={metrics?.realizedPerformance?.cancelledOrders || 0} prev={prevMetrics.realizedPerformance?.cancelledOrders || 0} isInverse={true} />}
+                            <p className="text-2xl font-bold text-red-500">{(metrics?.statusAnalysis?.find(s => s.status === 'Đã hủy')?.count) || 0}</p>
                         </div>
-                        <p className="text-xs text-muted-foreground mt-1">
-                            ~{metrics?.realizedPerformance?.totalOrders ? formatNumber((metrics.realizedPerformance.cancelledOrders / metrics.realizedPerformance.totalOrders) * 100, 2) : 0}% tổng đơn
-                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">Đơn hủy trong kỳ</p>
                     </div>
 
-                    {/* 3. Thành công */}
+                    {/* 3. Thành công -> Đơn thực nhận */}
                     <div className="bg-card/50 p-4 rounded-xl border border-border">
                         <div className="flex justify-between items-start mb-2">
                             <div>
-                                <p className="text-sm font-medium text-muted-foreground">Đơn thành công</p>
-                                <p className="text-xs text-muted-foreground mt-0.5">= Hoàn thành & Không hoàn</p>
+                                <p className="text-sm font-medium text-muted-foreground">Đơn thực nhận</p>
+                                <p className="text-xs text-muted-foreground mt-0.5">= Đơn phát sinh thành công</p>
                             </div>
                             <CheckCircle2 className="w-4 h-4 text-emerald-500" />
                         </div>
                         <div className="flex flex-wrap items-baseline gap-2 mt-2">
-                            <p className="text-2xl font-bold text-emerald-500">{metrics?.realizedPerformance?.successfulOrders || 0}</p>
-                            {prevMetrics && <PoPIndicator current={metrics?.realizedPerformance?.successfulOrders || 0} prev={prevMetrics.realizedPerformance?.successfulOrders || 0} />}
+                            <p className="text-2xl font-bold text-emerald-500">{metrics?.totalOrders || 0}</p>
+                            {prevMetrics && <PoPIndicator current={metrics?.totalOrders || 0} prev={prevMetrics.totalOrders || 0} />}
                         </div>
                         <p className="text-xs text-muted-foreground mt-1">Đã hoàn thành & không hoàn</p>
                     </div>
 
-                    {/* 4. Tỷ lệ hoàn -> Đơn Hoàn */}
+                    {/* 4. Tỷ lệ hoàn */}
                     <div
                         className="bg-card/50 p-4 rounded-xl border border-border cursor-pointer hover:border-orange-500/50 hover:bg-orange-500/5 transition-all group relative"
                         onClick={() => setIsReturnModalOpen(true)}
@@ -391,20 +539,16 @@ export default function Dashboard() {
                         </div>
                         <div className="flex justify-between items-start mb-2">
                             <div>
-                                <p className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">Đơn hoàn</p>
-                                <p className="text-xs text-muted-foreground mt-0.5">= Số đơn bị hoàn trả</p>
+                                <p className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">Giá trị hoàn hàng</p>
+                                <p className="text-xs text-muted-foreground mt-0.5">= Tổng giá trị hàng hoàn</p>
                             </div>
                             <RefreshCcw className="w-4 h-4 text-orange-500" />
                         </div>
                         <div className="flex items-baseline gap-2 mt-2">
-                            <p className="text-2xl font-bold text-orange-500">{metrics?.returnOrderCount || 0}</p>
-                            <span className="text-[13px] font-bold text-muted-foreground bg-muted/30 px-2 py-0.5 rounded-md">
-                                {formatNumber(metrics?.realizedPerformance?.returnRate || 0, 2)}%
-                            </span>
+                            <p className="text-2xl font-bold text-orange-500">{formatVND(metrics?.totalReturnValue || 0)}</p>
                         </div>
                         <div className="flex justify-between items-center mt-2">
                             <p className="text-[11px] text-muted-foreground font-medium">Click xem chi tiết mã đơn</p>
-                            {prevMetrics && <PoPIndicator current={metrics?.returnOrderCount || 0} prev={prevMetrics.returnOrderCount || 0} isInverse={true} />}
                         </div>
                     </div>
 
@@ -413,31 +557,31 @@ export default function Dashboard() {
                         <div className="flex justify-between items-start mb-2">
                             <div>
                                 <p className="text-sm font-medium text-muted-foreground">Giá trị đơn TB (AOV)</p>
-                                <p className="text-xs text-muted-foreground mt-0.5">= Doanh thu thuần / Đơn thành công</p>
+                                <p className="text-xs text-muted-foreground mt-0.5">= GMV / Đơn phát sinh</p>
                             </div>
                             <DollarSign className="w-4 h-4 text-blue-500" />
                         </div>
                         <div className="flex flex-wrap items-baseline gap-2 mt-2">
-                            <p className="text-2xl font-bold text-blue-500">{formatVND(metrics?.realizedPerformance?.aov || 0)}</p>
-                            {prevMetrics && <PoPIndicator current={metrics?.realizedPerformance?.aov || 0} prev={prevMetrics.realizedPerformance?.aov || 0} />}
+                            <p className="text-2xl font-bold text-blue-500">{formatVND(metrics?.avgOrderValue || 0)}</p>
+                            {prevMetrics && <PoPIndicator current={metrics?.avgOrderValue || 0} prev={prevMetrics.avgOrderValue || 0} />}
                         </div>
-                        <p className="text-xs text-muted-foreground mt-1">Doanh thu Net / Đơn thành công</p>
+                        <p className="text-xs text-muted-foreground mt-1">GMV / Đơn thực nhận</p>
                     </div>
 
-                    {/* 6. Phí / Đơn */}
+                    {/* 6. Phí sàn % */}
                     <div className="bg-card/50 p-4 rounded-xl border border-border">
                         <div className="flex justify-between items-start mb-2">
                             <div>
-                                <p className="text-sm font-medium text-muted-foreground">Phí sàn / Đơn</p>
-                                <p className="text-xs text-muted-foreground mt-0.5">= Tổng phí / Đơn thành công</p>
+                                <p className="text-sm font-medium text-muted-foreground">Tỷ lệ phí sàn</p>
+                                <p className="text-xs text-muted-foreground mt-0.5">= Phí sàn / GMV</p>
                             </div>
                             <Ticket className="w-4 h-4 text-red-500" />
                         </div>
                         <div className="flex flex-wrap items-baseline gap-2 mt-2">
-                            <p className="text-2xl font-bold text-red-500">{formatVND(metrics?.realizedPerformance?.feePerOrder || 0)}</p>
-                            {prevMetrics && <PoPIndicator current={metrics?.realizedPerformance?.feePerOrder || 0} prev={prevMetrics.realizedPerformance?.feePerOrder || 0} isInverse={true} />}
+                            <p className="text-2xl font-bold text-red-500">{formatNumber(metrics?.platformFeeRate || 0, 2)}%</p>
+                            {prevMetrics && <PoPIndicator current={metrics?.platformFeeRate || 0} prev={prevMetrics.platformFeeRate || 0} isInverse={true} />}
                         </div>
-                        <p className="text-xs text-muted-foreground mt-1">Trung bình trên đơn thành công</p>
+                        <p className="text-xs text-muted-foreground mt-1">Tỷ lệ chi phí trên doanh thu</p>
                     </div>
 
                     {/* 7. Giá vốn / Đơn */}
@@ -450,8 +594,7 @@ export default function Dashboard() {
                             <Package className="w-4 h-4 text-amber-600" />
                         </div>
                         <div className="flex flex-wrap items-baseline gap-2 mt-2">
-                            <p className="text-2xl font-bold text-amber-600">{formatVND(metrics?.realizedPerformance?.cogsPerOrder || 0)}</p>
-                            {prevMetrics && <PoPIndicator current={metrics?.realizedPerformance?.cogsPerOrder || 0} prev={prevMetrics.realizedPerformance?.cogsPerOrder || 0} isInverse={true} />}
+                            <p className="text-2xl font-bold text-amber-600">{formatVND((metrics?.totalGMV || 0) * 0.4 / (metrics?.totalOrders || 1))}</p>
                         </div>
                         <p className="text-xs text-muted-foreground mt-1">COGS (40%) trung bình</p>
                     </div>
@@ -461,7 +604,7 @@ export default function Dashboard() {
                         <div className="flex justify-between items-start mb-2">
                             <div>
                                 <p className="text-sm font-medium text-muted-foreground">Lợi nhuận / Đơn</p>
-                                <p className="text-xs text-muted-foreground mt-0.5">= Lợi nhuận gộp / Đơn thành công</p>
+                                <p className="text-xs text-muted-foreground mt-0.5">= DT Thuần Thực Tế / Đơn phát sinh</p>
                             </div>
                             <Activity className="w-4 h-4 text-emerald-500" />
                         </div>
@@ -469,7 +612,7 @@ export default function Dashboard() {
                             <p className="text-2xl font-bold text-emerald-500">{formatVND(metrics?.profitPerOrder || 0)}</p>
                             {prevMetrics && <PoPIndicator current={metrics?.profitPerOrder || 0} prev={prevMetrics.profitPerOrder || 0} />}
                         </div>
-                        <p className="text-xs text-muted-foreground mt-1">Lợi nhuận thực tế trên mỗi đơn</p>
+                        <p className="text-xs text-muted-foreground mt-1">Sau khi trừ phí sàn & trợ giá</p>
                     </div>
                 </div>
             </section>
@@ -614,9 +757,9 @@ export default function Dashboard() {
                                     <YAxis stroke="#666" fontSize={11} tickFormatter={(v) => `${(v / 1000000).toFixed(1)}M`} />
                                     <Tooltip content={<ChartTooltip formatter={(v: any) => formatVND(Number(v))} />} />
                                     <Legend />
-                                    <Area type="monotone" dataKey="revenue1" name="Doanh thu niêm yết" stroke="#818cf8" fill="url(#colorRev1)" strokeWidth={1} strokeDasharray="5 5" />
-                                    <Area type="monotone" dataKey="revenue2" name="Doanh thu thuần" stroke="#3b82f6" fill="url(#colorRev2)" strokeWidth={2} />
-                                    <Area type="monotone" dataKey="profit" name="Lợi nhuận gộp" stroke="#10b981" fill="url(#colorProfit)" strokeWidth={2} />
+                                    <Area type="monotone" dataKey="gmv" name="1. Doanh thu niêm yết (GMV)" stroke="#818cf8" fill="url(#colorRev1)" strokeWidth={1} strokeDasharray="5 5" />
+                                    <Area type="monotone" dataKey="draftNet" name="2. Doanh thu thuần (Draft Net)" stroke="#3b82f6" fill="url(#colorRev2)" strokeWidth={2} />
+                                    <Area type="monotone" dataKey="actualNet" name="3. DT Thuần Thực Tế (Actual Net)" stroke="#10b981" fill="url(#colorProfit)" strokeWidth={2} />
                                 </AreaChart>
                             </ResponsiveContainer>
                         </div>
@@ -633,9 +776,9 @@ export default function Dashboard() {
                                     <YAxis stroke="#666" fontSize={11} tickFormatter={(v) => `${(v / 1000000).toFixed(1)}M`} />
                                     <Tooltip cursor={{ fill: 'transparent' }} content={<ChartTooltip formatter={(v: any) => formatVND(Number(v))} />} />
                                     <Legend />
-                                    <Bar dataKey="fees" name="Phí sàn" stackId="a" fill="#f43f5e" />
-                                    <Bar dataKey="cogs" name="Giá vốn" stackId="a" fill="#d97706" />
-                                    <Bar dataKey="subsidies" name="Chi phí CTKM" stackId="a" fill="#a855f7" />
+                                    <Bar dataKey="platformFees" name="Phí sàn" stackId="a" fill="#f43f5e" />
+                                    <Bar dataKey="cogs" name="Giá vốn (Ước tính)" stackId="a" fill="#d97706" />
+                                    <Bar dataKey="shopSubsidies" name="Chi phí Trợ giá Shop" stackId="a" fill="#a855f7" />
                                 </BarChart>
                             </ResponsiveContainer>
                         </div>
@@ -652,7 +795,7 @@ export default function Dashboard() {
                                     <YAxis stroke="#666" fontSize={11} unit="%" />
                                     <Tooltip content={<ChartTooltip formatter={(v: any) => `${Number(v).toFixed(2)}%`} />} />
                                     <Legend />
-                                    <Line type="monotone" dataKey="margin" name="Biên lợi nhuận (%)" stroke="#8b5cf6" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+                                    <Line type="monotone" dataKey="marginPreCogs" name="Biên lợi nhuận gộp (%)" stroke="#8b5cf6" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} />
                                 </LineChart>
                             </ResponsiveContainer>
                         </div>
@@ -715,7 +858,7 @@ export default function Dashboard() {
                                                 </td>
                                                 <td className="py-4 px-6 align-top">
                                                     <div className="space-y-2">
-                                                        {ro.products.map((p, idx) => (
+                                                        {ro.products?.map((p: any, idx: number) => (
                                                             <div key={idx} className="flex gap-2 text-[13px] leading-tight text-foreground/80 group-hover:text-foreground transition-colors">
                                                                 <span className="font-extrabold text-orange-500 shrink-0">x{p.quantity}</span>
                                                                 <span className="line-clamp-2">{p.name}</span>

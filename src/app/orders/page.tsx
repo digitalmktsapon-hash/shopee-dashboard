@@ -30,14 +30,14 @@ const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'
 export default function OrdersPage() {
     const [metrics, setMetrics] = useState<MetricResult | null>(null);
     const [loading, setLoading] = useState(true);
-    const { startDate, endDate, warehouse, channelKey } = useFilter();
+    const { startDate, endDate, warehouse, channelKeys } = useFilter();
 
     useEffect(() => {
         const fetchData = async () => {
             try {
                 setLoading(true);
                 const queryParams = new URLSearchParams();
-                if (channelKey && channelKey !== 'all') queryParams.append('channels', channelKey);
+                if (channelKeys && channelKeys.length > 0) queryParams.append('channels', channelKeys.join(','));
                 const res = await fetch('/api/orders?' + queryParams.toString());
                 const orders: ShopeeOrder[] = await res.json();
                 const filtered = filterOrders(orders, startDate, endDate, warehouse);
@@ -54,7 +54,7 @@ export default function OrdersPage() {
             }
         };
         fetchData();
-    }, [startDate, endDate, warehouse, channelKey]);
+    }, [startDate, endDate, warehouse, channelKeys]);
 
     if (loading) return <PageSkeleton />;
 
@@ -74,9 +74,9 @@ export default function OrdersPage() {
 
     // Derived Metrics
     const totalOrders = metrics.totalOrders;
-    const totalCancels = cancelData.reduce((a, b) => a + b.count, 0);
-    const totalReturns = returnData.reduce((a, b) => a + b.count, 0);
-    const totalReturnValue = returnData.reduce((a, b) => a + b.value, 0);
+    const totalCancels = cancelData.reduce((a: number, b: { count: number }) => a + b.count, 0);
+    const totalReturns = returnData.reduce((a: number, b: { count: number }) => a + b.count, 0);
+    const totalReturnValue = returnData.reduce((a: number, b: { value: number }) => a + b.value, 0);
 
     const cancelRate = totalOrders > 0 ? (totalCancels / totalOrders) * 100 : 0;
     const returnRate = totalOrders > 0 ? (totalReturns / totalOrders) * 100 : 0;
@@ -211,7 +211,7 @@ export default function OrdersPage() {
                                             nameKey="reason"
                                             stroke="none"
                                         >
-                                            {cancelData.map((entry, index) => (
+                                            {cancelData.map((entry: { reason: string; count: number }, index: number) => (
                                                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                             ))}
                                         </Pie>
@@ -224,7 +224,7 @@ export default function OrdersPage() {
                         </div>
                         <div className="w-full md:w-1/2 overflow-y-auto max-h-[250px]">
                             <ul className="space-y-2">
-                                {cancelData.sort((a, b) => b.count - a.count).map((item, idx) => (
+                                {cancelData.sort((a: { count: number }, b: { count: number }) => b.count - a.count).map((item: { reason: string; count: number }, idx: number) => (
                                     <li key={idx} className="flex items-center justify-between text-sm p-2 bg-muted/30 rounded">
                                         <div className="flex items-center gap-2">
                                             <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[idx % COLORS.length] }} />
@@ -249,7 +249,7 @@ export default function OrdersPage() {
                             <ResponsiveContainer width="100%" height="100%">
                                 <BarChart
                                     layout="vertical"
-                                    data={returnData.sort((a, b) => b.count - a.count)}
+                                    data={[...returnData].sort((a: { count: number }, b: { count: number }) => b.count - a.count)}
                                     margin={{ top: 5, right: 30, left: 40, bottom: 5 }}
                                 >
                                     <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="var(--border)" />

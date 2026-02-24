@@ -96,15 +96,21 @@ export const getReportById = async (id: string): Promise<ReportFile | undefined>
   };
 };
 
-export const getAllOrders = async (platform?: string, shopName?: string): Promise<ShopeeOrder[]> => {
+export const getAllOrders = async (filters?: { platform: string, shopName?: string }[]): Promise<ShopeeOrder[]> => {
   const db = await readDB();
 
   // Filter active reports
   let activeReports = db.reports.filter(r => r.isActive);
 
-  // Filter by platform & shopName if provided
-  if (platform && platform !== 'all') {
-    activeReports = activeReports.filter(r => r.platform === platform && r.shopName === (shopName || ''));
+  // Filter by platform & shopName if filters provided
+  if (filters && filters.length > 0) {
+    activeReports = activeReports.filter(r => {
+      return filters.some(f => {
+        const platformMatch = r.platform === f.platform;
+        const shopMatch = !f.shopName || r.shopName === f.shopName;
+        return platformMatch && shopMatch;
+      });
+    });
   }
 
   let allOrders: ShopeeOrder[] = [];
@@ -116,6 +122,7 @@ export const getAllOrders = async (platform?: string, shopName?: string): Promis
 
   return allOrders;
 };
+
 
 export const toggleReportStatus = async (id: string) => {
   const db = await readDB();

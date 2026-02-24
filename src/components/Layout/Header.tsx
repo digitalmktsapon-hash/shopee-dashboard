@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import { useTheme } from '../../contexts/ThemeContext';
 import { Sun, Moon, User, LogOut, ChevronDown, Bell, Store } from 'lucide-react';
 import clsx from 'clsx';
@@ -13,11 +14,29 @@ import { ReportFile, Platform } from '../../utils/types';
 
 export const Header = () => {
     const { theme, toggleTheme } = useTheme();
-    const { warehouse, setWarehouse, channelKey, setChannelKey } = useFilter();
+    const { warehouse, setWarehouse, channelKeys, setChannelKeys } = useFilter();
+
     const { user, logout } = useAuth();
+    const pathname = usePathname();
+    const isPlatformPage = pathname.startsWith('/shopee') ||
+        pathname.startsWith('/tiki') ||
+        pathname.startsWith('/lazada') ||
+        pathname.startsWith('/tiktokshop') ||
+        pathname.startsWith('/thuocsi');
+
+    const isGlobalView = !isPlatformPage && !pathname.startsWith('/data-sources') && !pathname.startsWith('/orders');
+
+    const isShopeePage = pathname.startsWith('/shopee');
+    const isTikiPage = pathname.startsWith('/tiki');
+    const isLazadaPage = pathname.startsWith('/lazada');
+    const isTiktokPage = pathname.startsWith('/tiktokshop');
+    const isThuocsiPage = pathname.startsWith('/thuocsi');
+
+
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [isNotificationOpen, setIsNotificationOpen] = useState(false);
-    const [channels, setChannels] = useState<{ key: string; label: string }[]>([]);
+    const [allChannels, setAllChannels] = useState<{ key: string; label: string; platform: string }[]>([]);
+    const [displayChannels, setDisplayChannels] = useState<{ key: string; label: string }[]>([]);
 
     // Load available channels from uploaded reports
     useEffect(() => {
@@ -28,23 +47,89 @@ export const Header = () => {
         fetch('/api/reports')
             .then(r => r.json())
             .then((reports: ReportFile[]) => {
-                const seen = new Set<string>();
-                const list: { key: string; label: string }[] = [];
+                const seenKeys = new Set<string>();
+                const seenPlatforms = new Set<string>();
+                const list: { key: string; label: string; platform: string }[] = [];
+
+                // 1. Process platforms from reports
                 reports.forEach(r => {
                     const plt = r.platform || 'shopee';
-                    const key = `${plt}_${r.shopName || ''}`;
-                    if (!seen.has(key)) {
-                        seen.add(key);
-                        const label = r.shopName
-                            ? `${PLATFORM_LABEL[plt]} · ${r.shopName}`
-                            : PLATFORM_LABEL[plt];
-                        list.push({ key, label });
+                    if (!seenPlatforms.has(plt)) {
+                        seenPlatforms.add(plt);
+                        list.push({ key: plt, label: `Sàn: ${PLATFORM_LABEL[plt]}`, platform: plt });
                     }
                 });
-                setChannels(list);
+
+                // 2. Process specific shops from reports
+                reports.forEach(r => {
+                    const plt = r.platform || 'shopee';
+                    let sName = r.shopName?.trim();
+                    if (sName) {
+                        // Normalize Shopee regions: if shopName is "Shopee Miền Bắc" -> "Miền Bắc"
+                        if (plt === 'shopee') {
+                            if (sName.toLowerCase().includes('miền bắc')) sName = 'Miền Bắc';
+                            if (sName.toLowerCase().includes('miền nam')) sName = 'Miền Nam';
+                        }
+
+                        const key = `${plt}_${sName}`;
+                        if (!seenKeys.has(key)) {
+                            seenKeys.add(key);
+                            list.push({
+                                key,
+                                label: `${PLATFORM_LABEL[plt]} · ${sName}`,
+                                platform: plt
+                            });
+                        }
+                    }
+                });
+
+                // 3. Add mandatory Shopee regions if not already present via uploads
+                const regions = ['Miền Bắc', 'Miền Nam'];
+                regions.forEach(region => {
+                    const key = `shopee_${region}`;
+                    if (!seenKeys.has(key)) {
+                        seenKeys.add(key);
+                        list.push({
+                            key,
+                            label: `Shopee · ${region}`,
+                            platform: 'shopee'
+                        });
+                    }
+                });
+
+
+                setAllChannels(list);
             })
             .catch(() => { });
     }, []);
+
+    // Filter displaying channels based on page
+    useEffect(() => {
+        if (isGlobalView) {
+            setDisplayChannels([]); // No filter on global view
+        } else if (isShopeePage) {
+            // For Shopee page, restrict strictly to North and South
+            const shopeeRegions = ['shopee_Miền Bắc', 'shopee_Miền Nam'];
+            const filtered = allChannels.filter(c => shopeeRegions.includes(c.key));
+            setDisplayChannels(filtered);
+
+            // If current selection is 'all' or not in the restricted list, default to Miền Bắc
+            if (channelKeys.includes('all') || !channelKeys.every(k => shopeeRegions.includes(k))) {
+                setChannelKeys(['shopee_Miền Bắc']);
+            }
+        } else if (isTikiPage) {
+            setDisplayChannels(allChannels.filter(c => c.platform === 'tiki'));
+        } else if (isLazadaPage) {
+            setDisplayChannels(allChannels.filter(c => c.platform === 'lazada'));
+        } else if (isTiktokPage) {
+            setDisplayChannels(allChannels.filter(c => c.platform === 'tiktok'));
+        } else if (isThuocsiPage) {
+            setDisplayChannels(allChannels.filter(c => c.platform === 'thuocsi'));
+        } else {
+            setDisplayChannels([]);
+        }
+    }, [allChannels, pathname, isGlobalView, isShopeePage, isTikiPage, isLazadaPage, isTiktokPage, isThuocsiPage, channelKeys, setChannelKeys]);
+
 
     // Mock Notifications State
     const [notifications, setNotifications] = useState([
@@ -98,22 +183,31 @@ export const Header = () => {
             </div>
 
             <div className="flex items-center gap-3">
-                {/* Channel Selector */}
-                {channels.length > 0 && (
-                    <div className="flex items-center gap-2 px-3 py-2 bg-card border border-border rounded-xl">
-                        <Store className="w-4 h-4 text-muted-foreground shrink-0" />
+                {/* Channel Selector - Show when we have channels to display */}
+                {displayChannels.length > 0 && !isGlobalView && (
+                    <div className="flex items-center gap-2 px-3 py-1.5 bg-card/40 backdrop-blur-md rounded-xl border border-white/5 shadow-inner group">
+                        <Store className="w-4 h-4 text-primary/70" />
                         <select
-                            value={channelKey}
-                            onChange={e => setChannelKey(e.target.value)}
+                            value={channelKeys[0] || ''}
+                            onChange={e => setChannelKeys([e.target.value])}
                             className="bg-card text-sm font-semibold text-foreground focus:outline-none cursor-pointer max-w-[180px] dark:[color-scheme:dark]"
                         >
-                            <option value="all">Tất cả kênh</option>
-                            {channels.map(c => (
-                                <option key={c.key} value={c.key}>{c.label}</option>
-                            ))}
+                            {isShopeePage ? (
+                                displayChannels.map(c => (
+                                    <option key={c.key} value={c.key}>{c.label}</option>
+                                ))
+                            ) : (
+                                <>
+                                    <option value="all">Tất cả shop</option>
+                                    {displayChannels.map(c => (
+                                        <option key={c.key} value={c.key}>{c.label}</option>
+                                    ))}
+                                </>
+                            )}
                         </select>
                     </div>
                 )}
+
 
                 <div className="h-6 w-px bg-border"></div>
 

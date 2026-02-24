@@ -38,15 +38,32 @@ import clsx from 'clsx';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d', '#ffc658'];
 
-// Custom Metrics Type for Revenue Dashboard
+// Custom Metrics Type for Revenue Dashboard (CFO Standard)
 interface RevenueDashboardMetrics {
-    // KPIs (Realized Only)
-    currentNetRevenue: number;
-    currentProfit: number;
-    currentMargin: number; // percentage
-    currentAOV: number;
+    // 1. NHÓM DOANH THU
+    totalGMV: number;
+    totalDraftNet: number;
 
-    // Status Analysis (All Orders)
+    // 2. NHÓM CHI PHÍ
+    totalShopSubsidies: number;
+    totalPlatformFees: number;
+
+    // 3. NHÓM HOÀN/TRẢ
+    totalReturnValue: number;
+    totalReturnFees: number;
+    totalReturnImpact: number;
+
+    // 4. CHỈ SỐ DOANH THU THỰC TẾ
+    totalActualNet: number;
+
+    // 5. CHỈ SỐ HIỆU QUẢ (KPIs)
+    totalOrders: number;
+    avgOrderValue: number;
+    platformFeeRate: number;
+    shopSubsidyRate: number;
+    marginPreCogs: number;
+
+    // Analysis Data
     statusData: {
         status: string;
         count: number;
@@ -54,15 +71,14 @@ interface RevenueDashboardMetrics {
         percentOfCount: number;
     }[];
 
-    // Trends (Realized Only)
     dailyTrends: {
         date: string;
-        netRevenue: number;
-        profit: number;
+        gmv: number;               // GMV
+        draftNet: number;          // DT Thuần Phát sinh
+        actualNet: number;         // DT Thuần Thực Tế
         margin: number;
     }[];
 
-    // SKU (Realized Only)
     topSKUs: {
         sku: string;
         name: string;
@@ -73,7 +89,6 @@ interface RevenueDashboardMetrics {
         contribution: number;
     }[];
 
-    // Province (Shipping Address) - (Realized Only)
     topProvinces: {
         province: string;
         revenue: number;
@@ -85,10 +100,20 @@ interface RevenueDashboardMetrics {
 
 const mapToRevenueMetrics = (result: MetricResult): RevenueDashboardMetrics => {
     return {
-        currentNetRevenue: result.totalGrossRevenue, // Proceeds (39.7M)
-        currentProfit: result.netProfitAfterTax,   // Net Profit (36.8M)
-        currentMargin: result.netMargin,
-        currentAOV: result.avgOrderValue,
+        totalGMV: result.totalGMV,
+        totalDraftNet: result.totalDraftNet,
+        totalShopSubsidies: result.totalShopSubsidies,
+        totalPlatformFees: result.totalPlatformFees,
+        totalReturnValue: result.totalReturnValue,
+        totalReturnFees: result.totalReturnFees,
+        totalReturnImpact: result.totalReturnImpact,
+        totalActualNet: result.totalActualNet,
+        totalOrders: result.totalOrders,
+        avgOrderValue: result.avgOrderValue,
+        platformFeeRate: result.platformFeeRate,
+        shopSubsidyRate: result.shopSubsidyRate,
+        marginPreCogs: result.marginPreCogs,
+
         statusData: result.statusAnalysis.map(s => ({
             status: s.status,
             count: s.count,
@@ -97,11 +122,12 @@ const mapToRevenueMetrics = (result: MetricResult): RevenueDashboardMetrics => {
         })),
         dailyTrends: result.revenueTrend.map(t => ({
             date: t.date,
-            netRevenue: t.grossRevenue, // Sync with 39.7M definition
-            profit: t.netRevenueAfterTax, // Sync with 36.8M definition
-            margin: t.profitMargin
+            gmv: t.gmv,
+            draftNet: t.draftNet,
+            actualNet: t.actualNet,
+            margin: t.marginPreCogs
         })),
-        topSKUs: result.topProducts.map(p => ({
+        topSKUs: result.productPerformance.map((p: any) => ({
             sku: p.sku,
             name: p.name,
             revenue: p.revenue,
@@ -124,19 +150,19 @@ export default function RevenuePage() {
     const [metrics, setMetrics] = useState<RevenueDashboardMetrics | null>(null);
     const [prevMetrics, setPrevMetrics] = useState<RevenueDashboardMetrics | null>(null);
     const [loading, setLoading] = useState(true);
-    const { startDate, endDate, warehouse, channelKey } = useFilter();
+    const { startDate, endDate, warehouse, channelKeys, adExpenseX } = useFilter();
 
     useEffect(() => {
         const fetchData = async () => {
             try {
                 setLoading(true);
-                const res = await fetch('/api/orders?channel=' + channelKey);
+                const res = await fetch('/api/orders?channel=' + channelKeys.join(','));
                 const orders: ShopeeOrder[] = await res.json();
 
                 // Current Period
                 const filtered = filterOrders(orders, startDate, endDate, warehouse);
                 if (filtered.length > 0) {
-                    const result = calculateMetrics(filtered);
+                    const result = calculateMetrics(filtered, { startDate, endDate, adExpenseX });
                     setMetrics(mapToRevenueMetrics(result));
                 } else {
                     setMetrics(null);
@@ -160,7 +186,7 @@ export default function RevenuePage() {
 
                     const prevFiltered = filterOrders(orders, prevStartDateStr, prevEndDateStr, warehouse);
                     if (prevFiltered.length > 0) {
-                        const result = calculateMetrics(prevFiltered);
+                        const result = calculateMetrics(prevFiltered, { adExpenseX });
                         setPrevMetrics(mapToRevenueMetrics(result));
                     } else {
                         setPrevMetrics(null);
@@ -176,7 +202,7 @@ export default function RevenuePage() {
             }
         };
         fetchData();
-    }, [startDate, endDate, warehouse, channelKey]);
+    }, [startDate, endDate, warehouse, channelKeys, adExpenseX]);
 
     if (loading) return <PageSkeleton />;
 
@@ -218,83 +244,125 @@ export default function RevenuePage() {
     };
 
     return (
-        <div className="space-y-6 max-w-[1600px] mx-auto pb-10">
+        <div className="space-y-8 max-w-[1600px] mx-auto pb-10">
             <div>
-                <h1 className="text-2xl font-bold tracking-tight text-foreground">Phân tích Doanh thu & Lợi nhuận</h1>
-                <p className="text-muted-foreground mt-1 text-sm">Số liệu sạch (Đã trừ đơn Hủy & Hoàn) — COGS mặc định 40%</p>
+                <h1 className="text-3xl font-bold tracking-tight text-foreground">Báo Cáo Chiến Lược CFO</h1>
+                <p className="text-muted-foreground mt-1 text-sm">Phân tích chuyên sâu 5 nhóm chỉ số tài chính — Shopee Dashboard</p>
             </div>
 
-            {/* Section II: KPIs Comparison */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="bg-card/50 backdrop-blur-md border border-white/5 bg-gradient-to-br from-card to-card/30 rounded-2xl p-6 shadow-lg relative overflow-hidden group">
-                    <div className="absolute inset-0 bg-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                    <div className="flex justify-between items-start mb-4 relative z-10">
-                        <div>
-                            <p className="text-sm font-medium text-muted-foreground/80 uppercase tracking-wider">Doanh thu gộp</p>
+            {/* 1. Dashboard Groups */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+
+                {/* GROUP 1: DOANH THU & CHI PHÍ */}
+                <div className="space-y-4">
+                    <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2 px-1">
+                        <DollarSign className="w-4 h-4" /> NHÓM 1 & 2: DOANH THU & CHI PHÍ SÀN
+                    </h2>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-card/40 backdrop-blur-xl border border-white/5 rounded-2xl p-5 shadow-lg group hover:bg-card/60 transition-all">
+                            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">1. Tổng giá trị hàng bán (GMV)</p>
+                            <h3 className="text-2xl font-bold text-blue-400">{formatVND(metrics.totalGMV)}</h3>
+                            {prevMetrics && <PoPIndicator current={metrics.totalGMV} prev={prevMetrics.totalGMV} />}
                         </div>
-                        <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center">
-                            <DollarSign className="w-5 h-5 text-blue-400" />
+                        <div className="bg-card/40 backdrop-blur-xl border border-white/5 rounded-2xl p-5 shadow-lg group hover:bg-card/60 transition-all opacity-80">
+                            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">2. DT Thuần Phát Sinh</p>
+                            <h3 className="text-2xl font-bold text-sky-300">{formatVND(metrics.totalDraftNet)}</h3>
+                            {prevMetrics && <PoPIndicator current={metrics.totalDraftNet} prev={prevMetrics.totalDraftNet} />}
                         </div>
-                    </div>
-                    <div className="flex flex-col gap-1 relative z-10">
-                        <h3 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-indigo-400">
-                            {formatVND(metrics.currentNetRevenue)}
-                        </h3>
-                        {prevMetrics && <PoPIndicator current={metrics.currentNetRevenue} prev={prevMetrics.currentNetRevenue} />}
+                        <div className="bg-card/40 backdrop-blur-xl border border-white/5 rounded-2xl p-5 shadow-lg group hover:bg-card/60 transition-all">
+                            <p className="text-xs font-medium text-rose-400/80 uppercase tracking-wider mb-2">3. Trợ giá Shop (Voucher)</p>
+                            <h3 className="text-2xl font-bold text-rose-400">-{formatVND(metrics.totalShopSubsidies)}</h3>
+                            {prevMetrics && <PoPIndicator current={metrics.totalShopSubsidies} prev={prevMetrics.totalShopSubsidies} />}
+                        </div>
+                        <div className="bg-card/40 backdrop-blur-xl border border-white/5 rounded-2xl p-5 shadow-lg group hover:bg-card/60 transition-all">
+                            <p className="text-xs font-medium text-orange-400/80 uppercase tracking-wider mb-2">4. Phí Sàn (Cố định/DV/TT)</p>
+                            <h3 className="text-2xl font-bold text-orange-400">-{formatVND(metrics.totalPlatformFees)}</h3>
+                            {prevMetrics && <PoPIndicator current={metrics.totalPlatformFees} prev={prevMetrics.totalPlatformFees} />}
+                        </div>
                     </div>
                 </div>
 
-                <div className="bg-card/50 backdrop-blur-md border border-white/5 bg-gradient-to-br from-card to-card/30 rounded-2xl p-6 shadow-lg relative overflow-hidden group">
-                    <div className="absolute inset-0 bg-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                    <div className="flex justify-between items-start mb-4 relative z-10">
-                        <div>
-                            <p className="text-sm font-medium text-muted-foreground/80 uppercase tracking-wider">Lợi nhuận gộp</p>
+                {/* GROUP 2: HOÀN TRẢ & DOANH THU THỰC */}
+                <div className="space-y-4">
+                    <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2 px-1">
+                        <TrendingDown className="w-4 h-4" /> NHÓM 3 & 4: TÁC ĐỘNG HOÀN TRẢ & DT THỰC
+                    </h2>
+                    <div className="grid grid-cols-1 gap-4">
+                        <div className="bg-gradient-to-br from-emerald-500/10 to-teal-500/5 backdrop-blur-xl border border-emerald-500/10 rounded-2xl p-6 shadow-xl border-l-4 border-l-emerald-500">
+                            <div className="flex justify-between items-start">
+                                <div>
+                                    <p className="text-xs font-bold text-emerald-400 uppercase tracking-widest mb-1">TỔNG KẾT: DOANH THU THUẦN THỰC TẾ (CFO)</p>
+                                    <p className="text-muted-foreground text-[10px] mb-3">DT Thuần Phát Sinh - (Giá trị hoàn + Phí hoàn)</p>
+                                    <h3 className="text-4xl font-black text-white">{formatVND(metrics.totalActualNet)}</h3>
+                                    {prevMetrics && <PoPIndicator current={metrics.totalActualNet} prev={prevMetrics.totalActualNet} />}
+                                </div>
+                                <div className="p-3 bg-emerald-500/20 rounded-xl">
+                                    <Wallet className="w-8 h-8 text-emerald-400" />
+                                </div>
+                            </div>
                         </div>
-                        <div className="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center">
-                            <Wallet className="w-5 h-5 text-emerald-400" />
+                        <div className="grid grid-cols-3 gap-4">
+                            <div className="bg-card/40 backdrop-blur-xl border border-white/5 rounded-2xl p-4 shadow-lg group hover:bg-card/60 transition-all">
+                                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-1">Giá trị hoàn</p>
+                                <h4 className="text-lg font-bold text-amber-500">{formatVND(metrics.totalReturnValue)}</h4>
+                            </div>
+                            <div className="bg-card/40 backdrop-blur-xl border border-white/5 rounded-2xl p-4 shadow-lg group hover:bg-card/60 transition-all">
+                                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-1">Phí hoàn hàng</p>
+                                <h4 className="text-lg font-bold text-amber-600">{formatVND(metrics.totalReturnFees)}</h4>
+                            </div>
+                            <div className="bg-card/40 backdrop-blur-xl border border-white/5 rounded-2xl p-4 shadow-lg group hover:bg-card/60 transition-all">
+                                <p className="text-[10px] font-medium text-rose-500 uppercase tracking-wider mb-1">Tổng tác động</p>
+                                <h4 className="text-lg font-bold text-rose-500">{formatVND(metrics.totalReturnImpact)}</h4>
+                            </div>
                         </div>
-                    </div>
-                    <div className="flex flex-col gap-1 relative z-10">
-                        <h3 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 to-teal-400">
-                            {formatVND(metrics.currentProfit)}
-                        </h3>
-                        {prevMetrics && <PoPIndicator current={metrics.currentProfit} prev={prevMetrics.currentProfit} />}
                     </div>
                 </div>
+            </div>
 
-                <div className="bg-card/50 backdrop-blur-md border border-white/5 bg-gradient-to-br from-card to-card/30 rounded-2xl p-6 shadow-lg relative overflow-hidden group">
-                    <div className="absolute inset-0 bg-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                    <div className="flex justify-between items-start mb-4 relative z-10">
-                        <div>
-                            <p className="text-sm font-medium text-muted-foreground/80 uppercase tracking-wider">Biên lợi nhuận</p>
+            {/* 2. EFFICIENCY KPIs (NHÓM 5) */}
+            <div className="bg-card/20 backdrop-blur-md border border-white/5 rounded-3xl p-6 shadow-inner">
+                <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2 px-1 mb-6">
+                    <TrendingUp className="w-4 h-4" /> NHÓM 5: CHỈ SỐ HIỆU QUẢ VÀ TỶ LỆ (KPIs)
+                </h2>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-6">
+                    <div className="flex flex-col items-center text-center space-y-2">
+                        <div className="w-12 h-12 rounded-full bg-blue-500/10 flex items-center justify-center mb-1">
+                            <ShoppingCart className="w-6 h-6 text-blue-400" />
                         </div>
-                        <div className="w-10 h-10 rounded-full bg-purple-500/10 flex items-center justify-center">
-                            <TrendingUp className="w-5 h-5 text-purple-400" />
-                        </div>
+                        <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">Đơn hàng thành công</p>
+                        <h4 className="text-2xl font-bold">{formatNumber(metrics.totalOrders)}</h4>
                     </div>
-                    <div className="flex flex-col gap-1 relative z-10">
-                        <h3 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-fuchsia-400">
-                            {formatNumber(metrics.currentMargin, 2)}%
-                        </h3>
-                        {prevMetrics && <PoPIndicator current={metrics.currentMargin} prev={prevMetrics.currentMargin} />}
-                    </div>
-                </div>
 
-                <div className="bg-card/50 backdrop-blur-md border border-white/5 bg-gradient-to-br from-card to-card/30 rounded-2xl p-6 shadow-lg relative overflow-hidden group">
-                    <div className="absolute inset-0 bg-amber-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                    <div className="flex justify-between items-start mb-4 relative z-10">
-                        <div>
-                            <p className="text-sm font-medium text-muted-foreground/80 uppercase tracking-wider">AOV (Giá trị đơn TB)</p>
+                    <div className="flex flex-col items-center text-center space-y-2">
+                        <div className="w-12 h-12 rounded-full bg-indigo-500/10 flex items-center justify-center mb-1">
+                            <DollarSign className="w-6 h-6 text-indigo-400" />
                         </div>
-                        <div className="w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center">
-                            <ShoppingCart className="w-5 h-5 text-amber-400" />
-                        </div>
+                        <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">AOV (Trung bình / Đơn)</p>
+                        <h4 className="text-2xl font-bold">{formatVND(metrics.avgOrderValue)}</h4>
                     </div>
-                    <div className="flex flex-col gap-1 relative z-10">
-                        <h3 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-amber-400 to-orange-400">
-                            {formatVND(metrics.currentAOV)}
-                        </h3>
-                        {prevMetrics && <PoPIndicator current={metrics.currentAOV} prev={prevMetrics.currentAOV} />}
+
+                    <div className="flex flex-col items-center text-center space-y-2">
+                        <div className="w-12 h-12 rounded-full bg-orange-500/10 flex items-center justify-center mb-1">
+                            <Package className="w-6 h-6 text-orange-400" />
+                        </div>
+                        <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">Tỷ lệ phí sàn / GMV</p>
+                        <h4 className="text-2xl font-bold text-orange-400">{formatNumber(metrics.platformFeeRate, 2)}%</h4>
+                    </div>
+
+                    <div className="flex flex-col items-center text-center space-y-2">
+                        <div className="w-12 h-12 rounded-full bg-rose-500/10 flex items-center justify-center mb-1">
+                            <TrendingDown className="w-6 h-6 text-rose-400" />
+                        </div>
+                        <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">Tỷ lệ trợ giá / GMV</p>
+                        <h4 className="text-2xl font-bold text-rose-400">{formatNumber(metrics.shopSubsidyRate, 2)}%</h4>
+                    </div>
+
+                    <div className="flex flex-col items-center text-center space-y-2">
+                        <div className="w-12 h-12 rounded-full bg-emerald-500/10 flex items-center justify-center mb-1">
+                            <TrendingUp className="w-6 h-6 text-emerald-400" />
+                        </div>
+                        <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">Biên LN ròng (Pre-COGS)</p>
+                        <h4 className="text-2xl font-bold text-emerald-400">{formatNumber(metrics.marginPreCogs, 2)}%</h4>
                     </div>
                 </div>
             </div>
@@ -364,8 +432,8 @@ export default function RevenuePage() {
                             <Line
                                 yAxisId="left"
                                 type="monotone"
-                                dataKey="netRevenue"
-                                name="Doanh thu thuần"
+                                dataKey="gmv"
+                                name="1. Tổng GMV"
                                 stroke="#38bdf8"
                                 strokeWidth={3}
                                 dot={{ stroke: '#38bdf8', strokeWidth: 2, r: 4, fill: '#0f172a' }}
@@ -374,8 +442,18 @@ export default function RevenuePage() {
                             <Line
                                 yAxisId="left"
                                 type="monotone"
-                                dataKey="profit"
-                                name="Lợi nhuận gộp"
+                                dataKey="draftNet"
+                                name="2. DT Thuần Phát Sinh"
+                                stroke="#818cf8"
+                                strokeWidth={2}
+                                strokeDasharray="5 5"
+                                dot={false}
+                            />
+                            <Line
+                                yAxisId="left"
+                                type="monotone"
+                                dataKey="actualNet"
+                                name="3. DT Thuần Thực Tế (CFO)"
                                 stroke="#34d399"
                                 strokeWidth={3}
                                 dot={{ stroke: '#34d399', strokeWidth: 2, r: 4, fill: '#0f172a' }}
