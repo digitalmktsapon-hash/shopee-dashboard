@@ -411,7 +411,9 @@ export const calculateMetrics = (orders: ShopeeOrder[], config?: { startDate?: s
             totalSellerRebate: totalSellerRebate,
             totalShopVoucher: totalShopVoucher,
             totalReturnShippingFee: totalReturnFees,
-            totalPlatformFees: totalPlatformFees
+            totalPlatformFees: totalPlatformFees,
+            totalReturnImpactValue: totalReturnImpact,
+            totalReturnImpactRate: totalGMV > 0 ? (totalReturnImpact / totalGMV) * 100 : 0
         },
         returnedOrders: Object.values(returnOrderMap),
         customerAnalysis: customers,

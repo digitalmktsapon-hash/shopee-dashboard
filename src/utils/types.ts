@@ -209,6 +209,12 @@ export interface OrderRiskAnalysis {
   cogs: number;
   platformFee: number;
   shopPromotion: number;
+  structuralMargin: number;
+  returnImpactValue: number;
+  lostGrossRevenue: number;
+  nonRefundableFee: number;
+  riskImpactScore?: number;
+  absoluteLossFlag?: boolean;
 }
 
 export interface FeeAlertOrder {
@@ -296,6 +302,8 @@ export interface MetricResult {
     totalShopVoucher: number;
     totalReturnShippingFee: number;
     totalPlatformFees: number;
+    totalReturnImpactValue: number;
+    totalReturnImpactRate: number;
   };
   returnedOrders: any[];
   profitPerOrder?: number;
