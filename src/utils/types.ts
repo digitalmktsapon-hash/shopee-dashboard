@@ -8,12 +8,16 @@ export interface ShopeeOrder {
   returnReason?: string;
   skuReferenceNo: string;
   productName: string;
+  productSku?: string;
   variationName?: string;
   quantity: number;
   originalPrice: number;
   dealPrice: number;
+  dealPriceTotal?: number;
   sellerRebate?: number;
   shopeeRebate?: number;
+  shopeeVoucher?: number;
+  shopeeCoinsRedeemed?: number;
   buyerPaid: number;
   orderTotalAmount: number;
   fixedFee: number;
@@ -31,10 +35,13 @@ export interface ShopeeOrder {
   province?: string;
   district?: string;
   ward?: string;
+  remarks?: string;
   deliveryCarrier?: string;
   paymentMethod?: string;
+  shipDate?: string;
   shipTime?: string;
   completeDate?: string;
+  expectedDeliveryDate?: string;
   updateTime?: string;
   payoutDate?: string;
   warehouseName?: string;
@@ -43,6 +50,14 @@ export interface ShopeeOrder {
   shopeeComboDiscount?: number;
   shopComboDiscount?: number;
   tradeInBonusBySeller?: number;
+  productWeight?: number;
+  totalWeight?: number;
+  coinCashback?: number;
+  cardPromotionDiscount?: number;
+  tradeInDiscount?: number;
+  tradeInBonus?: number;
+  codAmount?: number;
+  sellerSubsidy?: number;
 }
 
 export interface RevenueTrend {
