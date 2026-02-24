@@ -204,6 +204,11 @@ export interface OrderRiskAnalysis {
   netProfit: number;
   warningLevel: 'SAFE' | 'MONITOR' | 'WARNING' | 'DANGER';
   isLoss: boolean;
+  rootCause: string;
+  rootCauseValue: number;
+  cogs: number;
+  platformFee: number;
+  shopPromotion: number;
 }
 
 export interface FeeAlertOrder {
@@ -286,6 +291,11 @@ export interface MetricResult {
     lossCount: number;
     avgControlRatio: number;
     totalLossAmount: number;
+    totalListRevenue: number;
+    totalSellerRebate: number;
+    totalShopVoucher: number;
+    totalReturnShippingFee: number;
+    totalPlatformFees: number;
   };
   returnedOrders: any[];
   profitPerOrder?: number;

@@ -28,7 +28,7 @@ export default function RiskControlPage() {
     const { startDate, endDate, warehouse, channelKeys } = useFilter();
 
     const [selectedOrder, setSelectedOrder] = useState<OrderRiskAnalysis | null>(null);
-    const [sortConfig, setSortConfig] = useState<{ key: keyof OrderRiskAnalysis, direction: 'asc' | 'desc' } | null>({ key: 'riskImpactScore', direction: 'desc' });
+    const [sortConfig, setSortConfig] = useState<{ key: keyof OrderRiskAnalysis, direction: 'asc' | 'desc' } | null>({ key: 'netProfit', direction: 'desc' });
 
     useEffect(() => {
         const fetchData = async () => {

@@ -401,7 +401,18 @@ export const calculateMetrics = (orders: ShopeeOrder[], config?: { startDate?: s
         netMargin: totalGMV > 0 ? (totalActualNet / totalGMV) * 100 : 0,
 
         riskAnalysis: [],
-        riskStats: { totalOrders: totalOrdersCount, highRiskCount: 0, lossCount: 0, avgControlRatio: 0, totalLossAmount: 0 },
+        riskStats: {
+            totalOrders: totalOrdersCount,
+            highRiskCount: 0,
+            lossCount: 0,
+            avgControlRatio: 0,
+            totalLossAmount: 0,
+            totalListRevenue: totalGMV,
+            totalSellerRebate: totalSellerRebate,
+            totalShopVoucher: totalShopVoucher,
+            totalReturnShippingFee: totalReturnFees,
+            totalPlatformFees: totalPlatformFees
+        },
         returnedOrders: Object.values(returnOrderMap),
         customerAnalysis: customers,
         operationAnalysis: Object.entries(carrierMap).map(([carrier, val]) => ({ carrier, orderCount: val.orderCount, avgShipTime: val.totalShipTime / val.orderCount })),
